@@ -120,6 +120,6 @@ int main()
     }
     printf("The possible calculations to generate 24 are:\n"); 
     permutation(a, 0, 4);
-	if(flag == 0)
-	printf("The 4 given numbers cannot generate 24. \n");   
+    if(flag == 0)
+    printf("The 4 given numbers cannot generate 24. \n");   
 }
