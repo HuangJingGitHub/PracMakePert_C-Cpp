@@ -7,7 +7,7 @@ int calCow(int year)
    {  if(i<4)
         cowNum = 1;
       else
-        cowNum = cowNum + calCow(year-i);    // 使用递归解决，从年份的角度 
+        cowNum = cowNum + calCow(year-i);    // 使用递归解决，从年份的角度；calCow(year-i)可以看作最后奶牛总数中第i年新生奶牛极其其后裔数
    }
    return cowNum;
 }
@@ -19,7 +19,7 @@ int main()
    while(flag == 0)
    {  scanf("%d",&year);
       if(year>=1)
-   	flag = 1;
+   	  flag = 1;
       else
       	printf("Invalid input. Please input the year:\n");
    }
