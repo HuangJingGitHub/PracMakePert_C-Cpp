@@ -24,5 +24,5 @@ int main()
       	printf("Invalid input. Please input the year:\n");
    }
 
-   printf("Number of cows: %d\n", calCow(year));
+   printf("Number of cow(s): %d\n", calCow(year));
 }
