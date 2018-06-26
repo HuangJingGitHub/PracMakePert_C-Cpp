@@ -5,10 +5,9 @@ int calCow(int year)
 {  int cowNum = 1, i;
    for(i=1; i<= year; i++)
    {  if(i<4)
-      cowNum = 1;
+        cowNum = 1;
       else
-      {  cowNum = cowNum + calCow(year-i);    // 使用递归解决，从年份的角度 
-	  }
+        cowNum = cowNum + calCow(year-i);    // 使用递归解决，从年份的角度 
    }
    return cowNum;
 }
