@@ -1,4 +1,4 @@
-// TencentµÄÒ»¸öÌâÄ¿£º¿ªÊ¼Ò»Í·ÄÌÅ££¬ÖÁµÚËÄÄê¿ªÊ¼²úáÌ£¬Ö®ºóÃ¿Äê²úÒ»áÌ£¬¼ÆËãnÄêºóÒ»¹²ÓĞ¶àÉÙÄÌÅ£ 
+// Tencentçš„ä¸€ä¸ªé¢˜ç›®ï¼šå¼€å§‹ä¸€å¤´å¥¶ç‰›ï¼Œè‡³ç¬¬å››å¹´å¼€å§‹äº§å´½ï¼Œä¹‹åæ¯å¹´äº§ä¸€å´½ï¼Œè®¡ç®—nå¹´åä¸€å…±æœ‰å¤šå°‘å¥¶ç‰› 
 #include <stdio.h>
 
 int calCow(int year)
@@ -7,7 +7,7 @@ int calCow(int year)
    {  if(i<4)
       cowNum = 1;
       else
-      {  cowNum = cowNum + calCow(year-i);    // Ê¹ÓÃµİ¹é½â¾ö£¬´ÓÄê·İµÄ½Ç¶È 
+      {  cowNum = cowNum + calCow(year-i);    // ä½¿ç”¨é€’å½’è§£å†³ï¼Œä»å¹´ä»½çš„è§’åº¦ 
 	  }
    }
    return cowNum;
@@ -20,9 +20,9 @@ int main()
    while(flag == 0)
    {  scanf("%d",&year);
       if(year>=1)
-      flag = 1;
+   	flag = 1;
       else
-      printf("Invalid input. Please input the year:\n");
+      	printf("Invalid input. Please input the year:\n");
    }
 
    printf("Number of cows: %d\n", calCow(year));
