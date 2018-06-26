@@ -1,6 +1,6 @@
-/* ³ÌĞò»ùÓÚ24_pointsºÍpermutationÁ½¸öĞ¡³ÌĞò£¬ÕâÁ½¸öµ¥¶ÀµÄ³ÌĞò¹¦ÄÜ¶¼±È½Ï¾ÖÏŞ£¬
-24_pointsÖ»ÄÜ¸ø³öÌØ¶¨Ë³ĞòµÄ½á¹û£¬permutation¿ÉÒÔ¸ø³önµÄÈ«ÅÅÁĞ£¬ËùÒÔ½«Á½Õß
-½áºÏ¿ÉÒÔ¸ø³ö24µãÎÊÌâµÄËùÓĞ¿ÉÄÜ½â·¨¡£ */
+/* ç¨‹åºåŸºäº24_pointså’Œpermutationä¸¤ä¸ªå°ç¨‹åºï¼Œè¿™ä¸¤ä¸ªå•ç‹¬çš„ç¨‹åºåŠŸèƒ½éƒ½æ¯”è¾ƒå±€é™ï¼Œ
+24_pointsåªèƒ½ç»™å‡ºç‰¹å®šé¡ºåº(å³è¾“å…¥é¡ºåº)çš„ç»“æœï¼Œpermutationå¯ä»¥ç»™å‡ºnçš„å…¨æ’åˆ—ï¼Œæ‰€ä»¥å°†ä¸¤è€…
+ç»“åˆå¯ä»¥ç»™å‡º24ç‚¹é—®é¢˜çš„æ‰€æœ‰å¯èƒ½è§£æ³•ã€‚ */
  
 #include <stdio.h>
 int flag = 0;
@@ -10,9 +10,9 @@ float cal(float x, int op, float y)
    switch(op)
    {  case 1: return x+y;
       case 2: return x-y;
-	  case 3: return x*y;
-	  case 4: return x/y;
-	  default: return 0.0; 
+      case 3: return x*y;
+      case 4: return x/y;
+      default: return 0.0; 
    }
 }
 
@@ -94,7 +94,7 @@ void permutation(float a[], int index, int size)
    int i, j;
    if(index == size)
    {  
-		  twenty_four(a);
+          twenty_four(a);
           printf("\n");   
    }
    else
@@ -102,7 +102,7 @@ void permutation(float a[], int index, int size)
       {  swap(&a[j],&a[index]);
          permutation(a, index+1, size);
          swap(&a[j],&a[index]);
- 	  } 
+      } 
    }
 }
 
@@ -120,6 +120,6 @@ int main()
     }
     printf("The possible calculations to generate 24 are:\n"); 
     permutation(a, 0, 4);
-	if(flag==0)
+	if(flag == 0)
 	printf("The 4 given numbers cannot generate 24. \n");   
 }
