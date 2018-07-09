@@ -2,8 +2,8 @@
 #include <stdlib.h>
 
 int main()http://c.biancheng.net/cpp/html/2825.html
-{  char *lines[5] = {                          // Ğ¡Ï¸½Ú£¬×Ö·û´®Ö®¼äµÄ¶ººÅ²»Òªµã£¬²»È»¿ÉÒÔÍ¨¹ı±àÒë£¬µ«ÔËÓª»á±ÀÀ£ 
-                    "Controllability",         // Ö¸Ïò×Ö·ûµÄÖ¸ÕëÊı×é£¬ Àí½â¿ÉÒÔ¿´¿´½âÎö http://c.biancheng.net/cpp/html/2825.html
+{  char *lines[5] = {                          // å°ç»†èŠ‚ï¼Œå­—ç¬¦ä¸²ä¹‹é—´çš„é€—å·ä¸è¦å°‘ï¼Œä¸ç„¶å¯ä»¥é€šè¿‡ç¼–è¯‘ï¼Œä½†è¿è¡Œä¼šå´©æºƒ 
+                    "Controllability",         // æŒ‡å‘å­—ç¬¦çš„æŒ‡é’ˆæ•°ç»„ï¼Œ ç†è§£å¯ä»¥çœ‹çœ‹è§£æ http://c.biancheng.net/cpp/html/2825.html
                     "means that for any initial state x(0)=x0",
                     "and any final state x1, ",
                     "there exists an input that transfers x0 to x1",
@@ -22,5 +22,5 @@ int main()http://c.biancheng.net/cpp/html/2825.html
 	printf("  c2 = %c\n", c2);
 	printf("  c3 = %c\n", c3);
 	
-	return EXIT_SUCCESS;     // stdlib.hÖĞµÄºê¶¨Òå EXIT_SCUESS 0, EXIT_FAILURE 1 
+	return EXIT_SUCCESS;     // stdlib.hä¸­çš„å®å®šä¹‰ EXIT_SCUESS 0, EXIT_FAILURE 1 
  } 
