@@ -4,9 +4,9 @@ float cal(float x, int op, float y)
 {  switch(op)
    {  case 1: return x+y;
       case 2: return x-y;
-	  case 3: return x*y;
-	  case 4: return x/y;
-	  default: return 0.0; 
+      case 3: return x*y;
+      case 4: return x/y;
+      default: return 0.0; 
    }
 }
 
@@ -20,11 +20,11 @@ char op(int i)
    } 
 }
 
-// ÊµÏÖÆË¿ËÅÆÖĞ24µãµÄ³ÌĞò£¬Ö÷ÒªµÄ×¢Òâµã£º(1) A,B,C,DËÄ¸öÊıÖĞ¼äµÄÈı¸öÔËËã
-// ±éÀúºÍÎåÖÖÀ¨ºÅË³ĞòµÄ±éÀú£¬º¯ÊıÊÇÇ¿´óµÄ¹¤¾ß£º(2) Êä³öµÄ²»Í¬µÄÔËËã·ûºÅÒ²ÊÇ
-// Í¨¹ıµ÷ÓÃ¶¨ÒåµÄº¯ÊıÊµÏÖµÄ¡£ 
+// å®ç°æ‰‘å…‹ç‰Œä¸­24ç‚¹çš„ç¨‹åºï¼Œä¸»è¦çš„æ³¨æ„ç‚¹ï¼š(1) A,B,C,Då››ä¸ªæ•°ä¸­é—´çš„ä¸‰ä¸ªè¿ç®—
+// éå†å’Œäº”ç§æ‹¬å·é¡ºåºçš„éå†ï¼Œå‡½æ•°æ˜¯å¼ºå¤§çš„å·¥å…·ï¼š(2) è¾“å‡ºçš„ä¸åŒçš„è¿ç®—ç¬¦å·ä¹Ÿæ˜¯
+// é€šè¿‡è°ƒç”¨å®šä¹‰çš„å‡½æ•°å®ç°çš„ã€‚ 
 int main()
-{  int i,flag = 0,
+{  int i,flag = 0, flag1 = 1,
        op1,op2,op3,op4;
    float a[4], A, B, C, D, ans;
     
@@ -32,8 +32,12 @@ int main()
     for(i=0; i<4; i++)
     {  scanf("%f",&a[i]);
       if(!(a[i]>=1 && a[i]<=13))
-      {  printf("Invalid number! Please input again:\n");
-         scanf("%f",&a[i]);
+      {  while(flag1)
+         {  printf("Invalid number! Please input again:\n");
+            scanf("%f",&a[i]);
+	    if(a[i]>=1 && a[i]<=13)
+              flag1 = 0;
+	 }
       }
     }
     A=a[0]; B=a[1]; C=a[2]; D=a[3];
