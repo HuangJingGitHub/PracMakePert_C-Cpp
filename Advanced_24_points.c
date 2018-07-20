@@ -108,14 +108,18 @@ void permutation(float a[], int index, int size)
 
 int main() 
 {   
-    int i;
+    int i, flag_main = 1;
     float a[4];
     printf("Please input the 4 numbers(1-13):\n");
     for(i=0; i<4; i++)
     {  scanf("%f",&a[i]);
        if(!(a[i]>=1 && a[i]<=13))
-       {  printf("Invalid number! Please input again:\n");
-          scanf("%f",&a[i]);
+       {  while(flag_main)
+          {  printf("Invalid number! Please input again:\n");
+             scanf("%f",&a[i]);
+	     if(a[i]>=1 && a[i]<=13)
+	       flag_main = 0;
+	  }
        }
     }
     printf("The possible calculations to generate 24 are:\n"); 
