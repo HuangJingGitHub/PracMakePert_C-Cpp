@@ -17,7 +17,7 @@ float det(float a[20][20], int n)
 	    }
 	   if(flag==0)
 	   {  det = 0;
-//	      printf("det=0\n");
+	      printf("det=0\n");
 	      return det;
 	   }
       }
@@ -29,8 +29,9 @@ float det(float a[20][20], int n)
      }
    det = det * a[r][r];
    }
+   printf("The determinant is %.2f.\n", det);
    return det;
-//   printf("The determinant is %.2f.\n", det);
+
 }
 
 int main()
@@ -53,19 +54,18 @@ int main()
       }
       while((getchar())!='\n');
    }
-   det_a = det(a,n);
-   
+
    for(i = 0; i<n; i++)
-     for(j = 0; j<n; j++)
+     for(j = 0; j<n; j++, flag1 = 0)
      {  for(i1 = 0; i1<n; i1++)
-           if(i1==i)
+		   if(i1==i)
            { flag1 = 1;
                continue;
 		   }
            else
              for(j1 = 0; j1<n; j1++)
              {
-			    if(j1==j)
+			    if(j1==j && j!=n-1)
                 { flag2 = 1;
                    continue;
 				}
@@ -77,22 +77,22 @@ int main()
 				  temp[i1][j1-1] = a[i1][j1];
 				else
 				  temp[i1-1][j1-1] = a[i1][j1];
-		//		printf(">>>%.2f<<<\n", temp[i1][j1]);
+				  
+				if(j1==n-1)
+				  flag2 = 0;
 			 } 
-        
-		inv[j][i] = det(temp, n-1) / det_a;     
-    }
-    
-  printf(">>>%d<<<\n", n);
 	    for(i2=0; i2<n-1; i2++)
 	      for(j2=0; j2<n-1; j2++)
 	       {  if(j2 == n-2)
 	            printf("%.2f\n", temp[i2][j2]);
 	          else
 	            printf("%.2f  ", temp[i2][j2]);
-	        }
-	        
-  
+	        }       
+		inv[j][i] = det(temp, n-1);  
+    }
+     
+  printf(">>>%d<<<\n", n);
+
   for(i=0; i<n; i++)
     for(j=0; j<n; j++)
       if(j == n-1)
