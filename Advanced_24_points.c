@@ -59,7 +59,7 @@ void twenty_four(float *poker)
 		   ans =  cal(cal(A, op1, cal(B, op2, C)), op3, D);
            if(ans==24)
            {
-              printf("(%-2.0f %c (%-2.0f  %c %-2.0f)) %c %-2.0f) = 24\n",
+              printf("(%-2.0f %c (%-2.0f %c %-2.0f)) %c %-2.0f) = 24\n",
 			          A,op(op1),B,op(op2),C,op(op3),D);
               flag = 1;
            }
@@ -67,7 +67,7 @@ void twenty_four(float *poker)
 		   ans = cal(A, op1, cal(cal(B, op2, C), op3, D));
 		   if(ans==24)
 		   {
-              printf("(%-2.0f %c ((%-2.0f  %c %-2.0f) %c %-2.0f) = 24\n",
+              printf("(%-2.0f %c ((%-2.0f %c %-2.0f) %c %-2.0f) = 24\n",
 			          A,op(op1),B,op(op2),C,op(op3),D);
 			  flag = 1;
 		   }
@@ -75,7 +75,7 @@ void twenty_four(float *poker)
 		   ans = cal(A, op1, cal(B, op2, cal(C, op3, D)));	
 		   if(ans==24)
 		   {
-              printf("(%-2.0f %c (%-2.0f  %c (%-2.0f %c %-2.0f)) = 24\n",
+              printf("(%-2.0f %c (%-2.0f %c (%-2.0f %c %-2.0f)) = 24\n",
 			         A,op(op1),B,op(op2),C,op(op3),D);	
 			  flag = 1;
 		    }
