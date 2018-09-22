@@ -3,6 +3,8 @@
 #include <vector>
 #include <algorithm>
 #include <functional>
+#include <map>
+#include <set> 
 
 using namespace std;
 
@@ -85,13 +87,74 @@ OutputIterator filter3(InputIterator first, InputIterator last,
 	}
 	return at;
 }
+
+vector<int> sub_vec(const vector<int> &vec, int val)
+{
+	vector<int> local_vec(vec);
+	sort(local_vec.begin(), local_vec.end());
+	
+	vector<int>::iterator iter = find_if( local_vec.begin(),
+										  local_vec.end(),
+										  bind2nd(greater<int>(), val));
+	
+	local_vec.erase(iter, local_vec.end());
+	return local_vec;
+	
+}
+
+
 int main()
 {
 	int a[8] = {1,2,4,3,5,7,6,8};
 	vector<int> vec(a, a+8);
 	bool tof = is_elem(vec, 8);
 	cout << tof << endl;
+	
+	
+	// map usage
+	map<string,int> words;
+	words["ROBOTICS"] = 1;
+	
+	string tword;
+	while (cin >> tword && !tword.empty()) 
+		{
+		 	words[tword]++;
+		 	cout << tword << " Empty?" << tword.empty() << endl;
+		 }
+	cout << "\n Input end\n";
+	
+	map<string, int>::iterator it = words.begin();
+	for (; it != words.end(); ++it)
+	{
+		cout << "key: " << it->first
+			 << "\nvalue: " << it->second << endl;
+	}
+	
+	int count = 0;
+	map<string, int>::iterator it1;
+	it1 = words.find("ROBOTICS");   // find operation assocoated with map
+	if (it1 != words.end())
+		count = it1->second;
+	
+    int val = 0;
+    string search_word("ROBOTICS");
+    if (words.count(search_word))   // count operation associated with map
+    	val = words[search_word];
+    	
+    vector<string> text(4);
+    text[0] = "DAa";
+    text[1] = "DB";
+    text[2] = "dA";
+    text[3] = "DA";
+    
+    cout << text[0] << ' '
+    	 << text[1] << ' '
+    	 << text[2] << endl;
+    sort(text.begin(), text.end());
+    cout << text[0] << ' '
+    	 << text[1] << ' '
+    	 << text[2] << ' ' << endl;
+    for (int ix = 0; ix < text.size(); ++ix)
+    	cout << text[ix] << ' ';
 }
-
-
 
