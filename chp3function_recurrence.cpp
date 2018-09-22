@@ -39,7 +39,7 @@ unsigned int Fibonacci1(int n)    // Loop to compute f(n)
    return f3;
 }
 
-unsigned int Fibonacci2(int n)
+unsigned int Fibonacci2(int n)               // These functions are very classical examples for recurision.
 {  if (n == 1 || n ==2 )
      return 1;
    else
