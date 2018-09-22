@@ -1,4 +1,4 @@
-// Chapter3.5 Using the Generic Alogrithms
+// Chapter3.5 Using the Generic Alogrithms to end of Chapter3
 #include <iostream>
 #include <vector>
 #include <algorithm>
@@ -24,7 +24,7 @@ bool is_elem(vector<int> &vec, int elem)
 }
 
 vector<int> filter1(const vector<int> &vec, int filter_value, bool (*pred)(int, int))
-{                                                  // *pred is a pointer to function.
+{                                                      // *pred is a pointer to function.
 	vector<int> nvec;                              // This function gets the elements satisfing
 	for (int ix=0; ix < vec.size(); ++ix)          // certain condition, like > 10
 		if (pred(vec[ix], filter_value))
@@ -150,7 +150,7 @@ int main()
     cout << text[0] << ' '
     	 << text[1] << ' '
     	 << text[2] << endl;
-    sort(text.begin(), text.end());
+    sort(text.begin(), text.end());    // sort() function on string based order a,b,c...etc
     cout << text[0] << ' '
     	 << text[1] << ' '
     	 << text[2] << ' ' << endl;
