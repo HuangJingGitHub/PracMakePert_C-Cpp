@@ -7,7 +7,7 @@ class Account
 	public:
 		Account(double d): _balance(d) {};
 		double GetBalance() const;
-		virtual void PrintBalance() const;
+		virtual void PrintBalance() const = 0;
 	private:
 		double _balance;
  };
