@@ -1,13 +1,12 @@
 #include <iostream>
 #include <cstdlib>
-//#include "Account.h"  
 
 using namespace std;
 
-void Account::PrintBalance() const
+/* void Account::PrintBalance() const
 {
 	cerr << "Error. Balance not available for base type.\n";
- }
+ } */
 
 void CheckingAccount::PrintBalance() const
 {
