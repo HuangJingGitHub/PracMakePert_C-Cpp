@@ -35,7 +35,6 @@ int main()
 	
 	sort(text.begin(), text.end(), LessThan());
 	display_vector(text, ofile);
-	return 100;
 }
 
 template <typename elemType>
