@@ -34,6 +34,7 @@ int main()
 		query_map(family_name, families);
 	}
 	display_map(families, cout);
+	nameFile.close();
 }
 
 void populate_map(ifstream &nameFile, map<string, vstring> &families)
