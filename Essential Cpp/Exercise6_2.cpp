@@ -49,7 +49,6 @@ inline ostream& operator<<(ostream& os, const Matrix<elemType> &m)
 {
 	return m.print(os);
 }
-// End of Matrix.h
 
 template <typename elemType>
 Matrix<elemType>::Matrix(const Matrix &rhs)
