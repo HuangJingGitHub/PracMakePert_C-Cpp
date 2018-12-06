@@ -1,40 +1,61 @@
-#include <vector>
-using namespace std;
+#include <iostream>
+#include "Eigen\Dense"
 
+using namespace std;
+using namespace Eigen;
+
+const float pi = 3.141592;
 enum JointType {revolute = 1, prismatic};
 typedef JointType Joint;
 
 class DH {
 public:
 	DH(int frame_num);
-	//void DH_set(vector<Joint>, vector<float>, vector<float>, vector<float>, vector<float>);
-	//void DH_read();
+	DH(MatrixXf input_DH)
+	{
+		if (input_DH.cols() != 5)
+			cerr << "Not valid DH table size inputed! NOTE: DH table need to have 5 cols.";
+		else
+		{
+			_frame_num = input_DH.rows();
+			_DH = input_DH;
+		}
+	}
+	bool DH_set(int row, int col, float val);
+	void DH_read() const;
+	ostream& operator<<(ostream& os) const;
 
 private:
 	int _frame_num;
-	vector<Joint> _DH_type;
-	vector<float> _DH_twist;
-	vector<float> _DH_length;
-	vector<float> _DH_offset;
-	vector<float> _DH_ang;
+	MatrixXf _DH;
 };
 
 DH::DH(int frame_num)
 {
 	_frame_num = frame_num;
-	vector<Joint>::iterator type = _DH_type.begin();
-	vector<float>::iterator twist = _DH_twist.begin();
-	vector<float>::iterator length = _DH_length.begin();
-	vector<float>::iterator offset = _DH_offset.begin();
-	vector<float>::iterator ang = _DH_ang.begin();
+	MatrixXf temp_mat(frame_num, 5);
+	_DH = temp_mat;
+}
 
-	for (int ix = 0; ix <= frame_num; ++ix)
+bool DH::DH_set(int row, int col, float val)
+{
+	if (row < 0 || row > _frame_num - 1 || col < 0 || col > 4)
 	{
-		_DH_type.push_back(revolute);
-		_DH_twist.push_back(0.0);
-		_DH_length.push_back(0.0);
-		_DH_offset.push_back(0.0);
-		_DH_ang.push_back(0.0);
+		cerr << "Invalid index used for DH table !!!\n" << endl;
+		return false;
 	}
+	else
+		_DH(row, col) = val;
+	return true;
+}
 
+void DH::DH_read() const
+{
+	cout << _DH << endl;
+}
+
+ostream& DH::operator<<(ostream& os) const
+{
+	os << _DH << endl;
+	return os;
 }
