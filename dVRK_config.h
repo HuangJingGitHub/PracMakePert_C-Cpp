@@ -150,7 +150,7 @@ Kinematics_info PSM_FK(DH PSM)
 		j_type = int(PSM_DH(row, 0));
 		if (j_type == 1)
 		{
-			z.block(0, 0, 3, 1) = Z.col(row);		 // When cos() is on the right side, bolck and col work well.
+			z.block(0, 0, 3, 1) = Z.col(row);		 // When col() is on the right side, bolck and col work well.
 			pd.block(0, 0, 3, 1) = P.col(frame_num - 1) - P.col(row);
 			J.block(0, row, 3, 1) = z.cross(pd);
 			J.block(3, row, 3, 1) = Z.col(row);
