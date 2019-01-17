@@ -1,5 +1,5 @@
 #inlude <iostream>
-#include <string>
+#include <vector>
 using namespace std;
 
 int maxSubSum2( const vector<int> &a )
