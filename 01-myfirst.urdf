@@ -35,7 +35,10 @@
     <child link = "right_leg"/>
     <origin xyz = "0 -0.22 0.25"/>
   </joint>
-
+  
+  <!-- joint frame is the frame used to determine the link position, also is the link attached-->
+  <!-- on the link, used in DH convention. The frame in visual tag is justed for display. -->
+	
   <link name = "right_base">
     <visual>
     <geometry>
