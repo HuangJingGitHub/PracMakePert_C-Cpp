@@ -231,7 +231,17 @@ public:
 		}
 
 	protected:
+		const List<Object> *theList;
 		Node *current;
+
+		const_iterator( const List<Object> & lst, Node *p)
+			: theList{ &lst}, current{ p } { }
+
+		void assertIsValid() const
+		{
+			if (theList == nullptr || current == nullprt || current == theList->head)
+				throw IteratorOutofBoundsException{};
+		}
 		Object & retrieve() const
 		{
 			return  current->data;
@@ -394,6 +404,10 @@ public:
 
 	iterator  insert(iterator ltr, const Object & x)
 	{
+		itr.assertIsValid();
+		if (itr.theList != this)
+			throw IteratorMismatchException{};
+
 		Node *p = itr.current;
 		theSize++;
 		return { p->prev = p->prev->next = new Node{x, p->prev, p} }; // *****
