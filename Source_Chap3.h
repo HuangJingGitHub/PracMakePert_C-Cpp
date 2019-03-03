@@ -193,8 +193,8 @@ private:
 		Node *next;
 
 		Node( const Object &  d = Object{ }, Node * p = nullptr, Node * n = nullptr)    // Structure can also have constructor.
-			:data{ d }, prev{ p }, next{ n } { }                                        // Object{} calls the default constructor
-		Node(Object && d, Node * p = nullptr, Node * n = nullptr)                       // of Object{}?
+			:data{ d }, prev{ p }, next{ n } { }                                    // Object{} calls the default constructor
+		Node(Object && d, Node * p = nullptr, Node * n = nullptr)                       // of Object{}
 			:data{ std::move(d) }, prev{ p }, next{ n } { }
 	}; 
 
