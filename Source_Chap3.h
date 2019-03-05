@@ -412,7 +412,7 @@ public:
 		theSize++;
 		return { p->prev = p->prev->next = new Node{x, p->prev, p} }; // *****
 	}
-	iterator insert(iterator itr, Object && x)
+	iterator insert(iterator itr, Object && x)   // rvalue
 	{
 		Node *p = itr.current;
 		theSize++;
