@@ -453,3 +453,11 @@ public:
 		tail->prev = head;
 	}
 };
+
+template <typename Object>
+struct BinaryNode
+{
+	Object element;
+	BinaryNode *left;
+	BinaryBode *right;
+}
