@@ -31,16 +31,17 @@ int main()
     printf("Please input the 4 numbers(1-13):\n");
     for(i=0; i<4; i++)
     {  scanf("%f",&a[i]);
-      if(!(a[i]>=1 && a[i]<=13))
+       flag1 = 1;	
+      if(!(a[i] >= 1 && a[i] <= 13))
       {  while(flag1)
          {  printf("Invalid number! Please input again:\n");
             scanf("%f",&a[i]);
-	    if(a[i]>=1 && a[i]<=13)
+	    if(a[i] >= 1 && a[i] <= 13)
               flag1 = 0;
 	 }
       }
     }
-    A=a[0]; B=a[1]; C=a[2]; D=a[3];
+    A = a[0]; B = a[1]; C = a[2]; D = a[3];
     
     for(op1=1; op1<5; op1++)
       for(op2=1; op2<5; op2++)
@@ -55,7 +56,7 @@ int main()
            }
            
            ans = cal(cal(cal(A, op1, B), op2, C), op3, D);
-           if(ans==24)
+           if(ans == 24)
            {
               printf("((%-2.0f %c %-2.0f) %c %-2.0f) %c %-2.0f) = 24\n",
 			          A,op(op1),B,op(op2),C,op(op3),D);
@@ -63,7 +64,7 @@ int main()
            }
            
 		   ans =  cal(cal(A, op1, cal(B, op2, C)), op3, D);
-           if(ans==24)
+           if(ans == 24)
            {
               printf("(%-2.0f %c (%-2.0f  %c %-2.0f)) %c %-2.0f) = 24\n",
 			          A,op(op1),B,op(op2),C,op(op3),D);
@@ -71,7 +72,7 @@ int main()
            }
            
 		   ans = cal(A, op1, cal(cal(B, op2, C), op3, D));
-		   if(ans==24)
+		   if(ans == 24)
 		   {
               printf("(%-2.0f %c ((%-2.0f  %c %-2.0f) %c %-2.0f) = 24\n",
 			          A,op(op1),B,op(op2),C,op(op3),D);
@@ -79,14 +80,14 @@ int main()
 		   }
 		   
 		   ans = cal(A, op1, cal(B, op2, cal(C, op3, D)));	
-		   if(ans==24)
+		   if(ans == 24)
 		   {
               printf("(%-2.0f %c (%-2.0f  %c (%-2.0f %c %-2.0f)) = 24\n",
 			         A,op(op1),B,op(op2),C,op(op3),D);	
 			  flag = 1;
 		    }
 		}
-	if(flag==0)
+	if(flag == 0)
 	printf("The 4 given numbers cannot produce 24. \n");
     
 } 
