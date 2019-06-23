@@ -24,8 +24,7 @@ char op(int i)
 // 遍历和五种括号顺序的遍历，函数是强大的工具：(2) 输出的不同的运算符号也是
 // 通过调用定义的函数实现的。 
 int main()
-{  int i,flag = 0, flag1 = 1,
-       op1,op2,op3,op4;
+{  int i,flag = 0, flag1, op1,op2,op3;
    float a[4], A, B, C, D, ans;
     
     printf("Please input the 4 numbers(1-13):\n");
