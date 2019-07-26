@@ -1,2 +1,2 @@
 # C/C++
-Collection of c or cpp scripts.
+Collection of C/C++ scripts.
