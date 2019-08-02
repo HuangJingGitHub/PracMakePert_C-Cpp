@@ -13,6 +13,7 @@
 #include <sensor_msgs/image_encodings.h>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
+#include <opencv2/photo.hpp>    // denoising module
 #include <iostream>
 #include <vector>
 
@@ -60,17 +61,19 @@ public:
    // Find countors of red shape
     cv::Point image_origin(320, 240),
               x_axis_end(220, 240), y_axis_end(320, 340);
-    cv::Scalar red_low(0, 173, 152), red_high(10, 255, 255);
+    cv::Scalar red_low(0, 173, 152), red_high(10, 255, 255), black_low(0, 0, 0), black_high(149, 218, 71);
     std::vector< std::vector<cv::Point>> contours;
-    cv::Mat tracked_image, dst, tracked_image_undist;
+    cv::Mat tracked_image, tracked_image_denoised, dst, tracked_image_undist;
     cv::Mat camera_matrix = (cv::Mat_<double>(3, 3) << 683.9731, 0, 320., 0, 683.9731, 240, 0, 0, 1);
     cv::Mat dist_coef = (cv::Mat_<double>(1, 5) << -0.7175, 2.8528, 0, 0, -5.1548);
     
     cv::cvtColor(cv_ptr->image, tracked_image, CV_BGR2HSV);
+    // cv::fastNlMeansDenoisingColored(tracked_image,tracked_image_denoised, 3, 3, 7, 21); // This function costs much time.
+    cv::blur(tracked_image, tracked_image, cv::Size(3, 3));
     cv::inRange(tracked_image, red_low, red_high, dst);
     cv::imshow("Binary Image", dst);
 
-    /*  Use bgr difference to generate binary image rather than inRange()
+    /* Use bgr difference to generate binary image rather than inRange()
     cv::Mat bgr_thr = cv::Mat::zeros(tracked_image.size(), CV_8UC1);
     int Rows = bgr_thr.rows, Cols = bgr_thr.cols;
     for (int r = 0; r < Rows; r ++)
@@ -95,7 +98,15 @@ public:
     {
       // cv::findContours(bgr_thr, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE, cv::Point(0, 0));
       cv::findContours(dst, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE, cv::Point(0, 0));
-      cv::drawContours(cv_ptr->image, contours, -1, cv::Scalar(255, 0, 0), 2);
+      int largestContourIndex = 0;
+      for (int i = 0; i < contours.size(); i++)
+        largestContourIndex = (contours[i].size() > contours[largestContourIndex].size()) ? i : largestContourIndex;
+      cv::Moments shape_moments = moments(contours[largestContourIndex]);
+      cv::Point2f shape_centers(static_cast<float>(shape_moments.m10 / shape_moments.m00),
+                                static_cast<float>(shape_moments.m01 / shape_moments.m00));
+      
+
+      cv::drawContours(cv_ptr->image, contours, largestContourIndex, cv::Scalar(255, 0, 0), 2);
     }
 
     cv::circle(cv_ptr->image, image_origin, 5, cv::Scalar(0, 0, 0), -1);
