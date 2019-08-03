@@ -15,6 +15,8 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/photo.hpp>    // denoising module
 #include <iostream>
+#include <Eigen/Dense>
+#include <Eigen/Eigenvalues>
 #include <vector>
 
 namespace enc = sensor_msgs::image_encodings;
@@ -59,22 +61,22 @@ public:
       }
 
    // Find countors of red shape
-    cv::Point image_origin(320, 240),
-              x_axis_end(220, 240), y_axis_end(320, 340);
-    cv::Scalar red_low(0, 173, 152), red_high(10, 255, 255), black_low(0, 0, 0), black_high(149, 218, 71);
+    cv::Point imageOrigin(320, 240),
+              xAxisEnd(220, 240), yAxisEnd(320, 340);
+    cv::Scalar redLow(0, 173, 152), redHigh(10, 255, 255), black_low(0, 0, 0), black_high(149, 218, 71);
     std::vector< std::vector<cv::Point>> contours;
-    cv::Mat tracked_image, tracked_image_denoised, dst, tracked_image_undist;
-    cv::Mat camera_matrix = (cv::Mat_<double>(3, 3) << 683.9731, 0, 320., 0, 683.9731, 240, 0, 0, 1);
-    cv::Mat dist_coef = (cv::Mat_<double>(1, 5) << -0.7175, 2.8528, 0, 0, -5.1548);
+    cv::Mat trackedImage, trackedImage_denoised, dst, trackedImage_undist;
+    cv::Mat cameraMatrix = (cv::Mat_<double>(3, 3) << 683.9731, 0, 320., 0, 683.9731, 240, 0, 0, 1);
+    cv::Mat distCoef = (cv::Mat_<double>(1, 5) << -0.7175, 2.8528, 0, 0, -5.1548);
     
-    cv::cvtColor(cv_ptr->image, tracked_image, CV_BGR2HSV);
-    // cv::fastNlMeansDenoisingColored(tracked_image,tracked_image_denoised, 3, 3, 7, 21); // This function costs much time.
-    cv::blur(tracked_image, tracked_image, cv::Size(3, 3));
-    cv::inRange(tracked_image, red_low, red_high, dst);
+    cv::cvtColor(cv_ptr->image, trackedImage, CV_BGR2HSV);
+    // cv::fastNlMeansDenoisingColored(trackedImage,trackedImage_denoised, 3, 3, 7, 21); // This function costs much time.
+    cv::blur(trackedImage, trackedImage, cv::Size(3, 3));
+    cv::inRange(trackedImage, redLow, redHigh, dst);
     cv::imshow("Binary Image", dst);
 
     /* Use bgr difference to generate binary image rather than inRange()
-    cv::Mat bgr_thr = cv::Mat::zeros(tracked_image.size(), CV_8UC1);
+    cv::Mat bgr_thr = cv::Mat::zeros(trackedImage.size(), CV_8UC1);
     int Rows = bgr_thr.rows, Cols = bgr_thr.cols;
     for (int r = 0; r < Rows; r ++)
         for (int c = 0; c < Cols; c++)
@@ -101,19 +103,28 @@ public:
       int largestContourIndex = 0;
       for (int i = 0; i < contours.size(); i++)
         largestContourIndex = (contours[i].size() > contours[largestContourIndex].size()) ? i : largestContourIndex;
-      cv::Moments shape_moments = moments(contours[largestContourIndex]);
-      cv::Point2f shape_centers(static_cast<float>(shape_moments.m10 / shape_moments.m00),
-                                static_cast<float>(shape_moments.m01 / shape_moments.m00));
-      
-
+      cv::Moments shapeMoments = moments(contours[largestContourIndex]);
+      cv::Point2f shapeCenter(static_cast<float>(shapeMoments.m10 / shapeMoments.m00),
+                              static_cast<float>(shapeMoments.m01 / shapeMoments.m00));
+      Eigen::Matrix2f I;
+      I <<  shapeMoments.mu20, shapeMoments.mu11,
+            shapeMoments.mu11, shapeMoments.mu02;
+      Eigen::EigenSolver<Eigen::Matrix2f> es(I);
+      // std::cout << es.eigenvectors().col(0).real()[0] << "*****" << std::endl;
+      cv::Point2f principleAxie1 = shapeCenter + 80 * cv::Point2f( es.eigenvectors().col(0).real()[0],
+                                                                  es.eigenvectors().col(0).real()[1]),
+                  principleAxie2 = shapeCenter + 80 * cv::Point2f( es.eigenvectors().col(1).real()[0],
+                                                                  es.eigenvectors().col(1).real()[1]);          
+      cv::arrowedLine(cv_ptr->image, shapeCenter, principleAxie1, cv::Scalar(0, 0, 255), 2);
+      cv::arrowedLine(cv_ptr->image, shapeCenter, principleAxie2, cv::Scalar(0, 255, 0), 2);
       cv::drawContours(cv_ptr->image, contours, largestContourIndex, cv::Scalar(255, 0, 0), 2);
     }
 
-    cv::circle(cv_ptr->image, image_origin, 5, cv::Scalar(0, 0, 0), -1);
-    cv::arrowedLine(cv_ptr->image, image_origin, x_axis_end, cv::Scalar(0, 0, 255), 2);
-    cv::putText(cv_ptr->image, "x", x_axis_end - cv::Point(10, 10), CV_FONT_HERSHEY_PLAIN, 2, cv::Scalar(0, 0, 255), 2);
-    cv::arrowedLine(cv_ptr->image, image_origin, y_axis_end, cv::Scalar(0, 255, 0), 2);
-    cv::putText(cv_ptr->image, "y", y_axis_end + cv::Point(10, 10), CV_FONT_HERSHEY_PLAIN, 2, cv::Scalar(0, 255, 0), 2);
+    cv::circle(cv_ptr->image, imageOrigin, 5, cv::Scalar(0, 0, 0), -1);
+    cv::arrowedLine(cv_ptr->image, imageOrigin, xAxisEnd, cv::Scalar(0, 0, 255), 2);
+    cv::putText(cv_ptr->image, "x", xAxisEnd - cv::Point(10, 10), CV_FONT_HERSHEY_PLAIN, 2, cv::Scalar(0, 0, 255), 2);
+    cv::arrowedLine(cv_ptr->image, imageOrigin, yAxisEnd, cv::Scalar(0, 255, 0), 2);
+    cv::putText(cv_ptr->image, "y", yAxisEnd + cv::Point(10, 10), CV_FONT_HERSHEY_PLAIN, 2, cv::Scalar(0, 255, 0), 2);
 
    // end of processing
     cv::imshow(WINDOW, cv_ptr->image);
