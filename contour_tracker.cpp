@@ -18,6 +18,7 @@
 #include <Eigen/Dense>
 #include <Eigen/Eigenvalues>
 #include <vector>
+#include <math.h>
 
 namespace enc = sensor_msgs::image_encodings;
 
@@ -71,8 +72,8 @@ public:
     
     cv::cvtColor(cv_ptr->image, trackedImage, CV_BGR2HSV);
     // cv::fastNlMeansDenoisingColored(trackedImage,trackedImage_denoised, 3, 3, 7, 21); // This function costs much time.
-    cv::blur(trackedImage, trackedImage, cv::Size(3, 3));
-    cv::inRange(trackedImage, redLow, redHigh, dst);
+    cv::blur(trackedImage, trackedImage, cv::Size(3, 3));   // blurring is very important to get rid of noise.
+    cv::inRange(trackedImage, black_low, black_high, dst);
     cv::imshow("Binary Image", dst);
 
     /* Use bgr difference to generate binary image rather than inRange()
@@ -90,7 +91,7 @@ public:
     */
    
     cv::Moments m_dst = moments(dst, true);
-    cv::Point p(m_dst.m10/m_dst.m00, m_dst.m01/m_dst.m00);
+    cv::Point p(m_dst.m10 / m_dst.m00, m_dst.m01 / m_dst.m00);
 
     if (p.x < 0 || p.y < 0)
     {
@@ -110,11 +111,29 @@ public:
       I <<  shapeMoments.mu20, shapeMoments.mu11,
             shapeMoments.mu11, shapeMoments.mu02;
       Eigen::EigenSolver<Eigen::Matrix2f> es(I);
+      Eigen::Vector2d eigenVector1(es.eigenvectors().col(0).real()[0], es.eigenvectors().col(0).real()[1]),
+                      eigenVector2(es.eigenvectors().col(1).real()[0], es.eigenvectors().col(1).real()[1]);
+
+      // ***The procedure is to get rid of the possible random switch of the principal axis display.
+      // ***There is a need of look at the characters of the retrun eigenvectors first to know how to
+      // ***better set the processing.
+      if (eigenVector1[0] < 0 )
+      {
+        Eigen::Vector2d tempVector = eigenVector1;
+        eigenVector1 = eigenVector2;
+      } 
+      eigenVector2 = Eigen::Vector2d(eigenVector1[1], -eigenVector1[0]);
+      /* float angleX1 = atan2(eigenVector1[1], eigenVector1[0]),
+            angleX2 = atan2(eigenVector2[1], eigenVector2[0]);
+      if (angleX1 > angleX2)
+      {
+        Eigen::Vector2d tempVector = eigenVector1;
+        eigenVector1 = eigenVector2;
+        eigenVector2 = tempVector;
+      } */
       // std::cout << es.eigenvectors().col(0).real()[0] << "*****" << std::endl;
-      cv::Point2f principleAxie1 = shapeCenter + 80 * cv::Point2f( es.eigenvectors().col(0).real()[0],
-                                                                  es.eigenvectors().col(0).real()[1]),
-                  principleAxie2 = shapeCenter + 80 * cv::Point2f( es.eigenvectors().col(1).real()[0],
-                                                                  es.eigenvectors().col(1).real()[1]);          
+      cv::Point2f principleAxie1 = shapeCenter + 80 * cv::Point2f( eigenVector1[0], eigenVector1[1]),
+                  principleAxie2 = shapeCenter + 80 * cv::Point2f( eigenVector2[0], eigenVector2[1]);      
       cv::arrowedLine(cv_ptr->image, shapeCenter, principleAxie1, cv::Scalar(0, 0, 255), 2);
       cv::arrowedLine(cv_ptr->image, shapeCenter, principleAxie2, cv::Scalar(0, 255, 0), 2);
       cv::drawContours(cv_ptr->image, contours, largestContourIndex, cv::Scalar(255, 0, 0), 2);
@@ -125,7 +144,6 @@ public:
     cv::putText(cv_ptr->image, "x", xAxisEnd - cv::Point(10, 10), CV_FONT_HERSHEY_PLAIN, 2, cv::Scalar(0, 0, 255), 2);
     cv::arrowedLine(cv_ptr->image, imageOrigin, yAxisEnd, cv::Scalar(0, 255, 0), 2);
     cv::putText(cv_ptr->image, "y", yAxisEnd + cv::Point(10, 10), CV_FONT_HERSHEY_PLAIN, 2, cv::Scalar(0, 255, 0), 2);
-
    // end of processing
     cv::imshow(WINDOW, cv_ptr->image);
     cv::waitKey(3);
