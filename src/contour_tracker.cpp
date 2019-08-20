@@ -2,9 +2,7 @@
 
     HUANG Jing
     haungjing@mae.cuhk.edu.hk
-    Partially based on correll lab's script http://104.236.202.16/?p=3064.
-    Track red feature shape contour in an image.
-
+    Track contour in an image.
 */
 
 #include <ros/ros.h>
