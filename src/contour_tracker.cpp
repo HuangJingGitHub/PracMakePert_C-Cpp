@@ -35,7 +35,7 @@ class ImageConverter
 public:
     ImageConverter(char* ros_image_stream): it_(nh_)
     {
-        image_pub_ = it_.advertise("correll_ros2opencv", 1);
+        // image_pub_ = it_.advertise("correll_ros2opencv", 1);
         image_sub_ = it_.subscribe(ros_image_stream, 1, &ImageConverter::imageCb, this);
 
         cv::namedWindow(WINDOW);
