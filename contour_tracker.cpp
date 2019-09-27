@@ -79,53 +79,53 @@ public:
       }
       catch (cv_bridge::Exception& e)
       {
-        //std::cout << "Try failed" << std::endl;
+        std::cout << "ROS image msg conversion failed." << std::endl;
         ROS_ERROR("cv_bridge exception: %s", e.what());
         return;
       }
 
-   // Find countors of red shape
     cv::Point imageOrigin(320, 240), xAxisEnd(220, 240), yAxisEnd(320, 340);
     cv::Scalar redLow(0, 173, 152), redHigh(10, 255, 255), blackLow(0, 0, 0), blackHigh(149, 218, 71);
     std::vector< std::vector<cv::Point>> contours;
     cv::Mat trackedImage, trackedImage_denoised, dst, trackedImage_undist;
     cv::Mat cameraMatrix = (cv::Mat_<double>(3, 3) << 683.9731, 0, 320., 0, 683.9731, 240, 0, 0, 1);
     cv::Mat distCoef = (cv::Mat_<double>(1, 5) << -0.7175, 2.8528, 0, 0, -5.1548);
+    dvrk_retraction::visual_feedback image_info_msg;
     
     cv::cvtColor(cv_ptr->image, trackedImage, CV_BGR2HSV);
     // cv::fastNlMeansDenoisingColored(trackedImage,trackedImage_denoised, 3, 3, 7, 21); // This function costs much time.
     cv::blur(trackedImage, trackedImage, cv::Size(3, 3));   // blurring is very important to get rid of noise.
-    cv::inRange(trackedImage, redLow, redHigh, dst);
+    // cv::inRange(trackedImage, redLow, redHigh, dst);
     // cv::imshow("Binary Image", dst);
 
-    /* Use bgr difference to generate binary image rather than inRange()
+    //*** Use bgr difference to generate binary image rather than inRange()-START ***//
     cv::Mat bgr_thr = cv::Mat::zeros(trackedImage.size(), CV_8UC1);
     int Rows = bgr_thr.rows, Cols = bgr_thr.cols;
     for (int r = 0; r < Rows; r ++)
         for (int c = 0; c < Cols; c++)
         {
             cv::Vec3b intensity = cv_ptr->image.at<cv::Vec3b>(cv::Point(c, r));
-            if (intensity[2] - intensity[0] > 100 && intensity[2] - intensity[1] > 100)
+            if (intensity[2] - intensity[0] > 80 && intensity[2] - intensity[1] > 80)
             {
                 bgr_thr.at<uchar>(cv::Point(c, r)) = 255;
             }
         }
-    */
+    dst = bgr_thr;
+    //*** Use bgr difference to generate binary image rather than inRange()-END ***//
    
     cv::Moments m_dst = moments(dst, true);
     cv::Point p(m_dst.m10 / m_dst.m00, m_dst.m01 / m_dst.m00);
-    dvrk_retraction::visual_feedback image_info_msg;
     if (p.x < 0 || p.y < 0)
     {
       std::cout << "No feature shape detected." << std::endl;
     }
     else
     {
-      // cv::findContours(bgr_thr, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE, cv::Point(0, 0));
-      cv::findContours(dst, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE, cv::Point(0, 0));
+      cv::findContours(dst, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_NONE, cv::Point(0, 0));
       int largestContourIndex = 0;
       for (int i = 0; i < contours.size(); i++)
         largestContourIndex = (contours[i].size() > contours[largestContourIndex].size()) ? i : largestContourIndex;
+        
       cv::Moments shapeMoments = moments(contours[largestContourIndex]);
       cv::Point2f shapeCenter(static_cast<float>(shapeMoments.m10 / shapeMoments.m00),
                               static_cast<float>(shapeMoments.m01 / shapeMoments.m00));
@@ -145,23 +145,12 @@ public:
         eigenVector1 = eigenVector2;
       } 
       eigenVector2 = Eigen::Vector2d(eigenVector1[1], -eigenVector1[0]);
-      /* float angleX1 = atan2(eigenVector1[1], eigenVector1[0]),
-            angleX2 = atan2(eigenVector2[1], eigenVector2[0]);
-      if (angleX1 > angleX2)
-      {
-        Eigen::Vector2d tempVector = eigenVector1;
-        eigenVector1 = eigenVector2;
-        eigenVector2 = tempVector;
-      } */
-      // std::cout << es.eigenvectors().col(0).real()[0] << "*****" << std::endl;
      
       cv::RotatedRect rectShape = cv::minAreaRect(contours[largestContourIndex]);
       cv::Point2f rectShapeVertices[4];
       rectShape.points(rectShapeVertices);    // order of vertices: bottomLeft, topLeft, topRight, bottomRight. And the bottom
                                               // is the most bottom.
-      //std::vector<std::vector<cv::Point2f>> rectShapeContour;
-      //rectShapeContour[0].assign(rectShapeVertices, rectShapeVertices + 4);  // this cause segmentation fault (core dumped)
-      // cv::drawContours(cv_ptr->image, rectShapeContour, 0, cv::Scalar(0, 255, 0), 2);
+
       std::vector<float> rectLine0_1{rectShapeVertices[0].x - rectShapeVertices[1].x,
                                      rectShapeVertices[0].y - rectShapeVertices[1].y };
       std::vector<float> rectLine1_2{rectShapeVertices[2].x - rectShapeVertices[1].x,
@@ -180,33 +169,43 @@ public:
         rotateOrigin.x = (rectShapeVertices[1].x + rectShapeVertices[2].x) / 2; 
         rotateOrigin.y = (rectShapeVertices[1].y + rectShapeVertices[2].y) / 2;      
       }
+
+      //*** Drawing part1-START ***//
       for (int i = 0; i < 4; i++)  // draw the rectangle
       {
         cv::line(cv_ptr->image, rectShapeVertices[i], rectShapeVertices[(i+1) % 4], cv::Scalar(0, 255, 0), 2);
-      }
-      cv::circle(cv_ptr->image, rotateOrigin, 8, cv::Scalar(155, 245, 66), -1);
-
+      }      
+      // cv::circle(cv_ptr->image, rotateOrigin, 8, cv::Scalar(155, 245, 66), -1);
       cv::Point2f principleAxie1 = shapeCenter + 80 * cv::Point2f( eigenVector1[0], eigenVector1[1]),
                   principleAxie2 = shapeCenter + 80 * cv::Point2f( eigenVector2[0], eigenVector2[1]);      
-      cv::arrowedLine(cv_ptr->image, shapeCenter, principleAxie1, cv::Scalar(0, 0, 255), 2);
-      cv::arrowedLine(cv_ptr->image, shapeCenter, principleAxie2, cv::Scalar(0, 255, 0), 2);
+      // cv::arrowedLine(cv_ptr->image, shapeCenter, principleAxie1, cv::Scalar(0, 0, 255), 2);
+      // cv::arrowedLine(cv_ptr->image, shapeCenter, principleAxie2, cv::Scalar(0, 255, 0), 2);
       cv::circle(cv_ptr->image, shapeCenter, 5, cv::Scalar(0, 0, 0), -1);
       cv::drawContours(cv_ptr->image, contours, largestContourIndex, cv::Scalar(255, 0, 0), 2);
+      //*** Drawing part1-END ***//
 
-      //***** fet the posture of the attached plane
-      std::cout << "This is test for finning extrem points: \n"
+      //*** get the posture of the attached plane ***//
+      std::cout << "This is test for finding extrem points: \n"
                 << (*std::max_element(contours[largestContourIndex].begin(), contours[largestContourIndex].end(), 
                     compareCvPoint_x)).x
                 << std::endl;
       std::vector<cv::Point>::iterator leftestVertexItr = std::max_element(contours[largestContourIndex].begin(), 
                                                                             contours[largestContourIndex].end(),
                                                                             compareCvPoint_x);
-      cv::Point leftestVertex = *leftestVertexItr,
-                vertexRef1 = *(leftestVertexItr + 20),
-                vertexRef2 = *(leftestVertexItr - 20);
+      cv::Point2f leftestVertex = *leftestVertexItr,
+                  vertexRef1 = *(leftestVertexItr + 20),
+                  vertexRef2 = *(leftestVertexItr - 20),  // Index of Point in contours increases anticlosewise.
+                  axisXref = *(leftestVertexItr + 35) - *(leftestVertexItr + 15),
+                  axisYref = *(leftestVertexItr - 35) - *(leftestVertexItr - 15);
+      axisXref = axisXref / (sqrt(pow(axisXref.x, 2) + pow(axisXref.y, 2))), // normalize
+      axisYref = axisYref / (sqrt(pow(axisYref.x, 2) + pow(axisYref.y, 2))); 
+      cv::circle(cv_ptr->image, leftestVertex, 5, cv::Scalar(255, 255, 255), -1);
+      cv::circle(cv_ptr->image, vertexRef1, 5, cv::Scalar(0, 0, 255), -1);
+      cv::circle(cv_ptr->image, vertexRef2, 5, cv::Scalar(255, 0, 0), -1);    
+      cv::arrowedLine(cv_ptr->image, shapeCenter, shapeCenter + 50 * axisXref, cv::Scalar(100, 120, 150), 3);
+      cv::arrowedLine(cv_ptr->image, shapeCenter, shapeCenter + 50 * axisYref, cv::Scalar(50, 60, 70), 3);
 
-      
-      //***** visual_feedback ros message *****
+      //*** visual_feedback ros message ***//
       double rotateAngle = acos(eigenVector1[0]) / M_PI * 180;   // eigenvector is given with norm = 1.
       double targetAngle = 45;
       cv::Point2f rotateRadius = shapeCenter - rotateOrigin;
@@ -215,7 +214,7 @@ public:
                                         -rotateRadiusVec.norm() * sin(targetAngle / 180 * M_PI));
       cv::Point2f targetRegionCenter = rotateOrigin + targetRegionCenterVec;
       const double targetRegionRadius = 15;
-      cv::circle(cv_ptr->image, targetRegionCenter, targetRegionRadius, cv::Scalar(155, 245, 66), 2);
+      // cv::circle(cv_ptr->image, targetRegionCenter, targetRegionRadius, cv::Scalar(155, 245, 66), 2);
       image_info_msg.centroid.push_back(shapeCenter.x);
       image_info_msg.centroid.push_back(shapeCenter.y);
       image_info_msg.rotate_origin.push_back(rotateOrigin.x);
