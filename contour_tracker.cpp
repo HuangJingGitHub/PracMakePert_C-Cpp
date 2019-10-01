@@ -13,6 +13,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/photo.hpp>    // denoising module
+#include <opencv2/calib3d.hpp>  // solvePnP
 #include <iostream>
 #include <algorithm> // for std::max_element()
 #include <vector>
@@ -196,14 +197,48 @@ public:
                   vertexRef1 = *(leftestVertexItr + 20),
                   vertexRef2 = *(leftestVertexItr - 20),  // Index of Point in contours increases anticlosewise.
                   axisXref = *(leftestVertexItr + 35) - *(leftestVertexItr + 15),
-                  axisYref = *(leftestVertexItr - 35) - *(leftestVertexItr - 15);
+                  axisYref = *(leftestVertexItr - 35) - *(leftestVertexItr - 15),
+                  axisZref;
       axisXref = axisXref / (sqrt(pow(axisXref.x, 2) + pow(axisXref.y, 2))), // normalize
-      axisYref = axisYref / (sqrt(pow(axisYref.x, 2) + pow(axisYref.y, 2))); 
+      axisYref = axisYref / (sqrt(pow(axisYref.x, 2) + pow(axisYref.y, 2)));
+      cv::Point2f objectPoint1 = shapeCenter + 50 * axisXref,
+                  objectPoint2 = shapeCenter + 50 * axisYref,
+                  objectPoint3;
+      /* cv::Mat objectPointsPnP = (cv::Mat_<double>(3, 3) << 1, 0, 0, 0, 1, 0, 0, 0, 1),
+             // imagePointsPnP = (cv::Mat_<double>(2, 3) << objectPoint1.x, objectPoint2.x, (objectPoint1.x + objectPoint2.x)-20,
+             //                                             objectPoint1.y, objectPoint2.y, (objectPoint1.y + objectPoint2.y)/2),
+              rvecPnP, tvecPnP;
+      std::vector<cv::Point2f> imagePointsPnP{objectPoint1, objectPoint2, (objectPoint1 + objectPoint2)/2};              
+      // cv::solvePnPRansac(objectPointsPnP, imagePointsPnP, cameraMatrix, distCoef, rvecPnP, tvecPnP);
+      std::cout << rvecPnP << "\nPnP\n" << tvecPnP << std::endl; */
+      Eigen::Matrix3d cameraMatrixEigen;
+      for(int i = 0; i < 3; ++i)
+        for(int j= 0; j < 3; ++j)
+          cameraMatrixEigen(i, j) = cameraMatrix.at<double>(i, j);
+
+      double  f_u = cameraMatrix.at<double>(0, 0), f_v = cameraMatrix.at<double>(1, 1),
+              s_u = cameraMatrix.at<double>(0, 2), s_v = cameraMatrix.at<double>(1, 2), 
+              z_1 = 0.8, x_1 = (objectPoint1.x - s_u) * z_1 / f_u,
+                        y_1 = (objectPoint1.y - s_v) * z_1 / f_v,
+              z_2 = 0.82, x_2 = (objectPoint2.x - s_u) * z_2 / f_u,
+                          y_2 = (objectPoint2.y - s_v) * z_2 / f_v,
+              x_3, y_3, z_3;
+      Eigen::Vector3d planeXCamera(x_1, y_1, z_1), planeYCamera(x_2, y_2, z_2),
+                      planeZCamera = planeXCamera.cross(planeYCamera),
+                      imageZPoint;
+      planeZCamera = planeZCamera / planeZCamera(2);
+      imageZPoint = cameraMatrixEigen * planeZCamera;
+      objectPoint3.x = imageZPoint(0);
+      objectPoint3.y = imageZPoint(1);
+      axisZref = objectPoint3 / sqrt(pow(objectPoint3.x, 2) + pow(objectPoint3.y, 2));
+       
+
       cv::circle(cv_ptr->image, leftestVertex, 5, cv::Scalar(255, 255, 255), -1);
       cv::circle(cv_ptr->image, vertexRef1, 5, cv::Scalar(0, 0, 255), -1);
       cv::circle(cv_ptr->image, vertexRef2, 5, cv::Scalar(255, 0, 0), -1);    
       cv::arrowedLine(cv_ptr->image, shapeCenter, shapeCenter + 50 * axisXref, cv::Scalar(100, 120, 150), 3);
       cv::arrowedLine(cv_ptr->image, shapeCenter, shapeCenter + 50 * axisYref, cv::Scalar(50, 60, 70), 3);
+      cv::arrowedLine(cv_ptr->image, shapeCenter, shapeCenter + 50 * axisZref, cv::Scalar(150, 100, 70), 3);
 
       //*** visual_feedback ros message ***//
       double rotateAngle = acos(eigenVector1[0]) / M_PI * 180;   // eigenvector is given with norm = 1.
