@@ -326,7 +326,7 @@ int main(int argc, char** argv)
   } 
   else if (argc == 1)
   {
-  // set default ros image source， HUANG Jing
+  // set default ros image source
     char *image_topic = (char*) "/cameras/source_camera/image";
     ros::init(argc, argv, "image_processing");
     ImageConverter ic(image_topic);
