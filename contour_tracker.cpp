@@ -186,7 +186,7 @@ public:
       //*** Drawing part1-END ***//
 
       //*** get the posture of the attached plane ***//
-      std::cout << "This is test for finding extrem points: \n"
+      std::cout << "This is test for finding extreme points: \n"
                 << (*std::max_element(contours[largestContourIndex].begin(), contours[largestContourIndex].end(), 
                     compareCvPoint_x)).x
                 << std::endl;
