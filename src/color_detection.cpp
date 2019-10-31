@@ -6,7 +6,8 @@ using namespace cv;
 using namespace std;
 
 
-// get_vertex is just a primary and not efficient way to get the geometry centroid.
+// get_vertex is just a primary and not efficient way to get the geometry centroid. Self developed.
+// For contours, just use image moment with built-in function in OpenCV.
 vector<int> get_vertex(Mat& input_image)
 {
     int y_min = -1, y_max = -1, x_min = -1, x_max = -1,
