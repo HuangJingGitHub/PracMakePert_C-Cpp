@@ -25,7 +25,7 @@ vector<int> get_vertex(Mat& input_image)
         center.push_back(0);
         return center;
     }
-
+    
     // MatIterator_<uchar> it = input_image.begin<uchar>(), end = input_image.end<uchar>();
     for (int row = 0, counter = 0;  row < nRows; row++)
         for (int col = 0; col < nCols; col++)
