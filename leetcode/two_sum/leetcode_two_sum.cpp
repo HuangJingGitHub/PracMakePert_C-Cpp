@@ -2,7 +2,9 @@
 #include <unordered_map>
 #include <vector>
 #include <typeinfo>
+
 using namespace std;
+
 class Solution {
 public: 
     vector<int> twoSum(vector<int>& nums, int target)
@@ -35,7 +37,7 @@ public:
 				
             }
         }
-        
+	    
         vector<int> noAnswer;
         return noAnswer;
     }
