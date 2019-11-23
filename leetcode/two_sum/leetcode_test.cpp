@@ -3,6 +3,19 @@
 #include <vector>
 using namespace std;
 
+bool isMatch(string text, string pattern)
+{
+	int i = 0, j = 0;
+	while (j < pattern.size())
+	{
+		if (i >= text.size())
+			return false;
+		if (pattern[j++] != text[i++])
+			return false;
+	}
+	return j == text.size();
+}
+
 class Solution {
 public: 
     vector<int> twoSum(vector<int>& nums, int target)
@@ -48,6 +61,8 @@ int main()
 	for (int x : ans)
 		cout << x << " ";
 }
+
+
 
 
 
