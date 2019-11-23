@@ -61,8 +61,3 @@ int main()
 	for (int x : ans)
 		cout << x << " ";
 }
-
-
-
-
-
