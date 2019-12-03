@@ -28,6 +28,36 @@ class Solution_self{
     }
 };
 
+class Solution_14 {
+public:
+    string longestCommonPrefix(vector<string>& strs) {
+        if (strs.size() == 0)
+            return "";
+        else if (strs.size() == 1)
+            return strs[0];
+        
+        int i, j = 0;
+        while (true)
+        {   
+            for (i = 0; i < strs.size() - 1; i++)
+            {
+                if (j == strs[i].size() || j == strs[i+1].size())
+                    break;
+
+                if (strs[i][j] == strs[i+1][j])
+                    continue;
+                else
+                    break;
+            }
+            if (i == strs.size() - 1)
+                j++;
+            else
+                break;
+        }
+        return strs[0].substr(0, j);
+    }
+};
+
 int main()
 {
     Solution_self solRef;
