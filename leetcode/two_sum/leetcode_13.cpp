@@ -28,38 +28,50 @@ class Solution_self{
     }
 };
 
-class Solution_14 {
-public:
-    string longestCommonPrefix(vector<string>& strs) {
-        if (strs.size() == 0)
-            return "";
-        else if (strs.size() == 1)
-            return strs[0];
-        
-        int i, j = 0;
-        while (true)
-        {   
-            for (i = 0; i < strs.size() - 1; i++)
-            {
-                if (j == strs[i].size() || j == strs[i+1].size())
-                    break;
-
-                if (strs[i][j] == strs[i+1][j])
-                    continue;
-                else
-                    break;
-            }
-            if (i == strs.size() - 1)
-                j++;
-            else
-                break;
-        }
-        return strs[0].substr(0, j);
-    }
-};
-
 int main()
 {
     Solution_self solRef;
     cout << solRef.romanToInt("V");
 }
+
+class Solution {
+public:
+    vector<vector<int>> threeSum(vector<int>& nums) {
+        sort(nums.begin(), nums.end());
+        vector<vector<int>> result;
+
+        for(int i = 0; i < nums.size() - 2; i++)
+        {
+            if (nums[i] > 0)
+                break;
+
+            int first = nums[i];
+            int leftPointer = i + 1, rightPointer = nums.size() - 1;
+            while (leftPointer < rightPointer)
+            {
+                cout << nums[i] << "+" << nums[leftPointer] << "+" << nums[rightPointer] << endl;
+                if (nums[leftPointer] + nums[rightPointer] + nums[first] < 0){
+                    leftPointer++;
+                    cout << nums[i] << "+" << nums[leftPointer] << "+" << nums[rightPointer] << endl;
+                }
+                else if (nums[leftPointer] + nums[rightPointer] + nums[first] > 0){
+                    rightPointer--;
+                }
+
+                else if (nums[leftPointer] + nums[rightPointer] + nums[first] == 0)
+                {
+                    vector<int> triplet{nums[first], nums[leftPointer], nums[rightPointer]};
+                    result.push_back(triplet);
+                    leftPointer++;
+                    rightPointer--;
+                    //while (nums[leftPointer] == nums[leftPointer+1])
+                    //    leftPointer++;
+                    //while (nums[leftPointer] == nums[leftPointer-1])
+                    //    rightPointer--;
+                }
+                cout << nums[i] << "+" << nums[leftPointer] << "+" << nums[rightPointer] << endl;
+            }
+        }
+    return result;    
+    }
+};
