@@ -12,26 +12,26 @@ public:
      ListNode* head = new ListNode(0), *currentNode = head;
      while (l1 != NULL && l2 != NULL)
      {
-         if ((*l1).val < (*l2).val)
+         if (l1->val < l2->val)
          {
-             (*currentNode).next = l1;
-             l1 = (*l1).next;
+             currentNode->next = l1;
+             l1 = l1->next;
          }
          else
          {
-             (*currentNode).next = l2;
-             l2 = (*l2).next;
+             currentNode->next = l2;
+             l2 = l2->next;
          }
-         currentNode = (*currentNode).next;
+         currentNode = currentNode->next;
      }
 
      if (l1 == NULL)
      {
-        (*currentNode).next = l2;
+        currentNode->next = l2;
      }   
     else
     {
-        (*currentNode).next = l1;
+        currentNode->next = l1;
     }
     return head->next;
     }
