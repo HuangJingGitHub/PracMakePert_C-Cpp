@@ -90,6 +90,9 @@ public:
     }
 };
 
+
+
+// Why not work for C++? ListNode point = *dummy, will copy or pass? The answer is copy!!! So read about the mechanism.
 /**
  * Definition for singly-linked list.
  * struct ListNode {
@@ -119,7 +122,7 @@ public:
     }
 };
 
-
+// Correct version.
 /**
  * Definition for singly-linked list.
  * struct ListNode {
