@@ -31,7 +31,7 @@ public:
 // need to deal with pointer. Just swap the valule of the node is OK.
 
 
-// Follwing solution is good and simple.
+// The follwing solution is correct and simpler.
 /**
  * Definition for singly-linked list.
  * struct ListNode {
