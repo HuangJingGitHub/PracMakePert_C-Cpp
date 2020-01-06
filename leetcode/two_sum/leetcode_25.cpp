@@ -40,3 +40,34 @@ public:
         return dummy->next;    
     }
 };
+
+/**
+ * Definition for singly-linked list.
+ * struct ListNode {
+ *     int val;
+ *     ListNode *next;
+ *     ListNode(int x) : val(x), next(NULL) {}
+ * };
+ */
+class Solution {
+public:
+    ListNode* reverseKGroup(ListNode* head, int k) {
+        ListNode *dummy = new ListNode(-1), *pre = dummy, *cur = pre;
+        dummy->next = head;
+        int num = 0;
+        while (cur = cur->next) ++num; //链表长度
+        while (num >= k) {
+            cur = pre->next;
+            //依次交换节点元素
+            for (int i = 1; i < k; ++i) {
+                ListNode *t = cur->next;
+                cur->next = t->next;
+                t->next = pre->next;
+                pre->next = t;
+            }
+            pre = cur;
+            num -= k;
+        }
+        return dummy->next;
+    }
+};
