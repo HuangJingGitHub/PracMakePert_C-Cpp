@@ -25,16 +25,17 @@ public:
 
         ListNode *dummy = new ListNode(0);
         dummy->next = head;
-        ListNode *start = head, *end = head, *preGroupTail = dummy;
+        ListNode *start = head, *end = head, *preGroupTail = dummy, *nextGroupHead;
         int ListNodeNum, initialTime = 0;
         
         while (end != NULL){
             for (ListNodeNum = 0, start = end, initialTime++; ListNodeNum < k-1 && end != NULL; end = end->next, ListNodeNum++);
+            nextGroupHead = end->next;
             if (ListNodeNum == k-1){
                 reverseKNodes(start, end);
                 preGroupTail->next = end;
-                preGroupTail = end;
-                end = end->next;
+                preGroupTail = start;
+                end = nextGroupHead;
             }       
         }
         return dummy->next;    
