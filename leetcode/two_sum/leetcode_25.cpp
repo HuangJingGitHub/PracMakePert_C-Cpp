@@ -56,7 +56,8 @@ public:
         ListNode *dummy = new ListNode(-1), *pre = dummy, *cur = pre;
         dummy->next = head;
         int num = 0;
-        while (cur = cur->next) ++num; //链表长度
+        while (cur = cur->next) ++num; // 链表长度 Operator = return left operand value. So if cur->next = NULL, cur = cur->next
+                                       // will be evaualated to be false.
         while (num >= k) {
             cur = pre->next;
             //依次交换节点元素
