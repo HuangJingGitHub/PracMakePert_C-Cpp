@@ -1,5 +1,5 @@
-// This solution is feasible. But the speed is slow for the manipulation of the vector like copy and erase. To deal with this hashmap
-// is better.
+// This solution is feasible. But the speed is slow because of the manipulation of the vector like copy and erase. 
+// To deal with this, hashmap is better.
 class Solution {
 public:
     vector<int> findSubstring(string s, vector<string>& words) {
@@ -38,7 +38,8 @@ public:
         }     
 };
 
-// This solution can pass the test with the usage of hashmap to deal with the words check. But the speed is not optimized to the best.
+// This solution can pass the test with the usage of hashmap to deal with the words check. 
+// But the speed is not optimized to the best.
 class Solution {
 public:
     vector<int> findSubstring(string s, vector<string>& words) {
