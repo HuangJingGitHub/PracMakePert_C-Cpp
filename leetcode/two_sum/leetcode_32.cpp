@@ -1,3 +1,4 @@
+// The solution is good though not concise in terms of codes.
 class Solution {
 public:
     int longestValidParentheses(string s) {
@@ -52,5 +53,28 @@ public:
                 counter += 1;
         }
         return longestValid;
+    }
+};
+
+// The solution refers to the offical solution. But the speed is not that fast.
+class Solution {
+public:
+    int longestValidParentheses(string s) {
+        int maxans = 0;
+        vector<int> stackIndex;
+        stackIndex.push_back(-1);
+        for (int i = 0; i < s.size(); i++) {
+            if (s[i] == '(') {
+                stackIndex.push_back(i);
+            } else {
+                stackIndex.pop_back();
+                if (stackIndex.empty()) {
+                    stackIndex.push_back(i);
+                } else {
+                    maxans = max(maxans, i - stackIndex.back());
+                }
+            }
+        }
+        return maxans;
     }
 };
