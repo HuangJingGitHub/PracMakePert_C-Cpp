@@ -1,4 +1,4 @@
-// The solution is good though not concise in terms of codes.
+// The solution by self is fast though not concise in terms of codes.
 class Solution {
 public:
     int longestValidParentheses(string s) {
