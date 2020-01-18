@@ -1,3 +1,5 @@
+// The self solution is to try to find the first target index and the last target index, respectively using binary search. It works
+// though not elegent to have twice search.
 class Solution {
 public:
     vector<int> searchRange(vector<int>& nums, int target) {
