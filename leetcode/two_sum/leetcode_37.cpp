@@ -1,12 +1,12 @@
 class Solution {
 public:
-        int n = 3, N = n * n;
-
-        int rows[][] = new int[N][N+1];
-        int columns[][] = new int[N][N+1];
-        int boxes[][] = new int[N][N+1];
-
+        static const int n = 3;
+        static const int N = n * n;
+        int rows[N][N+1];
+        int columns[N][N+1];
+        int boxes[N][N+1];
         bool sudokuSolved = false;
+        vector<vector<char>> board;
 
     bool couldPlace(int d, int row, int col){
         int index = row / n + n * (col / n);
@@ -56,6 +56,15 @@ public:
     }
 
     void solveSudoku(vector<vector<char>>& board){
-        
+        this->board = board;
+        for (int i = 0; i < N; i++)
+            for (int j = 0; j < N; j++){
+                char num = board[i][j];
+                if (num != '.'){
+                    int d = num - '0';  
+                    placeNumber(d, i, j);
+                }
+            }
+        backtrack(0, 0);
     }      
 };
