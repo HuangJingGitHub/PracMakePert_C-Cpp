@@ -66,5 +66,6 @@ public:
                 }
             }
         backtrack(0, 0);
+        board = this->class;    // Remeber to pass the result back to the input board.
     }      
 };
