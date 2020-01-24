@@ -2,7 +2,7 @@ class Solution {
 public:
         static const int n = 3;
         static const int N = n * n;
-        int rows[N][N+1];
+        int rows[N][N+1];       // N+1 dimension because digits are 1, 2, ... , 9. rows[row][d] indexes more intuitively, conveniently without 0.
         int columns[N][N+1];
         int boxes[N][N+1];
         bool sudokuSolved = false;
