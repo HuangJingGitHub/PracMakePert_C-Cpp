@@ -35,3 +35,26 @@ public:
     return sequence;
     }
 };
+
+// Recurrence solution
+class Solution {
+public:
+    string countAndSay(int n) {
+        if(n==1) 
+            return "1";
+
+        int count = 1;
+        string res="", str=countAndSay(n-1);
+        for(int i=0; i<str.size(); i++){
+            if(str[i] == str[i+1]){     // If pos str[pos] is equal to the string length,                               
+                count++;                // the function returns a reference to the null character that follows
+                continue;               // the last character in the string (which should not be modified).
+            }
+            else{
+                res += to_string(count)+str[i];
+                count = 1;
+            }
+        }
+       return res;
+    }
+};
