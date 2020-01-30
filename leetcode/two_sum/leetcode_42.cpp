@@ -1,3 +1,4 @@
+// There is good article for the discussion of the solution. Refer to that.
 class Solution {
 public:
     int trap(vector<int>& height) {
