@@ -16,7 +16,8 @@ public:
                     cout << res.size() << " ";
                     vector<int> x = res[k];
                     x.insert(x.begin() + j, nums[i]);
-                    res.push_back(x);
+                    if (j > 0)
+                        res.push_back(x);
                 }
             }
         }
