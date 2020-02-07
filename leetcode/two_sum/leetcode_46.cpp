@@ -1,3 +1,4 @@
+// 插孔法做排列，没有有回溯和递归
 class Solution {
 public:
     vector<vector<int>> permute(vector<int>& nums) {
@@ -8,18 +9,21 @@ public:
             return res;
         }
 
-        vector<int> initVec(nums[0]);
+        vector<int> initVec{nums[0]};
         res.push_back(initVec);
+        int currentSize;
         for(int i = 1; i < nums.size(); i++){
-            for (int j = 0, currentSize = res.size(); j <= i; j++){
+            currentSize = res.size();
+            for (int j = 0; j < i; j++){
                 for (int k = 0; k < currentSize; k++){
-                    cout << res.size() << " ";
-                    vector<int> x = res[k];
-                    x.insert(x.begin() + j, nums[i]);
-                    if (j > 0)
-                        res.push_back(x);
+                    res.push_back(res[k]);
+                }
+                for(int m = 0; m < currentSize; m++){
+                    res[res.size() - m - 1].insert(res[res.size() - m - 1].begin() + j + 1, nums[i]);
                 }
             }
+            for (int n = 0; n < currentSize; n++)
+                res[n].insert(res[n].begin(), nums[i]);
         }
         return res;
     }
