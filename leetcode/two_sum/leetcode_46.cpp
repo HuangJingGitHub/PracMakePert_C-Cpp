@@ -1,4 +1,4 @@
-// 插孔法做排列，没有有回溯和递归
+// 插孔法做排列，没有用回溯和递归
 class Solution {
 public:
     vector<vector<int>> permute(vector<int>& nums) {
