@@ -1,3 +1,4 @@
+// The devision will lead to overflow as the number can be quite large.
 class Solution {
 public:
     int mySqrt(int x) {
@@ -16,5 +17,22 @@ public:
                 left = mid;
         }
         return left;
+    }
+};
+
+// Newton method
+class Solution {
+public:
+    int mySqrt(int x) {
+        if (x == 0)
+            return 0;
+    double cur = 1.0, pre;
+
+    while (true){
+        pre = cur;
+        cur = cur / 2 + x / (2 * cur);
+        if (abs(pre - cur) < 0.1)
+            return int(cur);
+    }
     }
 };
