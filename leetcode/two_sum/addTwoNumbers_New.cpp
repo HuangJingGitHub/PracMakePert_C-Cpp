@@ -93,6 +93,4 @@ int main()
     printList(p2);
     cout << endl;
 	p3 = sol.addTwoNumbers(p1, p2);
-    //printList(p3);
-
 }
