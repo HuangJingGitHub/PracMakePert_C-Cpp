@@ -1,34 +1,34 @@
 #include <stdio.h>
 int main()
-{  int input[50] = {0}, 
-       num = 0,
-	   isOrder = 0,
-	   i, j, temp;
+{  
+	int input[50] = {0}, 
+       	    num = 0,
+	    isOrder = 0,
+	    i, j, temp;
 	   
-   printf("Please input the array:\n");
-   do
-     {  scanf("%d",&input[num]);
-        num++;
+   	printf("Please input the array:\n");
+   	do{  
+	    scanf("%d",&input[num]);
+            num++;
 	 }
-	 while ((getchar())!='\n');    // !!! ×¢ÒâÓÃdo-while ½á¹¹À´½ÓÊÕÊäÈë£¬ÕâÑùµÚÒ»¸öÊı¾İ¾Í¿ÉÒÔ±»´æÈëÊı×é£¬¶øwhile·ÅÔÚÇ°µÄ»°
-	                               // µÚÒ»¸öÊı¾İ±»×÷Îªgetchar()ÊäÈë²»ÄÜ±»Êı×é½ÓÊÕ¡£ 
+	 while ((getchar())!='\n');    // !!! æ³¨æ„ç”¨ do-while ç»“æ„æ¥æ¥æ”¶è¾“å…¥ï¼Œè¿™æ ·ç¬¬ä¸€ä¸ªæ•°æ®å°±å¯ä»¥è¢«å­˜å…¥æ•°ç»„ï¼Œè€Œwhileæ”¾åœ¨å‰çš„è¯
+	                               // ç¬¬ä¸€ä¸ªæ•°æ®è¢«ä½œä¸ºgetchar()è¾“å…¥ä¸èƒ½è¢«æ•°ç»„æ¥æ”¶ã€‚ 
 	 
 	printf("The  original array is:\n"); 
-    for(i=0; i<num; i++)
+    	for(i=0; i<num; i++)
 	printf("%d  ",input[i]);
 	printf("\n");
 	
-	for(j=1; j<num; j++)
-	{ if (isOrder == 0)
-  	  {
-	    for(i=0; i<num-j; i++)
-	      {  isOrder = 1;          // ÎªÌá¸ßÃ°Åİ³ÌĞòĞ§ÂÊ£¬¼ÓÈëÅĞ¶Ï£¬ÎŞ½»»»·¢Éú±íÃ÷ÒÑ¾­ÊÇË³Ğò½á¹¹£¬ÎŞĞèÔÙ½øĞĞ±È½Ï£¬Ã¿´Î¶¼Òª³õÊ¼»¯ 
-		     if (input[i]>input[i+1])
-	           {  temp = input[i+1];
-	              input[i+1] = input[i];
-	              input[i] = temp;
-	              isOrder = 0;     // ÓĞ²Ù×÷·¢Éú£¬»¹²»ÊÇË³Ğò½á¹¹ 
-	           } 
+	for(j=1; j<num; j++){ 
+	    if (isOrder == 0){
+	    for(i=0; i<num-j; i++){
+	        isOrder = 1;          // ä¸ºæé«˜å†’æ³¡ç¨‹åºæ•ˆç‡ï¼ŒåŠ å…¥åˆ¤æ–­ï¼Œæ— äº¤æ¢å‘ç”Ÿè¡¨æ˜å·²ç»æ˜¯é¡ºåºç»“æ„ï¼Œæ— éœ€å†è¿›è¡Œæ¯”è¾ƒï¼Œæ¯æ¬¡éƒ½è¦åˆå§‹åŒ– 
+		if (input[i]>input[i+1])
+	        {  temp = input[i+1];
+	           input[i+1] = input[i];
+	           input[i] = temp;
+	           isOrder = 0;     // æœ‰æ“ä½œå‘ç”Ÿï¼Œè¿˜ä¸æ˜¯é¡ºåºç»“æ„ 
+	    } 
 	    }
 	  }
 	  else
@@ -36,7 +36,7 @@ int main()
 	}
 	
 	printf("The array in ascending order is:\n");
-    for(i=0; i<num; i++)
+        for(i=0; i<num; i++)
 	printf("%d  ",input[i]);
 	printf("\n");
 		
