@@ -1,3 +1,4 @@
+// reference solution, quite elegant
 class Solution {
 public:
     vector<int> spiralOrder(vector<vector<int>>& matrix) {
