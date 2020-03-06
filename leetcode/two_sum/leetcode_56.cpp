@@ -1,3 +1,4 @@
+// Personal solution, doesn't work. Only work for sorted intervals. Not general.
 class Solution {
 public:
     vector<vector<int>> merge(vector<vector<int>>& intervals) {
@@ -31,6 +32,31 @@ public:
                 res.pop_back();
                 res.pop_back();
                 res.push_back(curIntval);
+            }
+        }
+        return res;
+    }
+};
+
+// good
+class Solution {
+public:
+    vector<vector<int>> merge(vector<vector<int>>& intervals) {
+        int n = intervals.size();
+        vector<vector<int>> res;
+        vector<int> start, end;
+
+        for (int i = 0; i < n; i++){
+            start.push_back(intervals[i][0]);
+            end.push_back(intervals[i][1]);
+        }
+        sort(start.begin(), start.end());
+        sort(end.begin(), end.end());
+
+        for (int i = 0, j = 0; i < n; i++){
+            if (i == n - 1 || start[i+1] > end[i]){
+                res.push_back({start[j], end[i]});
+                j = i + 1;
             }
         }
         return res;
