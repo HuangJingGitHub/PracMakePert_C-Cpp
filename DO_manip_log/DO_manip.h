@@ -1,5 +1,6 @@
 #include <iostream>
 #include <math.h>
+#include <stdlib.h>
 #include <opencv2/video/tracking.hpp>
 #include <opencv2/core.hpp>
 #include <opencv2/videoio.hpp>
@@ -108,52 +109,70 @@ public:
     Mat originHSVImg;
     vector<vector<Point>> DOContours;
     vector<vector<Point>> PContours;
+    vector<Point> PApproxPoly;
+    int DOLargestCotrIdx = 0;
+    int PLargestCotrIdx = 0;
+    bool DOExtractSucceed = false;
+    bool PExtractSucceed = false;
+    bool extractSucceed = false;
     
     imgExtractor() {}
     imgExtractor(Mat& HSVImg)
     {
         DOHSVLow = Scalar(12, 46, 160);
         DOHSVHigh = Scalar(30, 255, 255);
-        PHSVLow = Scalar(0, 0, 0);
-        PHSVHigh = Scalar(255, 255, 255);
+        PHSVLow = Scalar(152, 166, 135);    // For 3D printed red plane end-effector.
+        PHSVHigh = Scalar(180, 255, 255);
         originHSVImg = HSVImg;
     }
 
-    bool extract()
+    void extract()
     {
         if (originHSVImg.empty()){
             cout << "No Valid Image Inputed!\n";
-            return false;
+            exit(-1);
         }
 
-        Mat src_gray, dst;        
+        Mat DOdst, Pdst;        
         vector<Vec4i> hierarcht;
-        //inRange(originHSVImg, DOHSVLow, DOHSVHigh, dst);
-        //
-        cvtColor(originHSVImg, src_gray, COLOR_BGR2GRAY);
-        Canny(src_gray, dst, 100, 200);
-        //
-        //Moments m_dst = moments(dst, true);
-        //cout << m_dst.m00 <<" " << m_dst.m10 << " " << m_dst.m01 << "\n";
-        if (100 < 100){
-            cout << "No DO Detected!" << endl;
-            return false;
+        inRange(originHSVImg, DOHSVLow, DOHSVHigh, DOdst);
+        Moments m_dst = moments(DOdst, true);
+        cout << m_dst.m00 <<" " << m_dst.m10 << " " << m_dst.m01 << "\n";
+        if (m_dst.m00 < 5000){
+            cout << "No DO Detected!\n";
+            DOExtractSucceed = false;
         }
         else{
-            cout << "Contours " << endl;
-            findContours(dst, DOContours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE, Point(0, 0));  
-            cout << "DOContours Size: " << DOContours.size() << " " << DOContours[0].size() << endl;
+            findContours(DOdst, DOContours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE, Point(0, 0));  
+            cout << "DOContours Size: " << DOContours.size() << " " << DOContours[0].size() << "\n";
+            for (int i = 1; i < DOContours.size(); i++){
+                DOLargestCotrIdx = (DOContours[i].size() > DOContours[DOLargestCotrIdx].size()) ? i : DOLargestCotrIdx;
+            }
+            DOExtractSucceed = true;
         }
 
-        /*inRange(originHSVImg, PHSVLow, PHSVHigh, dst);
-        m_dst = moments(dst, true);
-        if (m_dst.m00 < 100){
-            cout << "No End-Effector Detected!" << endl;
-            return false;
+        inRange(originHSVImg, PHSVLow, PHSVHigh, Pdst);
+        m_dst = moments(Pdst, true);
+        if (m_dst.m00 < 5000){
+            cout << "No End-Effector Detected!\n";
+            PExtractSucceed = false;
         }
         else{
-            findContours(dst, PContours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE, Point(0, 0));    
-        } */ 
-        return true;
+            findContours(Pdst, PContours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE, Point(0, 0)); 
+            for (int i = 1; i < PContours.size(); i++){
+                PLargestCotrIdx = (PContours[i].size() > PContours[PLargestCotrIdx].size()) ? i : PLargestCotrIdx;
+            } 
+            PExtractSucceed = true;
+
+            approxPolyDP(PContours[PLargestCotrIdx], PApproxPoly, 3, true);
+            cout << "PApproxPoly Info: " << PApproxPoly.size() << endl;
+        } 
+        extractSucceed = DOExtractSucceed && PExtractSucceed;
+    }
+
+    void effectorCharacterize()
+    {
+        Point xMin, xMax;
     }
 };
+
