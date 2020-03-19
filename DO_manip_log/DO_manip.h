@@ -31,9 +31,12 @@ bool distanceComparator(Point pt1, Point pt2)
         return false;
     }
     float minDistance1 = 1e3, minDistance2 = 1e3;
-    for (auto itr = (*referencePolygon).begin(); itr != (*referencePolygon).end(); itr++){
+    //int step = (*referencePolygon).size() / 20 + 1;
+    int space = 5;
+    for (auto itr = (*referencePolygon).begin(); ((*referencePolygon).end() - itr) > space; itr+=space){
         minDistance1 = (minDistance1 < norm(*itr - pt1)) ? minDistance1 : norm(*itr - pt1);
         minDistance2 = (minDistance2 < norm(*itr - pt2)) ? minDistance2 : norm(*itr - pt2);
+
     }
     return (minDistance1 < minDistance2);
 }
@@ -41,13 +44,20 @@ bool distanceComparator(Point pt1, Point pt2)
 Point2f LK_point;
 // vector<Point2f> points[2];
 bool addRemovePt = false;
-
+Mat saveImg;
+RNG cvrng(12345);
+int randomInt = cvrng.uniform(0,100);
 static void onMouse(int event, int x, int y, int, void*)
 {
+    // std::cout << "MOUSE MOTION DETECETED--->>>\n";
+    static int savedImgCount = 1;
     if (event == EVENT_LBUTTONDOWN){
         LK_point = Point2f((float)x, (float)y);
-        // std::cout << "MOUSE MOTION DETECETED--->>>\n";
         addRemovePt = true;
+    }
+    if (event == EVENT_LBUTTONDBLCLK){
+        imwrite("/home/jing/Pictures/DO_manip_Img/DO_manip_img" + to_string(randomInt + savedImgCount) + ".jpg", saveImg);
+        savedImgCount++;
     }
 }
 
@@ -73,6 +83,7 @@ public:
     void track(Mat& image, Mat& gray, Mat& prevGray) // Technically, no diffenence between passing cv::Mat and cv::Mat& 
     {
         originImg = image;  // Just create a matrix header to the original image.
+        saveImg = image;
         setMouseCallback(winTrack, onMouse, 0);
         if (!points[0].empty()){
             vector<uchar> status;
@@ -92,12 +103,12 @@ public:
                 if (!status[i])
                     continue;
                 points[1][k++] = points[1][i];
-                circle(image, points[1][i], 3, Scalar(0, 255, 0), -1, 8);
+                circle(image, points[1][i], 3, Scalar(0, 0, 255), -1, 8);
             }
             points[1].resize(k);
         }
         if (addRemovePt && points[1].size() < (size_t) maxCount){
-            std::cout << "points[0].empty() returns true--->>>";
+            cout << "points[0].empty() returns true--->>>";
             vector<Point2f> tmp;
             tmp.push_back(LK_point);
             cornerSubPix(gray, tmp, winSize, Size(-1, -1), termcrit);
@@ -118,8 +129,8 @@ public:
         Eigen::Vector2f ray_1(points[1][1].x - points[1][0].x, points[1][1].y - points[1][0].y),
                         ray_2(points[1][2].x - points[1][0].x, points[1][2].y - points[1][0].y);
         res = acos(ray_1.dot(ray_2) / (ray_1.norm()*ray_2.norm())) * 180 / M_PI;
-        cv::line(originImg, points[1][0], points[1][1], Scalar(255, 0, 0), 2);
-        cv::line(originImg, points[1][0], points[1][2], Scalar(255, 0, 0), 2);
+        cv::line(originImg, points[1][0], points[1][1], Scalar(0, 0, 255), 2);
+        cv::line(originImg, points[1][0], points[1][2], Scalar(0, 0, 255), 2);
         return res;
     }
 };
@@ -142,6 +153,7 @@ public:
     bool DOExtractSucceed = false;
     bool PExtractSucceed = false;
     bool extractSucceed = false;
+    bool effectorCharacterizeSucceed = false;
     
     imgExtractor() {}
     imgExtractor(Mat& HSVImg)
@@ -178,8 +190,8 @@ public:
             DOExtractSucceed = true;
 
             double DOEpisilon = 0.05 * arcLength(DOContours[DOLargestCotrIdx], true);
-            approxPolyDP(DOContours[DOLargestCotrIdx], DOApproxPoly, DOEpisilon, true);
-            referencePolygon = &DOApproxPoly;
+            // approxPolyDP(DOContours[DOLargestCotrIdx], DOApproxPoly, DOEpisilon, true);
+            referencePolygon = &DOContours[DOLargestCotrIdx];
         }
 
         inRange(originHSVImg, PHSVLow, PHSVHigh, Pdst);
@@ -204,6 +216,7 @@ public:
 
     void effectorCharacterize()
     {
+        effectorCharacterizeSucceed = false;
         vector<Point> PVertices;
         vector<int> ySortedPVertices;
         Point prevPt, nextPt;
@@ -225,10 +238,11 @@ public:
             prevSide = Eigen::Vector2i(prevPt.x - PApproxPoly[i].x, prevPt.y - PApproxPoly[i].y);
             nextSide = Eigen::Vector2i(nextPt.x - PApproxPoly[i].x, nextPt.y - PApproxPoly[i].y);
             angle = acos(prevSide.dot(nextSide) / (prevSide.norm()*nextSide.norm())) * 180 / M_PI;
-            if (angle > 40 && angle < 110)
+            if (angle > 40 && angle < 150)
                 PVertices.push_back(PApproxPoly[i]);
         }
-            sort(PVertices.begin(), PVertices.end(), distanceComparator);
+        sort(PVertices.begin(), PVertices.end(), distanceComparator);
+        if (PVertices.size() >= 2){      // Avoid extreme cases where just less than 2 vertices exist.
             if (PVertices[0].x < PVertices[1].x){
                 endeffectorP.sl = PVertices[0];
                 endeffectorP.sr = PVertices[1];
@@ -240,14 +254,10 @@ public:
             Eigen::Vector2f endeffectorDirt(endeffectorP.sr.x - endeffectorP.sl.x, 
                                             endeffectorP.sr.y - endeffectorP.sl.y);
             endeffectorDirt = endeffectorDirt / endeffectorDirt.norm();
-            if (endeffectorDirt(1) >= 0){       // Make sure ne points upwards.
-                endeffectorP.ne(0) = -endeffectorDirt(1);
-                endeffectorP.ne(1) = endeffectorDirt(0);
-            }
-            else{
-                endeffectorP.ne(0) = endeffectorDirt(1);
-                endeffectorP.ne(1) = -endeffectorDirt(0);               
-            }
+            endeffectorP.ne(0) = endeffectorDirt(1);    // Make sure ne points upwards.
+            endeffectorP.ne(1) = -endeffectorDirt(0);
+            effectorCharacterizeSucceed = true;
+        }
             //for (auto itr = PVertices.begin(); itr != PVertices.end(); itr++)
             //    cout << (*itr).y << "\n";
     }
