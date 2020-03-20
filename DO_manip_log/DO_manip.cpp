@@ -94,11 +94,9 @@ public:
     if (extractor.extractSucceed){
       int DOLargestContour = extractor.DOLargestCotrIdx,
           PLargestContour = extractor.PLargestCotrIdx;
-
     cv::drawContours(cv_ptr->image, extractor.DOContours, DOLargestContour, cv::Scalar(255, 0, 0), 2);
     cv::drawContours(cv_ptr->image, extractor.PContours, PLargestContour, cv::Scalar(0, 255, 0), 2);
-    //for (int i = 0; i < extractor.PApproxPoly.size(); i++)
-    //  cv::circle(cv_ptr->image, extractor.PApproxPoly[i], 5, cv::Scalar(100, 178, 26), -1);
+    
     extractor.effectorCharacterize();
     if (extractor.effectorCharacterizeSucceed){
       cv::circle(cv_ptr->image, extractor.endeffectorP.sl, 5, cv::Scalar(108, 37, 189), -1);
@@ -110,7 +108,7 @@ public:
       cv::Point2f neDirt(extractor.endeffectorP.ne(0), extractor.endeffectorP.ne(1));
       cv::Point2f PMid = (extractor.endeffectorP.sl + extractor.endeffectorP.sr) / 2;
       cv::circle(cv_ptr->image, PMid, 5, cv::Scalar(255, 0, 0), -1);
-      cv::arrowedLine(cv_ptr->image, PMid, PMid + 40*neDirt, cv::Scalar(255, 0, 0), 2);  
+      cv::arrowedLine(cv_ptr->image, PMid, PMid + 60*neDirt, cv::Scalar(255, 0, 0), 2);  
     }
     else if (!extractor.DOExtractSucceed)
       std::cout << "Deformable Object Detection Failed!\n";

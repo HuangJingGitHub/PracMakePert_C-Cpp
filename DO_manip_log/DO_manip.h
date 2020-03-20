@@ -56,7 +56,7 @@ static void onMouse(int event, int x, int y, int, void*)
         addRemovePt = true;
     }
     if (event == EVENT_LBUTTONDBLCLK){
-        imwrite("/home/jing/Pictures/DO_manip_Img/DO_manip_img" + to_string(randomInt + savedImgCount) + ".jpg", saveImg);
+        imwrite("/home/jing/Pictures/DO_manip_Img/DO_manip_img" + to_string(randomInt+savedImgCount) + ".jpg", saveImg);
         savedImgCount++;
     }
 }
@@ -258,9 +258,5 @@ public:
             endeffectorP.ne(1) = -endeffectorDirt(0);
             effectorCharacterizeSucceed = true;
         }
-            //for (auto itr = PVertices.begin(); itr != PVertices.end(); itr++)
-            //    cout << (*itr).y << "\n";
     }
-
 };
-
