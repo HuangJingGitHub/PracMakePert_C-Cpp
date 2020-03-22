@@ -277,11 +277,11 @@ public:
         }
     }
 
-    void segment(vector<Point> &contour)
+    bool segment(vector<Point> &contour)
     {
         if (endeffectorP.sl == Point(0,0) || endeffectorP.sr == Point(0,0)){
             cout << "No End-effector Info On The Image Available!" << endl;
-            return;
+            return false;
         }
         float a = endeffectorP.sr.x - endeffectorP.sl.x,    // line: ax + by + c = 0
               b = endeffectorP.sr.y - endeffectorP.sl.y,
@@ -301,6 +301,10 @@ public:
             if (distancer < distanceThreshold)
                 idxr.push_back(i);
         }
+        if (idxl.empty() || idxr.empty()){
+            cout << "Invalid Segmentation. Maybe A Samll Threshold Distance Or A Large Step Is Given." << endl;
+            return false;
+        }
         /*sort(disLog.begin(), disLog.end());
         for (auto itr = disLog.begin(); itr != disLog.end(); itr++)
             cout << *itr << "\n";
@@ -314,8 +318,9 @@ public:
             maxIdxl = (norm(contour[idxl[i]] - endeffectorP.sl) > norm(contour[idxl[maxIdxl]] - endeffectorP.sl)) ? i:maxIdxl;
         }
         segmentationIdx[0].clear(); 
-        segmentationIdx[0].push_back(minIdxl);
-        segmentationIdx[0].push_back(maxIdxl);
+        segmentationIdx[0].push_back(idxl[minIdxl]);
+        segmentationIdx[0].push_back(idxl[maxIdxl]);
+        cout << norm(contour[minIdxl] - endeffectorP.sl) << " " << norm(contour[maxIdxl] - endeffectorP.sl) << "\n";
 
         int minIdxr = 0, maxIdxr = 0;
         for (int i = 1; i < idxr.size(); i++){
@@ -323,7 +328,8 @@ public:
             maxIdxr = (norm(contour[idxr[i]] - endeffectorP.sr) > norm(contour[idxr[maxIdxr]] - endeffectorP.sr)) ? i:maxIdxr;
         }
         segmentationIdx[1].clear(); 
-        segmentationIdx[1].push_back(minIdxr);
-        segmentationIdx[1].push_back(maxIdxr);
+        segmentationIdx[1].push_back(idxr[minIdxr]);
+        segmentationIdx[1].push_back(idxr[maxIdxr]);
+        return true;
     }
 };
