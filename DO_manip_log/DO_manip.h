@@ -2,6 +2,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <vector>
+#include <algorithm>
 #include <opencv2/video/tracking.hpp>
 #include <opencv2/core.hpp>
 #include <opencv2/videoio.hpp>
@@ -287,17 +288,26 @@ public:
               cl = -a*endeffectorP.sl.x - b*endeffectorP.sl.y,
               cr = -a*endeffectorP.sr.x - b*endeffectorP.sr.y,
               divCof = 1 / norm(endeffectorP.sr - endeffectorP.sl), 
-              distancel, distancer;  
+              distancel, distancer;
         vector<int> idxl, idxr;
-        int distanceThreshold = 1, step = 2;
+        //vector<float> disLog;
+        int distanceThreshold = 10, step = 1;
         for (int i = 0; contour.size() - i > step; i+=step){
             distancel = abs(a*contour[i].x + b*contour[i].y + cl) * divCof;
             distancer = abs(a*contour[i].x + b*contour[i].y + cr) * divCof;
+            //disLog.push_back(distancel);
             if (distancel < distanceThreshold)
                 idxl.push_back(i);
             if (distancer < distanceThreshold)
                 idxr.push_back(i);
         }
+        /*sort(disLog.begin(), disLog.end());
+        for (auto itr = disLog.begin(); itr != disLog.end(); itr++)
+            cout << *itr << "\n";
+        cout << contour << endl;
+        segmentationIdx[0] = idxl;
+        segmentationIdx[1] = idxr;*/
+
         int minIdxl = 0, maxIdxl = 0;
         for (int i = 1; i < idxl.size(); i++){
             minIdxl = (norm(contour[idxl[i]] - endeffectorP.sl) < norm(contour[idxl[minIdxl]] - endeffectorP.sl)) ? i:minIdxl;

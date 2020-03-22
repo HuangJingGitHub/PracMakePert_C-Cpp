@@ -116,9 +116,12 @@ public:
         std::cout << "End-Effector Detection Failed!\n";
       else
         std::cout << "DO and End-Effector Detection Failed!\n";
+
       extractor.segment(extractor.DOContours[DOLargestContour]);
       cv::circle(cv_ptr->image, extractor.DOContours[DOLargestContour][extractor.segmentationIdx[0][1]],
                 10, cv::Scalar(255, 0, 0), -1);
+      cv::circle(cv_ptr->image, extractor.DOContours[DOLargestContour][extractor.segmentationIdx[0][0]],
+                10, cv::Scalar(255, 0, 0), -1);                
     }
     // cv::circle(cv_ptr->image, imageOrigin, 5, cv::Scalar(0, 0, 0), -1);
     // cv::arrowedLine(cv_ptr->image, imageOrigin, xAxisEnd, cv::Scalar(0, 0, 255), 2);
