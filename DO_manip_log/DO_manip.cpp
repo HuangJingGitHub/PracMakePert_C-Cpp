@@ -127,6 +127,11 @@ public:
         cv::circle(cv_ptr->image, extractor.DOContours[DOLargestContour][extractor.segmentationIdx[1][1]],
                   5, cv::Scalar(255, 0, 0), -1);       
       }
+      optConstructor opt(extractor);
+      opt.getDeformConstraint();
+      cv::circle(cv_ptr->image, opt.ElCentroid, 5, cv::Scalar(0,0,200), -1);
+      cv::circle(cv_ptr->image, opt.ECentroid, 5, cv::Scalar(0,0,200), -1);
+      cv::circle(cv_ptr->image, opt.ErCentroid, 5, cv::Scalar(0,0,200), -1);
     }
     // cv::putText(cv_ptr->image, "x", xAxisEnd - cv::Point(10, 10), cv::FONT_HERSHEY_PLAIN, 2, cv::Scalar(0, 0, 255), 2);
     // cv::arrowedLine(cv_ptr->image, imageOrigin, yAxisEnd, cv::Scalar(0, 255, 0), 2);

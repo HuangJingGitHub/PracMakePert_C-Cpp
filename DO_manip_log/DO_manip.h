@@ -161,8 +161,10 @@ public:
     Mat originHSVImg;
     vector<vector<Point>> DOContours;
     vector<vector<Point>> PContours;
+    vector<Point> DOContour;
+    vector<Point> PContour;
+    vector<Point> DOApproxPoly;    
     vector<Point> PApproxPoly;
-    vector<Point> DOApproxPoly;
     img_p endeffectorP;
     vector<int> segmentationIdx[2];
     int DOLargestCotrIdx = 0;
@@ -200,15 +202,14 @@ public:
         }
         else{
             findContours(DOdst, DOContours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE, Point(0, 0));  
-            cout << "DOContours Size: " << DOContours.size() << " " << DOContours[0].size() << "\n";
+            // cout << "DOContours Size: " << DOContours.size() << " " << DOContours[0].size() << "\n";
             for (int i = 1; i < DOContours.size(); i++){
                 DOLargestCotrIdx = (DOContours[i].size() > DOContours[DOLargestCotrIdx].size()) ? i : DOLargestCotrIdx;
             }
+            DOContour = DOContours[DOLargestCotrIdx];
             DOExtractSucceed = true;
-
-            double DOEpisilon = 0.05 * arcLength(DOContours[DOLargestCotrIdx], true);
+            // double DOEpisilon = 0.05 * arcLength(DOContours[DOLargestCotrIdx], true);
             // approxPolyDP(DOContours[DOLargestCotrIdx], DOApproxPoly, DOEpisilon, true);
-            referencePolygon = &DOContours[DOLargestCotrIdx];
         }
 
         inRange(originHSVImg, PHSVLow, PHSVHigh, Pdst);
@@ -223,10 +224,11 @@ public:
                 PLargestCotrIdx = (PContours[i].size() > PContours[PLargestCotrIdx].size()) ? i : PLargestCotrIdx;
             } 
             PExtractSucceed = true;
+            PContour = PContours[PLargestCotrIdx];
             double PEpisilon = 0.05 * arcLength(PContours[PLargestCotrIdx], true);
-            cout << "episilon = " << PEpisilon << "\n";
+            // cout << "episilon = " << PEpisilon << "\n";
             approxPolyDP(PContours[PLargestCotrIdx], PApproxPoly, PEpisilon, true);
-            cout << "PApproxPoly Info: " << PApproxPoly.size() << endl;
+            // cout << "PApproxPoly Info: " << PApproxPoly.size() << endl;
         } 
         extractSucceed = DOExtractSucceed && PExtractSucceed;
     }
@@ -258,6 +260,7 @@ public:
             if (angle > 40 && angle < 150)
                 PVertices.push_back(PApproxPoly[i]);
         }
+        referencePolygon = &DOContours[DOLargestCotrIdx];
         sort(PVertices.begin(), PVertices.end(), distanceComparator);
         if (PVertices.size() >= 2){      // Avoid extreme cases where just less than 2 vertices exist.
             if (PVertices[0].x < PVertices[1].x){
@@ -290,12 +293,12 @@ public:
               divCof = 1 / norm(endeffectorP.sr - endeffectorP.sl), 
               distancel, distancer;
         vector<int> idxl, idxr;
-        //vector<float> disLog;
-        int distanceThreshold = 10, step = 1;
+        // vector<float> disLog;
+        int distanceThreshold = 20, step = 1;
         for (int i = 0; contour.size() - i > step; i+=step){
             distancel = abs(a*contour[i].x + b*contour[i].y + cl) * divCof;
             distancer = abs(a*contour[i].x + b*contour[i].y + cr) * divCof;
-            //disLog.push_back(distancel);
+            // disLog.push_back(distancel);
             if (distancel < distanceThreshold)
                 idxl.push_back(i);
             if (distancer < distanceThreshold)
@@ -311,7 +314,7 @@ public:
         cout << contour << endl;
         segmentationIdx[0] = idxl;
         segmentationIdx[1] = idxr;*/
-
+        
         int minIdxl = 0, maxIdxl = 0;
         for (int i = 1; i < idxl.size(); i++){
             minIdxl = (norm(contour[idxl[i]] - endeffectorP.sl) < norm(contour[idxl[minIdxl]] - endeffectorP.sl)) ? i:minIdxl;
@@ -331,5 +334,83 @@ public:
         segmentationIdx[1].push_back(idxr[minIdxr]);
         segmentationIdx[1].push_back(idxr[maxIdxr]);
         return true;
+    }
+};
+
+class optConstructor{
+public:
+    imgExtractor extractedImg;
+    float T_CP;
+    Eigen::Matrix<float, 6, 1> pT_pP;
+    Point2f ElCentroid;
+    Point2f ECentroid;
+    Point2f ErCentroid;
+
+    optConstructor() {}
+    optConstructor(imgExtractor &extractor)
+    {
+        extractedImg = extractor;
+    }
+
+    void getLocalContact()
+    {
+        Point projPtl = getProjection(extractedImg.endeffectorP.sl, extractedImg.DOContour),
+              projPtr = getProjection(extractedImg.endeffectorP.sr, extractedImg.DOContour),
+              projPtm = getProjection((extractedImg.endeffectorP.sl + extractedImg.endeffectorP.sr)/2, extractedImg.DOContour),
+              gradtl = projPtl - extractedImg.endeffectorP.sl,
+              gradtr = projPtr - extractedImg.endeffectorP.sr,
+              gradtm = projPtm - (extractedImg.endeffectorP.sl + extractedImg.endeffectorP.sr)/2;
+        T_CP  = max(norm(projPtl - extractedImg.endeffectorP.sl), norm(projPtr - extractedImg.endeffectorP.sr));
+        pT_pP << gradtl.x, gradtl.y, gradtr.x, gradtr.y, gradtm.x, gradtm.y;
+    }
+
+    void getDeformConstraint()
+    {   
+        vector<Point> *contourPtr = &extractedImg.DOContour;
+        vector<Point> El, E, Er;
+        int k1 = extractedImg.segmentationIdx[0][0], k2 = extractedImg.segmentationIdx[0][1],
+            k3 = extractedImg.segmentationIdx[1][0], k4 = extractedImg.segmentationIdx[1][1];
+        cout << "k1-k2-k3-k4 " << k1 << " " << k2 << " " << k3 << " " << k4 << endl;
+        if (k2 <= k1 && k1 <= k3 && k3 <= k4){
+            cout << "case1\n";
+            El = vector<Point>((*contourPtr).begin() + k2, (*contourPtr).begin() + k1 + 1);
+            Er = vector<Point>((*contourPtr).begin() + k3, (*contourPtr).begin() + k4 + 1);
+            E = vector<Point>((*contourPtr).begin(), (*contourPtr).begin() + k2 + 1);
+            E.insert(E.end(), (*contourPtr).begin() + k1, (*contourPtr).begin() + k3 + 1);
+            E.insert(E.end(), (*contourPtr).begin() + k4, (*contourPtr).end());
+        }
+        else if (k1 <= k3 && k3 <= k4 && k4 <= k2){
+            cout << "case2\n";
+            El = vector<Point>((*contourPtr).begin() + k2, (*contourPtr).end());
+            El.insert(El.end(), (*contourPtr).begin(), (*contourPtr).begin() + k1 + 1);
+            Er = vector<Point>((*contourPtr).begin() + k3, (*contourPtr).begin() + k4 + 1);
+            E = vector<Point>((*contourPtr).begin() + k1, (*contourPtr).begin() + k3 + 1);
+            E.insert(E.end(), (*contourPtr).begin() + k4, (*contourPtr).end());
+            E.insert(E.end(), (*contourPtr).begin(), (*contourPtr).begin() + k2 + 1);
+        }
+        else if (k3 <= k4 && k4 <= k2 && k2 <= k1){
+            cout << "case3\n";
+            El = vector<Point>((*contourPtr).begin() + k2, (*contourPtr).begin() + k1 + 1);
+            Er = vector<Point>((*contourPtr).begin() + k3, (*contourPtr).begin() + k4 + 1);
+            E = vector<Point>((*contourPtr).begin(), (*contourPtr).begin() + k3 + 1);
+            E.insert(E.end(), (*contourPtr).begin() + k4, (*contourPtr).begin() + k2 + 1);
+            E.insert(E.end(), (*contourPtr).begin() + k1, (*contourPtr).end());
+        }
+        else if (k4 <= k2 && k2 <= k1 && k1 << k3){
+            cout << "case4\n";
+            El = vector<Point>((*contourPtr).begin() + k2, (*contourPtr).begin() + k1 + 1);
+            Er = vector<Point>((*contourPtr).begin(), (*contourPtr).begin() + k4 + 1);
+            Er.insert(Er.end(), (*contourPtr).begin() + k3, (*contourPtr).end());
+            E = vector<Point>((*contourPtr).begin() + k4, (*contourPtr).begin() + k2 + 1);
+            E.insert(E.end(), (*contourPtr).begin() + k1, (*contourPtr).begin() + k3 + 1);
+        }
+        else{
+            cout << "Bad Segmentation Of The Contour!" << endl;
+            return;
+        }
+        Moments ElMoments = moments(El), EMoments = moments(E), ErMoments = moments(Er);
+        ElCentroid = Point2f(ElMoments.m10 / ElMoments.m00, ElMoments.m01 / ElMoments.m00),
+        ECentroid = Point2f(EMoments.m10 / EMoments.m00, EMoments.m01 / EMoments.m00),
+        ErCentroid = Point2f(ErMoments.m10 / ErMoments.m00, ErMoments.m01 / ErMoments.m00);
     }
 };
