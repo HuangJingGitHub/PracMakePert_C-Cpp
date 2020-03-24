@@ -132,6 +132,8 @@ public:
       cv::circle(cv_ptr->image, opt.ElCentroid, 5, cv::Scalar(0,0,200), -1);
       cv::circle(cv_ptr->image, opt.ECentroid, 5, cv::Scalar(0,0,200), -1);
       cv::circle(cv_ptr->image, opt.ErCentroid, 5, cv::Scalar(0,0,200), -1);
+      cv::arrowedLine(cv_ptr->image, opt.ElCentroid, opt.ElCentroid+50*opt.PrialDirtl, cv::Scalar(0,0,200),2);
+      cv::arrowedLine(cv_ptr->image, opt.ErCentroid, opt.ErCentroid+50*opt.PrialDirtr, cv::Scalar(0,0,200),2);
     }
     // cv::putText(cv_ptr->image, "x", xAxisEnd - cv::Point(10, 10), cv::FONT_HERSHEY_PLAIN, 2, cv::Scalar(0, 0, 255), 2);
     // cv::arrowedLine(cv_ptr->image, imageOrigin, yAxisEnd, cv::Scalar(0, 255, 0), 2);

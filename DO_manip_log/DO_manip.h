@@ -345,6 +345,9 @@ public:
     Point2f ElCentroid;
     Point2f ECentroid;
     Point2f ErCentroid;
+    Point2f PrialDirtl;
+    Point2f PrialDirtr;
+    vector<float> deformAngle;
 
     optConstructor() {}
     optConstructor(imgExtractor &extractor)
@@ -368,11 +371,14 @@ public:
     {   
         vector<Point> *contourPtr = &extractedImg.DOContour;
         vector<Point> El, E, Er;
+        if (extractedImg.segmentationIdx[0].empty() || extractedImg.segmentationIdx[1].empty()){
+            cout << "No Valid Segmentation Info Available From The imgExtractor！" << endl;
+            return;
+        }
         int k1 = extractedImg.segmentationIdx[0][0], k2 = extractedImg.segmentationIdx[0][1],
             k3 = extractedImg.segmentationIdx[1][0], k4 = extractedImg.segmentationIdx[1][1];
         cout << "k1-k2-k3-k4 " << k1 << " " << k2 << " " << k3 << " " << k4 << endl;
         if (k2 <= k1 && k1 <= k3 && k3 <= k4){
-            cout << "case1\n";
             El = vector<Point>((*contourPtr).begin() + k2, (*contourPtr).begin() + k1 + 1);
             Er = vector<Point>((*contourPtr).begin() + k3, (*contourPtr).begin() + k4 + 1);
             E = vector<Point>((*contourPtr).begin(), (*contourPtr).begin() + k2 + 1);
@@ -380,7 +386,6 @@ public:
             E.insert(E.end(), (*contourPtr).begin() + k4, (*contourPtr).end());
         }
         else if (k1 <= k3 && k3 <= k4 && k4 <= k2){
-            cout << "case2\n";
             El = vector<Point>((*contourPtr).begin() + k2, (*contourPtr).end());
             El.insert(El.end(), (*contourPtr).begin(), (*contourPtr).begin() + k1 + 1);
             Er = vector<Point>((*contourPtr).begin() + k3, (*contourPtr).begin() + k4 + 1);
@@ -389,7 +394,6 @@ public:
             E.insert(E.end(), (*contourPtr).begin(), (*contourPtr).begin() + k2 + 1);
         }
         else if (k3 <= k4 && k4 <= k2 && k2 <= k1){
-            cout << "case3\n";
             El = vector<Point>((*contourPtr).begin() + k2, (*contourPtr).begin() + k1 + 1);
             Er = vector<Point>((*contourPtr).begin() + k3, (*contourPtr).begin() + k4 + 1);
             E = vector<Point>((*contourPtr).begin(), (*contourPtr).begin() + k3 + 1);
@@ -397,7 +401,6 @@ public:
             E.insert(E.end(), (*contourPtr).begin() + k1, (*contourPtr).end());
         }
         else if (k4 <= k2 && k2 <= k1 && k1 << k3){
-            cout << "case4\n";
             El = vector<Point>((*contourPtr).begin() + k2, (*contourPtr).begin() + k1 + 1);
             Er = vector<Point>((*contourPtr).begin(), (*contourPtr).begin() + k4 + 1);
             Er.insert(Er.end(), (*contourPtr).begin() + k3, (*contourPtr).end());
@@ -409,8 +412,41 @@ public:
             return;
         }
         Moments ElMoments = moments(El), EMoments = moments(E), ErMoments = moments(Er);
-        ElCentroid = Point2f(ElMoments.m10 / ElMoments.m00, ElMoments.m01 / ElMoments.m00),
-        ECentroid = Point2f(EMoments.m10 / EMoments.m00, EMoments.m01 / EMoments.m00),
+        ElCentroid = Point2f(ElMoments.m10 / ElMoments.m00, ElMoments.m01 / ElMoments.m00);
+        ECentroid = Point2f(EMoments.m10 / EMoments.m00, EMoments.m01 / EMoments.m00);
         ErCentroid = Point2f(ErMoments.m10 / ErMoments.m00, ErMoments.m01 / ErMoments.m00);
+
+        Eigen::Matrix2f Il, I, Ir;
+        Il << ElMoments.mu20, ElMoments.mu11, ElMoments.mu11, ElMoments.mu02;
+        I << EMoments.mu20, EMoments.mu11, EMoments.mu11, EMoments.mu02;
+        Ir << ErMoments.mu20, ErMoments.mu11, ErMoments.mu11, ErMoments.mu02;
+        Eigen::EigenSolver<Eigen::Matrix2f> eigSloverl(Il), eigSolverr(Ir);
+        Eigen::Vector2f eigVecl1(eigSloverl.eigenvectors().col(0).real()[0], 
+                                 eigSloverl.eigenvectors().col(0).real()[1]),
+                        eigVecl2(eigSloverl.eigenvectors().col(1).real()[0], 
+                                 eigSloverl.eigenvectors().col(1).real()[1]),
+                        eigVecr1(eigSolverr.eigenvectors().col(0).real()[0],
+                                 eigSolverr.eigenvectors().col(0).real()[1]),
+                        eigVecr2(eigSolverr.eigenvectors().col(1).real()[0],
+                                 eigSolverr.eigenvectors().col(1).real()[1]);
+        PrialDirtl = Point2f(eigVecl1[0], eigVecl1[1]);
+        PrialDirtr = Point2f(eigVecr1[0], eigVecr1[1]);
+        Eigen::Vector2f planeDirt(extractedImg.endeffectorP.sr.x - extractedImg.endeffectorP.sl.x,
+                                  extractedImg.endeffectorP.sr.y - extractedImg.endeffectorP.sl.y);
+        float anglel = acos(planeDirt.dot(eigVecl1) / (planeDirt.norm()*eigVecl1.norm())) * 180 / M_PI,
+              angler = acos(planeDirt.dot(eigVecr1) / (planeDirt.norm()*eigVecr1.norm())) * 180 / M_PI;
+        deformAngle.clear();
+        deformAngle.push_back(anglel);
+        deformAngle.push_back(angler);
+    }
+
+    void getManipulability(vector<Point> s, int featureType = 0){
+        if (s.size() < 3){
+            cout << "Invalid s Dimension.\n" << endl;
+            return;
+        }
+        Eigen::Vector2f s0(s[0].x, s[0].y),
+                        s1(s[1].x, s[1].y),
+                        s2(s[2].x, s[2].y);
     }
 };
