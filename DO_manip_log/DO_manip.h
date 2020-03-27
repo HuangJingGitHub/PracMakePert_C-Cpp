@@ -406,7 +406,7 @@ public:
         }
         int k1 = extractedImg.segmentationIdx[0][0], k2 = extractedImg.segmentationIdx[0][1],
             k3 = extractedImg.segmentationIdx[1][0], k4 = extractedImg.segmentationIdx[1][1];
-        cout << "k1-k2-k3-k4:\n" << k1 << " " << k2 << " " << k3 << " " << k4 << endl;
+        cout << "k1-k2-k3-k4:\n" << k1 << "-" << k2 << "-" << k3 << "-" << k4 << "\n";
         if (k2 <= k1 && k1 <= k3 && k3 <= k4){
             El = vector<Point>((*contourPtr).begin() + k2, (*contourPtr).begin() + k1 + 1);
             Er = vector<Point>((*contourPtr).begin() + k3, (*contourPtr).begin() + k4 + 1);
@@ -522,5 +522,33 @@ public:
             sw += (weightedGradient.col(2*i).lpNorm<1>() + weightedGradient.col(2*i+1).lpNorm<1>())
                   / weightedGradient.lpNorm<1>() * angFeature.sPt[i];
         }
+    }
+};
+
+class deformJacobian{
+public: 
+    int dimRow;
+    int dimCol;
+    Eigen::MatrixXf JdPrev;
+    Eigen::MatrixXf JdCurr;
+    float alpha;
+    img_p pPrev;
+    angleFeature3Pts anglePrev;
+    Eigen::Vector2f pVec;
+
+    deformJacobian() {}
+    deformJacobian(img_p pInitial, angleFeature3Pts angleInitial)
+    {
+        dimRow = 2;
+        dimCol = 2;
+        alpha = 0.2;
+        JdPrev = Eigen::Matrix<float, 2, 2>::Identity();
+        pPrev = pInitial;
+        anglePrev = angleInitial;
+    }
+    
+    void update(angleFeature3Pts angleCurr)
+    {
+        float delta_y = angleCurr.angle - anglePrev.angle;
     }
 };

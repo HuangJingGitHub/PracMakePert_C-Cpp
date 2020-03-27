@@ -137,13 +137,9 @@ public:
       if (!ang.sPt.empty()){
         opt.getManipulability(ang);
         cout << "sw:\n" << opt.sw << "\n";
-        cv::circle(cv_ptr->image, opt.sw, 20, cv::Scalar(200,0,0),-1);
+        cv::circle(cv_ptr->image, opt.sw, 10, cv::Scalar(200,0,0),-1);
       }
     }
-    // cv::putText(cv_ptr->image, "x", xAxisEnd - cv::Point(10, 10), cv::FONT_HERSHEY_PLAIN, 2, cv::Scalar(0, 0, 255), 2);
-    // cv::arrowedLine(cv_ptr->image, imageOrigin, yAxisEnd, cv::Scalar(0, 255, 0), 2);
-    // cv::putText(cv_ptr->image, "y", yAxisEnd + cv::Point(10, 10), cv::FONT_HERSHEY_PLAIN, 2, cv::Scalar(0, 255, 0), 2);
-
     // end of processing
     cv::imshow(WINDOW, cv_ptr->image);
     cv::waitKey(3);
