@@ -92,6 +92,7 @@ public:
     Size subPixWinSize, winSize;
     vector<Point2f> points[2];
     Mat originImg;
+    bool validFeature = false;
 
     LK_tracker() {}
     LK_tracker(const string winName)
@@ -147,6 +148,7 @@ public:
         angleFeature3Pts res;
         if (points[1].size() < 3){
             std::cout << "No Sufficient Reference Pixels!\n";
+            validFeature = false;
             return res;
         }
         for (int i = 0; i < 3; i++){
@@ -175,6 +177,7 @@ public:
         
         cv::line(originImg, points[1][0], points[1][1], Scalar(0, 0, 255), 2);
         cv::line(originImg, points[1][0], points[1][2], Scalar(0, 0, 255), 2);
+        validFeature = true;
         return res;
     }
 };
@@ -369,7 +372,7 @@ class optConstructor{
 public:
     imgExtractor extractedImg;
     float T_CP;
-    Eigen::Matrix<float, 6, 1> pT_pP;
+    Eigen::Matrix<float, 6, 1> pT_pP;   // partial T partial P
     Point2f ElCentroid;
     Point2f ECentroid;
     Point2f ErCentroid;
@@ -534,7 +537,9 @@ public:
     float alpha;
     img_p pPrev;
     angleFeature3Pts anglePrev;
-    Eigen::Vector2f pVec;
+    Eigen::Vector2f pVecPrev;
+    Eigen::Vector2f pVecCurr;
+    bool initialized = false;
 
     deformJacobian() {}
     deformJacobian(img_p pInitial, angleFeature3Pts angleInitial)
@@ -542,13 +547,24 @@ public:
         dimRow = 2;
         dimCol = 2;
         alpha = 0.2;
-        JdPrev = Eigen::Matrix<float, 2, 2>::Identity();
+        JdPrev = Eigen::Matrix<float, 1, 2>::Ones();
         pPrev = pInitial;
         anglePrev = angleInitial;
+        pVecPrev << (pInitial.sl.x + pInitial.sr.x) / 2,
+                    (pInitial.sl.y + pInitial.sr.x) / 2;
+        initialized = true;
     }
     
-    void update(angleFeature3Pts angleCurr)
+    void update(img_p pCurr,angleFeature3Pts angleCurr)
     {
-        float delta_y = angleCurr.angle - anglePrev.angle;
+        Eigen::Matrix<float, 1, 1> delta_y;
+        delta_y << angleCurr.angle - anglePrev.angle;
+        pVecCurr << (pCurr.sl.x + pCurr.sr.x) / 2,
+                    (pCurr.sl.y + pCurr.sr.y) / 2;
+        Eigen::Vector2f delta_p = pVecCurr - pVecPrev;
+        JdCurr = JdPrev + alpha * (delta_y - JdPrev*delta_p) / (delta_p.transpose()*delta_p) * delta_p.transpose();       
+        JdPrev = JdCurr;
+        anglePrev = angleCurr;
+        pPrev = pCurr;
     }
 };

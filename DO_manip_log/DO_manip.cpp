@@ -45,6 +45,7 @@ public:
   cv::Mat gray, prevGray;
   LK_tracker lk_tracker;
   imgExtractor extractor;
+  deformJacobian deformJd;
   
 public:
   ImageConverter(char* ros_image_stream): it_(nh_)
@@ -62,7 +63,6 @@ public:
 
   void imageCb(const sensor_msgs::ImageConstPtr& msg)
   {
-    namedWindow(WINDOW, 1);
     cv_bridge::CvImagePtr cv_ptr;
     try{
       cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
@@ -74,9 +74,9 @@ public:
 
     cv::Point imageOrigin(320, 240), xAxisEnd(220, 240), yAxisEnd(320, 340);
     cv::Mat HSVImage;
-    cv::Mat cameraMatrix = (cv::Mat_<double>(3, 3) << 683.9731, 0, 320., 
-                                                    0, 683.9731, 240, 
-                                                    0, 0, 1);
+    cv::Mat cameraMatrix = (cv::Mat_<double>(3, 3) << 683.9731, 0, 320, 
+                                                      0, 683.9731, 240, 
+                                                      0, 0, 1);
     cv::Mat distCoef = (cv::Mat_<double>(1, 5) << -0.7175, 2.8528, 0, 0, -5.1548);
     dvrk_retraction::visual_feedback image_info_msg;    
   
@@ -140,6 +140,14 @@ public:
         cv::circle(cv_ptr->image, opt.sw, 10, cv::Scalar(200,0,0),-1);
       }
     }
+
+    if (!deformJd.initialized && lk_tracker.validFeature)
+      deformJd = deformJacobian(extractor.endeffectorP, ang);
+    else if (lk_tracker.validFeature)
+      deformJd.update(extractor.endeffectorP, ang);
+    cout << deformJd.initialized << "\n"  << "Deformation Jacobian:\n"
+         << deformJd.JdCurr << "\n";
+    
     // end of processing
     cv::imshow(WINDOW, cv_ptr->image);
     cv::waitKey(3);
