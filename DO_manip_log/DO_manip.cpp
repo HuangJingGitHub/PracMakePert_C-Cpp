@@ -45,6 +45,7 @@ public:
   cv::Mat gray, prevGray;
   LK_tracker lk_tracker;
   imgExtractor extractor;
+  optConstructor opt;
   deformJacobian deformJd;
   
 public:
@@ -127,7 +128,10 @@ public:
         cv::circle(cv_ptr->image, extractor.DOContours[DOLargestContour][extractor.segmentationIdx[1][1]],
                   5, cv::Scalar(255, 0, 0), -1);       
       }
-      optConstructor opt(extractor);
+      std::vector<Point> newP = extractor.feaibleMotionSearch();
+      cv::line(cv_ptr->image, newP[0], newP[1], cv::Scalar(32,54,134), 2);
+
+      opt = optConstructor(extractor);
       opt.getDeformConstraint();
       cv::circle(cv_ptr->image, opt.ElCentroid, 5, cv::Scalar(0,0,200), -1);
       cv::circle(cv_ptr->image, opt.ECentroid, 5, cv::Scalar(0,0,200), -1);
@@ -167,6 +171,29 @@ public:
     res.target_region_center.push_back(class_target_region_center[0]);
     res.target_region_center.push_back(class_target_region_center[1]);
     res.target_region_radius = class_target_region_radius;
+
+    res.sl.push_back(extractor.endeffectorP.sl.x);
+    res.sl.push_back(extractor.endeffectorP.sl.y);
+    res.sr.push_back(extractor.endeffectorP.sr.x);
+    res.sr.push_back(extractor.endeffectorP.sr.y);
+    res.ne.push_back(extractor.endeffectorP.ne[0]);
+    res.ne.push_back(extractor.endeffectorP.ne[1]);
+
+    res.contactProjectionl.push_back(extractor.DOContour[extractor.segmentationIdx[0][0]].x);
+    res.contactProjectionl.push_back(extractor.DOContour[extractor.segmentationIdx[0][0]].y);
+    res.contactProjectionr.push_back(extractor.DOContour[extractor.segmentationIdx[1][0]].x);
+    res.contactProjectionr.push_back(extractor.DOContour[extractor.segmentationIdx[1][0]].y);
+
+    res.deformAngles = opt.deformAngles;
+
+    res.sw.push_back(opt.sw.x);
+    res.sw.push_back(opt.sw.y);
+    res.indicatorw = opt.indicatorw;
+    res.distancew = opt.distancew;
+
+    res.deformJacobian.push_back(deformJd.JdCurr(0, 0));
+    res.deformJacobian.push_back(deformJd.JdCurr(0, 1));
+
 
     // ROS_INFO("Successfully obtain visual information.\n");
     return true;

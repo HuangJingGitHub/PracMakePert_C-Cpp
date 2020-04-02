@@ -366,6 +366,55 @@ public:
         segmentationIdx[1].push_back(idxr[maxIdxr]);
         return true;
     }
+
+    vector<Point> feaibleMotionSearch(int searchBase = 0)
+    {
+        vector<Point> newPConfig;
+        if (segmentationIdx[0].empty() || segmentationIdx[1].empty()){
+            cout << "Segmentation Has Not Been Performed." << endl;
+            return newPConfig;
+        }
+
+        Point basePt, endPt;
+        float pLength = norm(endeffectorP.sl - endeffectorP.sr);
+        int basePtIdx, endPtIdx, 
+            motionStep = 5;  // The motion step is determined by the contour points for convenience.
+        if (searchBase == 0){
+            basePtIdx = (segmentationIdx[0][0] + motionStep) > (DOContour.size()-1) ? 0 : segmentationIdx[0][0] + motionStep;
+            basePt = DOContour[basePtIdx];           
+            if (basePtIdx == DOContour.size() - 1)
+                endPtIdx = 0;
+            else 
+                endPtIdx = basePtIdx + 1;
+
+            for (int i = endPtIdx; DOContour[i].x > basePt.x; i++){  // Igonre the extreme case where basePt is the left-most point.
+                if (i == DOContour.size() - 1)
+                    i = -1;
+                endPtIdx = (abs(norm(DOContour[i]-basePt) - pLength) < abs(norm(DOContour[endPtIdx]-basePt) - pLength))
+                            ? i : endPtIdx;
+            }
+            endPt = DOContour[endPtIdx];
+        }     
+        else{
+            basePtIdx = (segmentationIdx[1][0] + motionStep) > (DOContour.size()-1) ? 0 : segmentationIdx[1][0] + motionStep;
+            basePt = DOContour[basePtIdx];
+            if (basePtIdx == 0)
+                endPtIdx = DOContour.size() - 1;
+            else
+                endPtIdx = basePtIdx - 1;
+
+            for (int i = endPtIdx; DOContour[i].x < basePt.x; i--){ // Igonre the extreme case where basePt is the right-most point.
+                if (i == 0)
+                    i = DOContour.size() - 1;
+                endPtIdx = (abs(norm(DOContour[i]-basePt) - pLength) < abs(norm(DOContour[endPtIdx]-basePt) - pLength))
+                            ? i : endPtIdx;
+            }
+            endPt = DOContour[endPtIdx];
+        }
+        newPConfig.push_back(basePt);
+        newPConfig.push_back(endPt);
+        return newPConfig;
+    }
 };
 
 class optConstructor{
@@ -378,8 +427,10 @@ public:
     Point2f ErCentroid;
     Point2f PrialDirtl;
     Point2f PrialDirtr;
-    vector<float> deformAngle;
-    Point2f sw;
+    vector<float> deformAngles;
+    Point2f sw;  // Weighted equivalent visual feedback point
+    int indicatorw;
+    float distancew;
 
     optConstructor() {}
     optConstructor(imgExtractor &extractor)
@@ -438,7 +489,7 @@ public:
             Er.insert(Er.end(), (*contourPtr).begin() + k3, (*contourPtr).end());
             E = vector<Point>((*contourPtr).begin() + k4, (*contourPtr).begin() + k2 + 1);
             E.insert(E.end(), (*contourPtr).begin() + k1, (*contourPtr).begin() + k3 + 1);
-        }
+        }// Igonre the extreme case where basePt is the left-most point.
         else{
             cout << "Bad Segmentation Of The Contour!" << endl;
             return;
@@ -467,9 +518,9 @@ public:
                                   extractedImg.endeffectorP.sr.y - extractedImg.endeffectorP.sl.y);
         float anglel = acos(planeDirt.dot(eigVecl1) / (planeDirt.norm()*eigVecl1.norm())) * 180 / M_PI,
               angler = acos(planeDirt.dot(eigVecr1) / (planeDirt.norm()*eigVecr1.norm())) * 180 / M_PI;
-        deformAngle.clear();
-        deformAngle.push_back(anglel);
-        deformAngle.push_back(angler);
+        deformAngles.clear();
+        deformAngles.push_back(anglel);
+        deformAngles.push_back(angler);
     }
 
     void getManipulability(angleFeature3Pts angFeature){
@@ -483,24 +534,24 @@ public:
               refr = a*sm.x + b*sm.y + cr,
               episilonIn = 20,
               episilonOut = 100;  // The distance is in the range of several tens pixels.
-        vector<int> EIndictor(3,0);
+        vector<int> EIndicator(3,0);
         vector<float> distance(3,0), Wi(3,0);
         for (int i = 0; i < 3; i++){
             float linel = a*angFeature.sPt[i].x + b*angFeature.sPt[i].y + cl,
                   liner = a*angFeature.sPt[i].x + b*angFeature.sPt[i].y + cr;
             if (linel*refl >= 0 && liner*refr >= 0){
-                EIndictor[i] = 1;
+                EIndicator[i] = 1;
                 distance[i] = divCof * abs(b*angFeature.sPt[i].x - a*angFeature.sPt[i].y - 
                               b*extractedImg.endeffectorP.sl.x + a*extractedImg.endeffectorP.sl.y);
                 Wi[i] = 1 / (distance[i] + episilonIn);
             }
             else if (linel*refl < 0){
-                EIndictor[i] = 0;
+                EIndicator[i] = 0;
                 distance[i] = abs(linel) * divCof;
                 Wi[i] = 1 / (distance[i] + episilonOut);
             }
             else{
-                EIndictor[i] = 0;
+                EIndicator[i] = 0;
                 distance[i] = abs(liner) * divCof;
                 Wi[i] = 1 / (distance[i] + episilonOut); 
             }
@@ -517,6 +568,7 @@ public:
         cout << "Angle Feature Jacobian:\n" << angFeature.gradient << "\n";
         Eigen::Matrix<float, 1, 6> weightedGradient = angFeature.gradient * Dw;
         cout << "weightedGradient:\n" << weightedGradient << "\n";
+        
         sw = Point2f(0,0);
         for (int i = 0; i < 3; i++){
             cout << "weight:\n"
@@ -524,6 +576,21 @@ public:
                  << "\n";
             sw += (weightedGradient.col(2*i).lpNorm<1>() + weightedGradient.col(2*i+1).lpNorm<1>())
                   / weightedGradient.lpNorm<1>() * angFeature.sPt[i];
+        }
+        float linelw = a*sw.x + b*sw.y + cl,
+              linerw = a*sw.x + b*sw.y + cr;
+        if (linelw*refl >= 0 && linerw*refr >= 0){
+            indicatorw = 1;
+            distancew = divCof * abs(b*sw.x - a*sw.y - 
+                        b*extractedImg.endeffectorP.sl.x + a*extractedImg.endeffectorP.sl.y);
+        }
+        else if (linelw*refl < 0){
+            indicatorw = -1;
+            distancew = abs(linelw) * divCof;
+        }
+        else{
+            indicatorw = -2;
+            distancew = abs(linerw) * divCof;
         }
     }
 };
@@ -538,7 +605,7 @@ public:
     img_p pPrev;
     angleFeature3Pts anglePrev;
     Eigen::Vector2f pVecPrev;
-    Eigen::Vector2f pVecCurr;
+    Eigen::Vector2f pVecCurr;  // Vector of the middle point of sl, sr is used as the equivalent end-effector contact point.
     bool initialized = false;
 
     deformJacobian() {}
