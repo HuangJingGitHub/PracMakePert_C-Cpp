@@ -34,19 +34,12 @@ class ImageConverter
   float depth = 58;
 
 public:
-  std::vector<float> class_centroid;
-  std::vector<float> class_rotate_origin;
-  std::vector<float> class_principal_axis;
-  float class_rotate_angle;
-  std::vector<float> class_target_region_center;
-  float class_target_region_radius;
-  std::vector<float> global_radius{0,0};
-  int counter_radius = 0;
   cv::Mat gray, prevGray;
   LK_tracker lk_tracker;
   imgExtractor extractor;
   optConstructor opt;
   deformJacobian deformJd;
+  angleFeature3Pts featureAngle;
   
 public:
   ImageConverter(char* ros_image_stream): it_(nh_)
@@ -88,7 +81,7 @@ public:
     if (prevGray.empty())
       gray.copyTo(prevGray);
     lk_tracker.track(cv_ptr->image, gray, prevGray);
-    angleFeature3Pts ang = lk_tracker.angle3Pts();
+    featureAngle = lk_tracker.angle3Pts();
 
     extractor = imgExtractor(HSVImage);
     extractor.extract();
@@ -138,17 +131,17 @@ public:
       cv::circle(cv_ptr->image, opt.ErCentroid, 5, cv::Scalar(0,0,200), -1);
       cv::arrowedLine(cv_ptr->image, opt.ElCentroid, opt.ElCentroid+50*opt.PrialDirtl, cv::Scalar(0,0,200),2);
       cv::arrowedLine(cv_ptr->image, opt.ErCentroid, opt.ErCentroid+50*opt.PrialDirtr, cv::Scalar(0,0,200),2);
-      if (!ang.sPt.empty()){
-        opt.getManipulability(ang);
+      if (!featureAngle.sPt.empty()){
+        opt.getManipulability(featureAngle);
         cout << "sw:\n" << opt.sw << "\n";
         cv::circle(cv_ptr->image, opt.sw, 10, cv::Scalar(200,0,0),-1);
       }
     }
 
     if (!deformJd.initialized && lk_tracker.validFeature)
-      deformJd = deformJacobian(extractor.endeffectorP, ang);
+      deformJd = deformJacobian(extractor.endeffectorP, featureAngle);
     else if (lk_tracker.validFeature)
-      deformJd.update(extractor.endeffectorP, ang);
+      deformJd.update(extractor.endeffectorP, featureAngle);
     cout << deformJd.initialized << "\n"  << "Deformation Jacobian:\n"
          << deformJd.JdCurr << "\n";
     
@@ -161,17 +154,6 @@ public:
   bool get_visual_info_srv(dvrk_retraction::visual_info_srv::Request &req,
                           dvrk_retraction::visual_info_srv::Response &res)
   {
-    res.centroid.push_back(class_centroid[0]);
-    res.centroid.push_back(class_centroid[1]);
-    res.rotate_origin.push_back(class_rotate_origin[0]);
-    res.rotate_origin.push_back(class_rotate_origin[1]);
-    res.principal_axis.push_back(class_principal_axis[0]);
-    res.principal_axis.push_back(class_principal_axis[1]);
-    res.rotate_angle = class_rotate_angle;
-    res.target_region_center.push_back(class_target_region_center[0]);
-    res.target_region_center.push_back(class_target_region_center[1]);
-    res.target_region_radius = class_target_region_radius;
-
     res.sl.push_back(extractor.endeffectorP.sl.x);
     res.sl.push_back(extractor.endeffectorP.sl.y);
     res.sr.push_back(extractor.endeffectorP.sr.x);
@@ -191,6 +173,7 @@ public:
     res.indicatorw = opt.indicatorw;
     res.distancew = opt.distancew;
 
+    res.featureAngley = featureAngle.angle;
     res.deformJacobian.push_back(deformJd.JdCurr(0, 0));
     res.deformJacobian.push_back(deformJd.JdCurr(0, 1));
 
