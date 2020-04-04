@@ -65,7 +65,7 @@ public:
     }
 
     ~webcam_test(){
-        destroyWindow("Source Video Stream");  // Destroy window
+        destroyWindow("Source Video Stream"); 
     }
 };
 
@@ -82,15 +82,12 @@ public:
         if (!capLeft.isOpened() || !capRight.isOpened() ){	// if not success, exit program
             cout <<  "Cannot open the Webcams" << endl;
             return;
-
         }else if (!capRight.isOpened() && capLeft.isOpened()){
             cout <<  "Cannot open the right scope" << endl;
             return;
-
         }else if (capRight.isOpened() && !capLeft.isOpened()){
             cout <<  "Cannot open the left scope" << endl;
             return;
-
         }else if (capRight.isOpened() && capLeft.isOpened()){
 
         /*capLeft.set(CAP_PROP_FRAME_WIDTH,640);
@@ -157,7 +154,7 @@ public:
     }
 
     ~stereo_test(){
-        destroyWindow("Left Scope Video Stream");  // Destroy window
+        destroyWindow("Left Scope Video Stream"); 
         destroyWindow("Right Scope Video Stream");
     }
 };
