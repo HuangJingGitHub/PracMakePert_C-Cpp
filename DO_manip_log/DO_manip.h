@@ -367,7 +367,7 @@ public:
         return true;
     }
 
-    vector<Point> feaibleMotionSearch(int searchBase = 0)
+    vector<Point> feaibleMotionSearch(int searchBase = 0) // searchBase == 0, rightwards, searchBase == 1, leftwards
     {
         vector<Point> newPConfig;
         if (segmentationIdx[0].empty() || segmentationIdx[1].empty()){
@@ -489,7 +489,7 @@ public:
             Er.insert(Er.end(), (*contourPtr).begin() + k3, (*contourPtr).end());
             E = vector<Point>((*contourPtr).begin() + k4, (*contourPtr).begin() + k2 + 1);
             E.insert(E.end(), (*contourPtr).begin() + k1, (*contourPtr).begin() + k3 + 1);
-        }// Igonre the extreme case where basePt is the left-most point.
+        }   // Igonre the extreme case where basePt is the left-most point.
         else{
             cout << "Bad Segmentation Of The Contour!" << endl;
             return;
