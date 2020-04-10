@@ -14,8 +14,8 @@ Deformable objects manipulation_main
 #include <opencv2/photo.hpp>    // denoising module
 #include <eigen3/Eigen/Dense>
 #include <eigen3/Eigen/Eigenvalues>
-#include "dvrk_retraction/visual_feedback.h"
-#include "dvrk_retraction/visual_info_srv.h"
+#include "do_manip/visual_info_msg.h"
+#include "do_manip/visual_info_srv.h"
 #include "DO_manip.h"
 
 // namespace enc = sensor_msgs::image_encodings;
@@ -24,8 +24,8 @@ const std::string WINDOW = "New OpenCV Image";
 class ImageConverter
 {
   ros::NodeHandle nh_;
-  ros::Publisher image_info_pub = nh_.advertise<dvrk_retraction::visual_feedback>("visual_info", 500);
-  ros::ServiceServer visual_info_service = nh_.advertiseService("visual_info_srv", &ImageConverter::get_visual_info_srv, this);
+  ros::Publisher image_info_pub = nh_.advertise<do_manip::visual_info_msg>("visual_info", 500);
+  ros::ServiceServer visual_info_service = nh_.advertiseService("visual_info_service", &ImageConverter::get_visual_info_srv, this);
   image_transport::ImageTransport it_;
   image_transport::Subscriber image_sub_;
   //image_transport::Publisher image_pub_;
@@ -72,7 +72,7 @@ public:
                                                       0, 683.9731, 240, 
                                                       0, 0, 1);
     cv::Mat distCoef = (cv::Mat_<double>(1, 5) << -0.7175, 2.8528, 0, 0, -5.1548);
-    dvrk_retraction::visual_feedback image_info_msg;    
+    do_manip::visual_info_msg image_info_msg;    
   
     cv::cvtColor(cv_ptr->image, HSVImage, COLOR_BGR2HSV);
     cv::GaussianBlur(HSVImage, HSVImage, cv::Size(3, 3), 5, 5);
@@ -112,13 +112,13 @@ public:
         std::cout << "DO and End-Effector Detection Failed!\n";
 
       if (extractor.segment(extractor.DOContours[DOLargestContour])){
-        cv::circle(cv_ptr->image, extractor.DOContours[DOLargestContour][extractor.segmentationIdx[0][0]],
+        cv::circle(cv_ptr->image, extractor.DOContour[extractor.segmentationIdx[0][0]],
                   5, cv::Scalar(255, 0, 0), -1);
-        cv::circle(cv_ptr->image, extractor.DOContours[DOLargestContour][extractor.segmentationIdx[0][1]],
+        cv::circle(cv_ptr->image, extractor.DOContour[extractor.segmentationIdx[0][1]],
                   5, cv::Scalar(255, 0, 0), -1); 
-        cv::circle(cv_ptr->image, extractor.DOContours[DOLargestContour][extractor.segmentationIdx[1][0]],
+        cv::circle(cv_ptr->image, extractor.DOContour[extractor.segmentationIdx[1][0]],
                   5, cv::Scalar(255, 0, 0), -1);
-        cv::circle(cv_ptr->image, extractor.DOContours[DOLargestContour][extractor.segmentationIdx[1][1]],
+        cv::circle(cv_ptr->image, extractor.DOContour[extractor.segmentationIdx[1][1]],
                   5, cv::Scalar(255, 0, 0), -1);       
       }
       std::vector<Point> newP = extractor.feaibleMotionSearch();
@@ -134,7 +134,7 @@ public:
       if (!featureAngle.sPt.empty()){
         opt.getManipulability(featureAngle);
         cout << "sw:\n" << opt.sw << "\n";
-        cv::circle(cv_ptr->image, opt.sw, 10, cv::Scalar(200,0,0),-1);
+        cv::circle(cv_ptr->image, opt.sw, 8, cv::Scalar(200,0,0),-1);
       }
     }
 
@@ -151,8 +151,8 @@ public:
     image_info_pub.publish(image_info_msg);
   }
 
-  bool get_visual_info_srv(dvrk_retraction::visual_info_srv::Request &req,
-                          dvrk_retraction::visual_info_srv::Response &res)
+  bool get_visual_info_srv(do_manip::visual_info_srv::Request &req,
+                          do_manip::visual_info_srv::Response &res)
   {
     res.sl.push_back(extractor.endeffectorP.sl.x);
     res.sl.push_back(extractor.endeffectorP.sl.y);
@@ -165,6 +165,10 @@ public:
     res.contactProjectionl.push_back(extractor.DOContour[extractor.segmentationIdx[0][0]].y);
     res.contactProjectionr.push_back(extractor.DOContour[extractor.segmentationIdx[1][0]].x);
     res.contactProjectionr.push_back(extractor.DOContour[extractor.segmentationIdx[1][0]].y);
+    res.contactDistancelr.push_back(cv::norm(extractor.endeffectorP.sl 
+                                    - extractor.DOContour[extractor.segmentationIdx[0][0]]));
+    res.contactDistancelr.push_back(cv::norm(extractor.endeffectorP.sr 
+                                    - extractor.DOContour[extractor.segmentationIdx[1][0]]));
 
     res.deformAngles = opt.deformAngles;
 
