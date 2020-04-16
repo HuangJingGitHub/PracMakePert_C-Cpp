@@ -213,8 +213,8 @@ public:
     imgExtractor() {}
     imgExtractor(const string winName)
     {
-        DOHSVLow = Scalar(8, 97, 155);
-        DOHSVHigh = Scalar(35, 255, 255);
+        DOHSVLow = Scalar(91, 79, 123);
+        DOHSVHigh = Scalar(180, 255, 255);
         //originHSVImg = HSVImg;
 
         winTrack = winName;
@@ -224,7 +224,7 @@ public:
         winSize = Size(31, 31);
     }
 
-    void extract(Mat& image, Mat& HSVImg, Mat& gray, Mat& prevGray)
+    void extract(Mat& image, Mat& HSVImg, Mat& gray, Mat& prevGray, int occlusion = 0)
     {
         originHSVImg = HSVImg;
         if (originHSVImg.empty()){
@@ -251,14 +251,23 @@ public:
             DOExtractSucceed = true;
         }
 
+        if (occlusion != 0){
+            int sndLargestCotrIdx = (DOLargestCotrIdx == 0) ? 1 : 0;
+            for (int i = 0; i < DOContours.size(); i++){
+                sndLargestCotrIdx = (DOContours[i].size() > DOContours[sndLargestCotrIdx].size() && i != DOLargestCotrIdx)
+                                    ? i : sndLargestCotrIdx;
+            }
+            DOContour.insert(DOContour.end(), DOContours[sndLargestCotrIdx].begin(), DOContours[sndLargestCotrIdx].end());
+            DOContours[DOLargestCotrIdx] = DOContour; 
+        }
+
         if (!pPoints[0].empty()){
             cout << "Enter the endeffector tracking process1 --->\n";
             vector<uchar> status;
             vector<float> err;
             if (prevGray.empty())
                 gray.copyTo(prevGray);
-            calcOpticalFlowPyrLK(prevGray, gray, pPoints[0], pPoints[1], status, err, winSize, 
-                                3, termcrit, 0, 0.001);
+            calcOpticalFlowPyrLK(prevGray, gray, pPoints[0], pPoints[1], status, err, winSize, 3, termcrit, 0, 0.001);
             size_t i, k;
             for (i = k = 0; i < pPoints[1].size(); i++){
                 if (pAddRemovePt){
@@ -270,7 +279,7 @@ public:
                 if (!status[i])
                     continue;
                 pPoints[1][k++] = pPoints[1][i];
-                circle(image, pPoints[1][i], 10, Scalar(255, 0, 0), -1, 8);
+                circle(image, pPoints[1][i], 4, Scalar(255, 0, 0), -1, 8);
             }
             pPoints[1].resize(k);
         }
@@ -278,7 +287,7 @@ public:
             cout << "Enter the endeffector tracking process2 --->\n";
             vector<Point2f> tmp;
             tmp.push_back(pTrack_point);
-            cornerSubPix(gray, tmp, winSize, Size(-1, -1), termcrit);
+            // cornerSubPix(gray, tmp, winSize, Size(-1, -1), termcrit);
             pPoints[1].push_back(tmp[0]);
             pAddRemovePt = false;
         }
@@ -388,9 +397,9 @@ public:
             else 
                 endPtIdx = basePtIdx + 1;
 
-            for (int i = endPtIdx; DOContour[i].x > basePt.x; i++){  // Igonre the extreme case where basePt is the left-most point.
+            for (int i = endPtIdx; DOContour[i].x > DOContour[i-1].x; i++){  // Igonre the extreme case where basePt is the left-most point.
                 if (i == DOContour.size() - 1)
-                    i = -1;
+                    i = 0;
                 endPtIdx = (abs(norm(DOContour[i]-basePt) - pLength) < abs(norm(DOContour[endPtIdx]-basePt) - pLength))
                             ? i : endPtIdx;
             }
@@ -404,9 +413,9 @@ public:
             else
                 endPtIdx = basePtIdx - 1;
 
-            for (int i = endPtIdx; DOContour[i].x < basePt.x; i--){ // Igonre the extreme case where basePt is the right-most point.
+            for (int i = endPtIdx; DOContour[i].x < DOContour[i+1].x; i--){ // Igonre the extreme case where basePt is the right-most point.
                 if (i == 0)
-                    i = DOContour.size() - 1;
+                    i = DOContour.size() - 2;
                 endPtIdx = (abs(norm(DOContour[i]-basePt) - pLength) < abs(norm(DOContour[endPtIdx]-basePt) - pLength))
                             ? i : endPtIdx;
             }
