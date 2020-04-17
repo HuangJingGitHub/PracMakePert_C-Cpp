@@ -106,8 +106,10 @@ public:
         std::cout << "End-Effector Detection Failed!\n";
       else
         std::cout << "DO and End-Effector Detection Failed!\n";
-
+      
+      std::cout << "OK3\n";
       if (extractor.segment(extractor.DOContour)){
+        std::cout << "OK4\n";
         cv::circle(cv_ptr->image, extractor.DOContour[extractor.segmentationIdx[0][0]],
                   5, cv::Scalar(255, 0, 0), -1);
         cv::circle(cv_ptr->image, extractor.DOContour[extractor.segmentationIdx[0][1]],
@@ -115,7 +117,11 @@ public:
         cv::circle(cv_ptr->image, extractor.DOContour[extractor.segmentationIdx[1][0]],
                   5, cv::Scalar(255, 0, 0), -1);
         cv::circle(cv_ptr->image, extractor.DOContour[extractor.segmentationIdx[1][1]],
-                  5, cv::Scalar(255, 0, 0), -1);       
+                  5, cv::Scalar(255, 0, 0), -1); 
+        cv::line(cv_ptr->image, extractor.DOContour[extractor.segmentationIdx[0][0]],
+                extractor.DOContour[extractor.segmentationIdx[0][1]], cv::Scalar(0,0,255), 2); 
+        cv::line(cv_ptr->image, extractor.DOContour[extractor.segmentationIdx[1][0]],
+                extractor.DOContour[extractor.segmentationIdx[1][1]], cv::Scalar(0,0,255), 2);                     
       }
       std::vector<Point> newP = extractor.feaibleMotionSearch();
       cv::line(cv_ptr->image, newP[0], newP[1], cv::Scalar(32,54,134), 2);
