@@ -107,9 +107,7 @@ public:
       else
         std::cout << "DO and End-Effector Detection Failed!\n";
       
-      std::cout << "OK3\n";
       if (extractor.segment(extractor.DOContour)){
-        std::cout << "OK4\n";
         cv::circle(cv_ptr->image, extractor.DOContour[extractor.segmentationIdx[0][0]],
                   5, cv::Scalar(255, 0, 0), -1);
         cv::circle(cv_ptr->image, extractor.DOContour[extractor.segmentationIdx[0][1]],
@@ -128,6 +126,7 @@ public:
 
       opt = optConstructor(extractor);
       opt.getDeformConstraint();
+      std::cout << "deformtion angles: " << opt.deformAngles[0] << " " << opt.deformAngles[1] << "\n";
       cv::circle(cv_ptr->image, opt.ElCentroid, 5, cv::Scalar(0,0,200), -1);
       cv::circle(cv_ptr->image, opt.ECentroid, 5, cv::Scalar(0,0,200), -1);
       cv::circle(cv_ptr->image, opt.ErCentroid, 5, cv::Scalar(0,0,200), -1);
@@ -171,8 +170,9 @@ public:
                                     - extractor.DOContour[extractor.segmentationIdx[0][0]]));
     res.contactDistancelr.push_back(cv::norm(extractor.endeffectorP.sr 
                                     - extractor.DOContour[extractor.segmentationIdx[1][0]]));
-
-    res.deformAngles = opt.deformAngles;
+    
+    res.deformAngles.push_back(opt.deformAngles[0]);
+    res.deformAngles.push_back(opt.deformAngles[1]);
 
     res.sw.push_back(opt.sw.x);
     res.sw.push_back(opt.sw.y);

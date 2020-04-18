@@ -213,8 +213,8 @@ public:
     imgExtractor() {}
     imgExtractor(const string winName)
     {
-        DOHSVLow = Scalar(8, 97, 155);
-        DOHSVHigh = Scalar(35, 255, 255);
+        DOHSVLow = Scalar(0, 58, 194);
+        DOHSVHigh = Scalar(40, 255, 255);
 
         winTrack = winName;
         termcrit = TermCriteria(TermCriteria::COUNT | TermCriteria::EPS, 20, 0.03);
@@ -292,7 +292,6 @@ public:
         }
         std::swap(pPoints[1], pPoints[0]);
         std::swap(prevGray, gray);
-        cout << "OK1\n";
         
         PExtractSucceed = (pPoints[1].size() == 2);
         extractSucceed = DOExtractSucceed && PExtractSucceed;
@@ -333,8 +332,7 @@ public:
               distancel, distancer;
         vector<int> idxl, idxr;
         // vector<float> disLog;
-        int distanceThreshold = 20, step = 1;
-        cout << "OK5\n";
+        int distanceThreshold = 15, step = 1;
         for (int i = 0; contour.size() - i > step; i+=step){
             distancel = abs(a*contour[i].x + b*contour[i].y + cl) * divCof;
             distancer = abs(a*contour[i].x + b*contour[i].y + cr) * divCof;
@@ -348,7 +346,7 @@ public:
             cout << "Invalid Segmentation. Maybe A Samll Threshold Distance Or A Large Step Is Given." << endl;
             return false;
         }
-        cout << "OK6\n";
+
         int  segIdx1 = idxl[0], segIdx2;
         float distanceSeg;
         bool gap = false;
@@ -369,7 +367,7 @@ public:
                     gap = !gap;
             }
         }
-        cout << "OK7\n";
+        
         segmentationIdx[0].clear();
         if (norm(contour[segIdx1] - endeffectorP.sl) < norm(contour[segIdx2] - endeffectorP.sl)){
             segmentationIdx[0].push_back(segIdx1);
@@ -379,17 +377,12 @@ public:
             segmentationIdx[0].push_back(segIdx2);
             segmentationIdx[0].push_back(segIdx1);           
         }
-        cout << "OK8\n";
-        for (auto x:idxr)
-            cout << x << "\n";
 
         segIdx1 = idxr[0];
         gap = false;
         for (int gapPos = 0; gapPos+1 < idxr.size(); gapPos++){
             distancer = abs(a*contour[idxr[gapPos]].x + b*contour[idxr[gapPos]].y + cr) * divCof;
-            cout << idxr[gapPos];
             if (!gap){
-                cout << "--->Loop1\n";
                 distanceSeg = abs(a*contour[segIdx1].x + b*contour[segIdx1].y + cr) * divCof; 
                 segIdx1 = (distanceSeg < distancer) ? segIdx1 : idxr[gapPos];
                 if (idxr[gapPos+1] - idxr[gapPos] != 1){
@@ -398,15 +391,13 @@ public:
                 }
             }
             else{
-                cout << "--->Loop2\n";
                 distanceSeg = abs(a*contour[segIdx2].x + b*contour[segIdx2].y + cr) * divCof; 
                 segIdx2 = (distanceSeg < distancer) ? segIdx2 : idxr[gapPos];
                 if (idxr[gapPos+1] - idxr[gapPos] != 1)
                     gap = !gap;
             }
-            cout << "seg1 & seg2 " << segIdx1 << " " << segIdx2 << "\n" << distanceSeg << " " << distancer << "\n";
         }
-        cout << "OK9\n";
+
         segmentationIdx[1].clear();
         if (norm(contour[segIdx1] - endeffectorP.sr) < norm(contour[segIdx2] - endeffectorP.sr)){
             segmentationIdx[1].push_back(segIdx1);
@@ -540,7 +531,6 @@ public:
             k3 = extractedImg.segmentationIdx[1][0], k4 = extractedImg.segmentationIdx[1][1];
         cout << "k1-k2-k3-k4:\n" << k1 << "-" << k2 << "-" << k3 << "-" << k4 << "\n";
         if (k2 <= k1 && k1 <= k3 && k3 <= k4){
-            cout << "case1\n";
             El = vector<Point>((*contourPtr).begin() + k2, (*contourPtr).begin() + k1 + 1);
             Er = vector<Point>((*contourPtr).begin() + k3, (*contourPtr).begin() + k4 + 1);
             E = vector<Point>((*contourPtr).begin(), (*contourPtr).begin() + k2 + 1);
@@ -548,7 +538,6 @@ public:
             E.insert(E.end(), (*contourPtr).begin() + k4, (*contourPtr).end());
         }
         else if (k1 <= k3 && k3 <= k4 && k4 <= k2){
-            cout << "case2\n";
             El = vector<Point>((*contourPtr).begin() + k2, (*contourPtr).end());
             El.insert(El.end(), (*contourPtr).begin(), (*contourPtr).begin() + k1 + 1);
             Er = vector<Point>((*contourPtr).begin() + k3, (*contourPtr).begin() + k4 + 1);
@@ -557,7 +546,6 @@ public:
             E.insert(E.end(), (*contourPtr).begin(), (*contourPtr).begin() + k2 + 1);
         }
         else if (k3 <= k4 && k4 <= k2 && k2 <= k1){
-            cout << "case3\n";
             El = vector<Point>((*contourPtr).begin() + k2, (*contourPtr).begin() + k1 + 1);
             Er = vector<Point>((*contourPtr).begin() + k3, (*contourPtr).begin() + k4 + 1);
             E = vector<Point>((*contourPtr).begin(), (*contourPtr).begin() + k3 + 1);
@@ -565,7 +553,6 @@ public:
             E.insert(E.end(), (*contourPtr).begin() + k1, (*contourPtr).end());
         }
         else if (k4 <= k2 && k2 <= k1 && k1 <= k3){
-            cout << "case4\n";
             El = vector<Point>((*contourPtr).begin() + k2, (*contourPtr).begin() + k1 + 1);
             Er = vector<Point>((*contourPtr).begin(), (*contourPtr).begin() + k4 + 1);
             Er.insert(Er.end(), (*contourPtr).begin() + k3, (*contourPtr).end());
