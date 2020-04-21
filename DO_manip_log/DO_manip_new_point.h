@@ -743,6 +743,7 @@ public:
         JdPrev = JdCurr;
         anglePrev = angleCurr;
         pPrev = pCurr;
+        pVecPrev = pVecCurr;
     }
 };
 
@@ -778,10 +779,10 @@ public:
                     (pCurr.sl.y + pCurr.sr.y) / 2;
         Eigen::Vector2f delta_p = pVecCurr - pVecPrev;
         
-        cout << "Jd Update Info:\n"
+        cout << "Jd Update Data:\n"
              << "Previous Jd:\n" << JdPrev << "\n"
-             << "delta_y: " << delta_y << "\n"
-             << "delta_p: " << delta_p << "\n";
+             << "delta_y:\n" << delta_y << "\n"
+             << "delta_p:\n" << delta_p << "\n";
         if (delta_p.norm() < 0.001)
             JdCurr = JdPrev;
         else
@@ -789,5 +790,6 @@ public:
         JdPrev = JdCurr;
         ptPrev = ptCurr;
         pPrev = pCurr;
+        pVecPrev = pVecCurr;
     }
 };

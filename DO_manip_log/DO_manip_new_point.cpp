@@ -18,8 +18,10 @@ Deformable objects manipulation_main
 #include "do_manip/visual_info_srv.h"
 #include "DO_manip_new_point.h"
 
-// namespace enc = sensor_msgs::image_encodings;
-const std::string WINDOW = "New OpenCV Image";
+using namespace cv;
+using namespace std;
+
+const string WINDOW = "New OpenCV Image";
 
 class ImageConverter
 {
@@ -30,7 +32,7 @@ class ImageConverter
   image_transport::Subscriber image_sub_;
 
 public:
-  cv::Mat gray, prevGray;
+  Mat gray, prevGray;
   LK_tracker lk_tracker;
   imgExtractor extractor;
   optConstructor opt;
@@ -43,12 +45,12 @@ public:
     image_sub_ = it_.subscribe(ros_image_stream, 30, &ImageConverter::imageProcess, this);
     lk_tracker = LK_tracker(WINDOW);
     extractor = imgExtractor(WINDOW);
-    cv::namedWindow(WINDOW);
+    namedWindow(WINDOW);
   }
 
   ~ImageConverter()
   {
-    cv::destroyWindow(WINDOW);
+    destroyWindow(WINDOW);
   }
 
   void imageProcess(const sensor_msgs::ImageConstPtr& msg)
@@ -62,66 +64,66 @@ public:
       return;
     }
 
-    cv::Point imageOrigin(320, 240), xAxisEnd(220, 240), yAxisEnd(320, 340);
-    cv::Mat HSVImage;   
-    cv::cvtColor(cv_ptr->image, HSVImage, COLOR_BGR2HSV);
-    cv::GaussianBlur(HSVImage, HSVImage, cv::Size(3, 3), 5, 5);
+    Point imageOrigin(320, 240), xAxisEnd(220, 240), yAxisEnd(320, 340);
+    Mat HSVImage;   
+    cvtColor(cv_ptr->image, HSVImage, COLOR_BGR2HSV);
+    GaussianBlur(HSVImage, HSVImage, Size(3, 3), 5, 5);
     do_manip::visual_info_msg image_info_msg; 
 
-    cv::cvtColor(cv_ptr->image, gray, COLOR_BGR2GRAY);
+    cvtColor(cv_ptr->image, gray, COLOR_BGR2GRAY);
     if (prevGray.empty())
       gray.copyTo(prevGray);
     lk_tracker.track(cv_ptr->image, gray, prevGray);
 
     extractor.extract(cv_ptr->image, HSVImage, gray, prevGray);
     if (extractor.extractSucceed){
-      cv::drawContours(cv_ptr->image, extractor.DOContours, extractor.DOLargestCotrIdx, cv::Scalar(255, 0, 0), 2);
+      drawContours(cv_ptr->image, extractor.DOContours, extractor.DOLargestCotrIdx, Scalar(255, 0, 0), 2);
       extractor.effectorCharacterize();
 
       if (extractor.effectorCharacterizeSucceed){
-        cv::putText(cv_ptr->image, "s_l", extractor.endeffectorP.sl - cv::Point(5,5), 
-                    cv::FONT_HERSHEY_PLAIN, 1.5, cv::Scalar(0,0,0), 2);
-        cv::putText(cv_ptr->image, "s_r", extractor.endeffectorP.sr - cv::Point(5,5), 
-                    cv::FONT_HERSHEY_PLAIN, 1.5, cv::Scalar(0,0,0), 2);
-        cv::Point2f neDirt(extractor.endeffectorP.ne(0), extractor.endeffectorP.ne(1));
-        cv::Point2f PMid = (extractor.endeffectorP.sl + extractor.endeffectorP.sr) / 2;
-        cv::circle(cv_ptr->image, PMid, 5, cv::Scalar(255, 0, 0), -1);
-        cv::arrowedLine(cv_ptr->image, PMid, PMid + 60*neDirt, cv::Scalar(255, 0, 0), 2);  
+        putText(cv_ptr->image, "s_l", extractor.endeffectorP.sl - Point(5,5), 
+                FONT_HERSHEY_PLAIN, 1.5, Scalar(0,0,0), 2);
+        putText(cv_ptr->image, "s_r", extractor.endeffectorP.sr - Point(5,5), 
+                FONT_HERSHEY_PLAIN, 1.5, Scalar(0,0,0), 2);
+        Point2f neDirt(extractor.endeffectorP.ne(0), extractor.endeffectorP.ne(1));
+        Point2f PMid = (extractor.endeffectorP.sl + extractor.endeffectorP.sr) / 2;
+        circle(cv_ptr->image, PMid, 5, Scalar(255, 0, 0), -1);
+        arrowedLine(cv_ptr->image, PMid, PMid + 60*neDirt, Scalar(255, 0, 0), 2);  
       }
       else if (!extractor.DOExtractSucceed)
-        std::cout << "Deformable Object Detection Failed!\n";
+        cout << "Deformable Object Detection Failed!\n";
       else if (!extractor.PExtractSucceed)
-        std::cout << "End-Effector Detection Failed!\n";
+        cout << "End-Effector Detection Failed!\n";
       else
-        std::cout << "DO and End-Effector Detection Failed!\n";
+        cout << "DO and End-Effector Detection Failed!\n";
       
       if (extractor.segment(extractor.DOContour)){
-        cv::circle(cv_ptr->image, extractor.DOContour[extractor.segmentationIdx[0][0]],
-                  5, cv::Scalar(255, 0, 0), -1);
-        cv::circle(cv_ptr->image, extractor.DOContour[extractor.segmentationIdx[0][1]],
-                  5, cv::Scalar(255, 0, 0), -1); 
-        cv::circle(cv_ptr->image, extractor.DOContour[extractor.segmentationIdx[1][0]],
-                  5, cv::Scalar(255, 0, 0), -1);
-        cv::circle(cv_ptr->image, extractor.DOContour[extractor.segmentationIdx[1][1]],
-                  5, cv::Scalar(255, 0, 0), -1); 
-        cv::line(cv_ptr->image, extractor.DOContour[extractor.segmentationIdx[0][0]],
-                extractor.DOContour[extractor.segmentationIdx[0][1]], cv::Scalar(0,0,255), 2); 
-        cv::line(cv_ptr->image, extractor.DOContour[extractor.segmentationIdx[1][0]],
-                extractor.DOContour[extractor.segmentationIdx[1][1]], cv::Scalar(0,0,255), 2);                     
+        circle(cv_ptr->image, extractor.DOContour[extractor.segmentationIdx[0][0]],
+                  5, Scalar(255, 0, 0), -1);
+        circle(cv_ptr->image, extractor.DOContour[extractor.segmentationIdx[0][1]],
+                  5, Scalar(255, 0, 0), -1); 
+        circle(cv_ptr->image, extractor.DOContour[extractor.segmentationIdx[1][0]],
+                  5, Scalar(255, 0, 0), -1);
+        circle(cv_ptr->image, extractor.DOContour[extractor.segmentationIdx[1][1]],
+                  5, Scalar(255, 0, 0), -1); 
+        line(cv_ptr->image, extractor.DOContour[extractor.segmentationIdx[0][0]],
+                extractor.DOContour[extractor.segmentationIdx[0][1]], Scalar(0,0,255), 2); 
+        line(cv_ptr->image, extractor.DOContour[extractor.segmentationIdx[1][0]],
+                extractor.DOContour[extractor.segmentationIdx[1][1]], Scalar(0,0,255), 2);                     
       }
-      std::vector<Point> newP = extractor.feaibleMotionSearch();
-      cv::line(cv_ptr->image, newP[0], newP[1], cv::Scalar(32,54,134), 2);
+      vector<Point> newP = extractor.feaibleMotionSearch();
+      line(cv_ptr->image, newP[0], newP[1], Scalar(32,54,134), 2);
 
       opt = optConstructor(extractor);
       opt.getDeformConstraint();
       if (lk_tracker.validFeature)
         opt.getManipulabilityPoint(lk_tracker.pointFeature);
 
-      std::cout << "deformtion angles: " << opt.deformAngles[0] << " " << opt.deformAngles[1] << "\n";
-      cv::circle(cv_ptr->image, opt.ElCentroid, 5, cv::Scalar(0,0,200), -1);
-      cv::circle(cv_ptr->image, opt.ErCentroid, 5, cv::Scalar(0,0,200), -1);
-      cv::arrowedLine(cv_ptr->image, opt.ElCentroid, opt.ElCentroid+50*opt.PrialDirtl, cv::Scalar(0,0,200),2);
-      cv::arrowedLine(cv_ptr->image, opt.ErCentroid, opt.ErCentroid+50*opt.PrialDirtr, cv::Scalar(0,0,200),2);
+      cout << "deformtion angles: " << opt.deformAngles[0] << " " << opt.deformAngles[1] << "\n";
+      circle(cv_ptr->image, opt.ElCentroid, 5, Scalar(0,0,200), -1);
+      circle(cv_ptr->image, opt.ErCentroid, 5, Scalar(0,0,200), -1);
+      arrowedLine(cv_ptr->image, opt.ElCentroid, opt.ElCentroid+50*opt.PrialDirtl, Scalar(0,0,200),2);
+      arrowedLine(cv_ptr->image, opt.ErCentroid, opt.ErCentroid+50*opt.PrialDirtr, Scalar(0,0,200),2);
     }
 
     if (!deformJd.initialized && lk_tracker.validFeature)
@@ -133,8 +135,8 @@ public:
           << deformJd.JdCurr << "\n";
           
     // end of processing
-    cv::imshow(WINDOW, cv_ptr->image);
-    cv::waitKey(3);
+    imshow(WINDOW, cv_ptr->image);
+    waitKey(3);
     image_info_pub.publish(image_info_msg);
   }
 
@@ -152,13 +154,17 @@ public:
     res.contactProjectionl.push_back(extractor.DOContour[extractor.segmentationIdx[0][0]].y);
     res.contactProjectionr.push_back(extractor.DOContour[extractor.segmentationIdx[1][0]].x);
     res.contactProjectionr.push_back(extractor.DOContour[extractor.segmentationIdx[1][0]].y);
-    res.contactDistancelr.push_back(cv::norm(extractor.endeffectorP.sl 
+    res.contactDistancelr.push_back(norm(extractor.endeffectorP.sl 
                                     - extractor.DOContour[extractor.segmentationIdx[0][0]]));
-    res.contactDistancelr.push_back(cv::norm(extractor.endeffectorP.sr 
+    res.contactDistancelr.push_back(norm(extractor.endeffectorP.sr 
                                     - extractor.DOContour[extractor.segmentationIdx[1][0]]));
-    
     res.deformAngles.push_back(opt.deformAngles[0]);
     res.deformAngles.push_back(opt.deformAngles[1]);
+
+    res.featurePoint.push_back(lk_tracker.pointFeature.x);
+    res.featurePoint.push_back(lk_tracker.pointFeature.y);
+    res.featurePointTarget.push_back(lk_tracker.pointFeatureTarget.x);
+    res.featurePointTarget.push_back(lk_tracker.pointFeatureTarget.y);
 
     res.sw.push_back(opt.sw.x);
     res.sw.push_back(opt.sw.y);
@@ -192,7 +198,7 @@ int main(int argc, char** argv)
     return 1;
   }
   else{
-    std::cout << "ERROR:\tusage - RosToOpencvImage <ros_image_topic>" << std::endl;    
+    cout << "ERROR:\tusage - RosToOpencvImage <ros_image_topic>" << endl;    
     return 2; 
   }
 }
