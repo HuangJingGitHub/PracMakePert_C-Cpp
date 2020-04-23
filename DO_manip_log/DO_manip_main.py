@@ -9,9 +9,12 @@ from do_manip.srv import *
 import math
 import PyKDL
 import sys
+from time import sleep
 
 deg2rad = np.pi / 180
-camera2base = np.array([[0, 0,1], [-1,0,0],[0,-1,0]])
+camera2base = np.array([[-0.12548, -0.96239, -0.24092],
+                        [-0.68655, 0.25954, -0.67919],
+                        [0.71617, 0.08018, -0.69330]])
 psm = dvrk.psm('PSM1')
 
 
@@ -46,7 +49,7 @@ def np_array2PyKDL_Rotation(np_array):
     return rot_kdl
 
 def check_local_contact(visual_info):
-    p_C_distance_threshold = 10
+    p_C_distance_threshold = 20
     p_C_distance = max(visual_info.contactDistancelr)
     # print(p_C_distance)
     return p_C_distance <= p_C_distance_threshold
@@ -94,7 +97,8 @@ def adjust_safety_constraint(visual_info, adjustDirection = 0):
 
 
 if __name__ == '__main__':
-    init_joint_config = np.array([0,0,0,0,0,0])
+    psm.home()
+    init_joint_config = np.array([ 0.01037935, -0.01804803,  0.11688517, -0.00062907,  0.00054655, 0.00012608])
     psm.move_joint(init_joint_config)
 
     button = input('Press 1 to start the manipulation\n')
@@ -107,39 +111,43 @@ if __name__ == '__main__':
     targetPtPos = np.array([i for i in visual_info.featurePointTarget])
     ptPosError = currentPtPos - targetPtPos
 
-    while (np.linalg.norm(ptPosError) > 5):
+    log_feature = np.array([])
+    log_error = np.array([])
+
+    while (np.linalg.norm(ptPosError) > 10):
         visual_info = get_visual_info()
         currentPtPos = np.array([[i for i in visual_info.featurePoint]]).T
         targetPtPos = np.array([[i for i in visual_info.featurePointTarget]]).T
         ptPosError = currentPtPos - targetPtPos
+        log_feature = np.append(log_feature, currentPtPos)
+        log_error = np.append(log_error, ptPosError)
                 
         ### when deformation control can be performed
-        if check_local_contact(visual_info) and check_safety_constraint(visual_info):
+        if check_local_contact(visual_info):
             print('Local Contact Valid \nSafety Constraint Satisfied')
             K = 100
-            motion_step = 0.005
+            motion_step = 0.0005
             Jd_np = np.array([[visual_info.deformJacobian[0], visual_info.deformJacobian[1]],
                               [visual_info.deformJacobian[2], visual_info.deformJacobian[3]]])
-            x_dot_image = -K * np.matmul(np.linalg.pinv(Jd_np), ptPosError)
+            #x_dot_image = -K * np.matmul(np.linalg.pinv(Jd_np), ptPosError)
+            x_dot_image = -K * np.matmul(Jd_np.T, ptPosError)
 
-            print('Jd_np - ptPosError - x_dot_image')
+            print('Jd_np')
             print(Jd_np)
+            print('ptPosError')
             print(ptPosError)
+            print('x_dot_image')
             print(x_dot_image)
-            
+
             x_dot_image = np.append(x_dot_image, [[0]], axis=0)
             x_dot = np.matmul(camera2base, x_dot_image)
             x_dot_scale = x_dot / np.linalg.norm(x_dot) * motion_step
+            print('x_dot_scale:')
+            print(x_dot_scale)
+            print('')
             x_dot_kdl = PyKDL.Vector(x_dot_scale[0][0], x_dot_scale[1][0], x_dot_scale[2][0])
             psm.dmove(x_dot_kdl)
-
-        while not check_safety_constraint(visual_info):
-            print('Safety Constraint Adjustment')
-            if visual_info.deformAngles[0] > visual_info.deformAngles[1]:
-                adjust_safety_constraint(visual_info, 0)
-            else:
-                adjust_safety_constraint(visual_info, 1)
-            visual_info = get_visual_info()
+            sleep(0.05)
 
         while not check_local_contact(visual_info):
             print('Local Contact Adjustment')
@@ -148,3 +156,6 @@ if __name__ == '__main__':
             else:
                 adjust_local_contact(1)
             visual_info = get_visual_info()
+    
+    np.save('log_featurePt', log_feature)
+    np.save('log_error', log_error)
