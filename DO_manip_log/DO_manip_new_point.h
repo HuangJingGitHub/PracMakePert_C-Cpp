@@ -137,7 +137,7 @@ public:
                 if (!status[i])
                     continue;
                 points[1][k++] = points[1][i];
-                circle(image, points[1][i], 3, Scalar(0, 0, 255), -1, 8);
+                circle(image, points[1][i], 3, Scalar(0, 255, 0), -1, 8);
             }
             points[1].resize(k);
 
@@ -157,12 +157,12 @@ public:
             points[1].push_back(tmp[0]);
             addRemovePt = false;
             if (initialPoint){
-                pointFeatureTarget = tmp[0] - Point2f(25.0, 25.0);
+                pointFeatureTarget = tmp[0] - Point2f(50.0, 40.0);
                 initialPoint = false;
             }
         }
         if (!initialPoint)
-            circle(image, pointFeatureTarget, 3, Scalar(0, 0, 255), -1, 8);
+            circle(image, pointFeatureTarget, 8, Scalar(255, 0, 0), 2, 8);
         std::swap(points[1], points[0]);
         // cv::swap(prevGray, gray);  // swap finished by p extraction operation
     }
@@ -231,8 +231,8 @@ public:
     imgExtractor() {}
     imgExtractor(const string winName)
     {
-        DOHSVLow = Scalar(0, 58, 194);
-        DOHSVHigh = Scalar(40, 255, 255);
+        DOHSVLow = Scalar(142, 96, 72);
+        DOHSVHigh = Scalar(180, 255, 255);
 
         winTrack = winName;
         termcrit = TermCriteria(TermCriteria::COUNT | TermCriteria::EPS, 20, 0.03);
@@ -258,7 +258,7 @@ public:
             DOExtractSucceed = false;
         }
         else{
-            findContours(DOdst, DOContours, RETR_EXTERNAL, CHAIN_APPROX_NONE, Point(0, 0));  
+            findContours(DOdst, DOContours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE, Point(0, 0));  
             // cout << "DOContours Size: " << DOContours.size() << " " << DOContours[0].size() << "\n";
             DOLargestCotrIdx = 0;
             for (int i = 1; i < DOContours.size(); i++){
@@ -463,7 +463,7 @@ public:
         Point basePt, endPt;
         float pLength = norm(endeffectorP.sl - endeffectorP.sr);
         int basePtIdx, endPtIdx, 
-            motionStep = 5;  // The motion step is determined by the contour points for convenience.
+            motionStep = 10;  // The motion step is determined by the contour points for convenience.
         if (searchBase == 0){
             basePtIdx = (segmentationIdx[0][0] + motionStep) > (DOContour.size()-1) ? 0 : segmentationIdx[0][0] + motionStep;
             basePt = DOContour[basePtIdx];           
