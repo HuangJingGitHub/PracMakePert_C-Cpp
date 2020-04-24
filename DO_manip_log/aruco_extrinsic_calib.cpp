@@ -51,7 +51,6 @@ int main(int argc, char **argv)
             Mat rotMat;
             aruco::estimatePoseSingleMarkers(corners, 0.05, cameraMatrix, distCoeffs, rvecs, tvecs);
 
-            cout << "\n" << dvrkBaseAngle << " " << sin(dvrkBaseAngle) << " " << cos(dvrkBaseAngle);
             for (int i = 0; i < ids.size(); i++){
                 aruco::drawAxis(videoFrame, cameraMatrix, distCoeffs, rvecs[i], tvecs[i], 0.05);
                 Rodrigues(rvecs[i], rotMat);
