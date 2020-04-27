@@ -1,3 +1,5 @@
+/*Put the aruco marker horizonally and the marker frame only varies from the
+dVRK PSM base frame with a rotation about y axis.*/
 #include <iostream>
 #include <vector>
 #include <string>
@@ -37,9 +39,7 @@ int main(int argc, char **argv)
         return -1; 
     }
 
-    while (true){
-        cam >> videoFrame;
-
+    while (cam.read(videoFrame)){
         vector<int> ids;
         vector<vector<Point2f>> corners;
         aruco::detectMarkers(videoFrame, dictionary, corners, ids);
@@ -67,4 +67,7 @@ int main(int argc, char **argv)
         if (waitKey(30) == 27)
             break;
     }
+
+    if (!cam.read(videoFrame))
+        cout << "Unable to read frame from the cam!\n";
 }

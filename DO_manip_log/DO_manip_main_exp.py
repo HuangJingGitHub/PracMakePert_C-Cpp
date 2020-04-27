@@ -62,18 +62,18 @@ def check_safety_constraint(visual_info):
     return (visual_info.deformAngles[0] <= allowed_angle_El and 
             visual_info.deformAngles[1] <= allowed_angle_Er)
 
-def adjust_local_contact(adjustDirection = 0):
+def adjust_local_contact(adjust_direction = 0):
     # x_t = psm.get_current_position()
     # x_t_ori = x_t.M
     # x_t_ori_np = PyKDL_Rotation2np_array(x_t_ori)
     step = 0.5 * deg2rad
-    if adjustDirection == 0: # default direction
+    if adjust_direction == 0: # default direction
         delta_ori_np = rotz(step)
         delta_x_ori_np = np.matmul(camera2base, delta_ori_np)
         delta_x_ori_np = np.matmul(delta_x_ori_np, camera2base.T)
-    elif adjustDirection == 1:
+    elif adjust_direction == 1:
         delta_ori_np = rotz(-step)
-        delta_x_ori_np = np.matmul(camera2base, delta_x_ori_np)
+        delta_x_ori_np = np.matmul(camera2base, delta_ori_np)
         delta_x_ori_np = np.matmul(delta_x_ori_np, camera2base.T)
     else:
         print('Invalid Argument Given In Function: adjust_local_contact()')
@@ -82,7 +82,7 @@ def adjust_local_contact(adjustDirection = 0):
     psm.dmove(delta_x_ori_kdl)
         
 
-def adjust_safety_constraint(visual_info, adjustDirection = 0):
+def adjust_safety_constraint(visual_info, adjust_direction = 0):
     step = 0.0005
     sl_list = [i for i in visual_info.sl]
     sr_list = [i for i in visual_info.sr]
@@ -92,7 +92,7 @@ def adjust_safety_constraint(visual_info, adjustDirection = 0):
     gama = 0.1
     motion_direction = diff_lr + gama * ne
     motion_direction = motion_direction / np.linalg.norm(motion_direction)
-    if adjustDirection != 0:
+    if adjust_direction != 0:
         motion_direction = -motion_direction
     motion_image = np.array([[motion_direction[0]], [motion_direction[1]], [0]])
     motion_base = np.matmul(camera2base, motion_image) * step
@@ -111,20 +111,20 @@ if __name__ == '__main__':
         sys.exit()
     
     visual_info = get_visual_info()
-    currentPtPos = np.array([i for i in visual_info.featurePoint])
-    targetPtPos = np.array([i for i in visual_info.featurePointTarget])
-    ptPosError = currentPtPos - targetPtPos
+    current_pt_pos = np.array([i for i in visual_info.featurePoint])
+    target_pt_pos = np.array([i for i in visual_info.featurePointTarget])
+    pt_pos_error = current_pt_pos - target_pt_pos
 
     log_feature = np.array([])
     log_error = np.array([])
 
-    while (np.linalg.norm(ptPosError) > 10):
+    while (np.linalg.norm(pt_pos_error) > 5):
         visual_info = get_visual_info()
-        currentPtPos = np.array([[i for i in visual_info.featurePoint]]).T
-        targetPtPos = np.array([[i for i in visual_info.featurePointTarget]]).T
-        ptPosError = currentPtPos - targetPtPos
-        log_feature = np.append(log_feature, currentPtPos)
-        log_error = np.append(log_error, ptPosError)
+        current_pt_pos = np.array([[i for i in visual_info.featurePoint]]).T
+        target_pt_pos = np.array([[i for i in visual_info.featurePointTarget]]).T
+        pt_pos_error = current_pt_pos - target_pt_pos
+        log_feature = np.append(log_feature, current_pt_pos)
+        log_error = np.append(log_error, pt_pos_error)
                 
         ### when deformation control can be performed
         if check_local_contact(visual_info):
@@ -133,13 +133,13 @@ if __name__ == '__main__':
             motion_step = 0.0005
             Jd_np = np.array([[visual_info.deformJacobian[0], visual_info.deformJacobian[1]],
                               [visual_info.deformJacobian[2], visual_info.deformJacobian[3]]])
-            #x_dot_image = -K * np.matmul(np.linalg.pinv(Jd_np), ptPosError)
-            x_dot_image = -K * np.matmul(Jd_np.T, ptPosError)
+            #x_dot_image = -K * np.matmul(np.linalg.pinv(Jd_np), pt_pos_error)
+            x_dot_image = -K * np.matmul(Jd_np.T, pt_pos_error)
 
             print('Jd_np')
             print(Jd_np)
-            print('ptPosError')
-            print(ptPosError)
+            print('pt_pos_error')
+            print(pt_pos_error)
             print('x_dot_image')
             print(x_dot_image)
 
