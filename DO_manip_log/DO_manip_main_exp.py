@@ -12,10 +12,9 @@ import sys
 from time import sleep
 
 deg2rad = np.pi / 180
-camera2base = np.array([[-0.13255274664491, -0.9573061017227977, -0.2568945249731697],
-                        [-0.6866925550954662, 0.2755973214292334, -0.6726807944318696],
-                        [0.7147608719938089, 0.08724187082663748, -0.6939061549239335]])
-
+camera2base = np.array([[-0.03647274692194044, -0.951725741046879, -0.304775085203395],
+                        [-0.6460496670349185, 0.2551327847558498, -0.7193935570095104],
+                        [0.7624234823613703, 0.1706615831741098, -0.6241674916017874]])
 
 psm = dvrk.psm('PSM1')
 
@@ -50,7 +49,7 @@ def np_array2PyKDL_Rotation(np_array):
     return rot_kdl
 
 def check_local_contact(visual_info):
-    p_C_distance_threshold = 20
+    p_C_distance_threshold = 15
     p_C_distance = max(visual_info.contactDistancelr)
     # print(p_C_distance)
     return p_C_distance <= p_C_distance_threshold
@@ -85,7 +84,7 @@ def adjust_local_contact(adjust_direction = 0):
         # delta_ori_np = rotz(-step)
         # delta_x_ori_np = np.matmul(camera2base, delta_ori_np)
         # delta_x_ori_np = np.matmul(delta_x_ori_np, camera2base.T)
-        psm.dmove_joint_one(step, 3)
+        psm.dmove_joint_one(-step, 3)
     else:
         print('Invalid Argument Given In Function: adjust_local_contact()')
         return
@@ -138,11 +137,8 @@ if __name__ == '__main__':
     psm.home()
     #init_joint_config = np.array([ 0.01037935, -0.01804803,  0.11688517, -0.00062907,  0.00054655, 0.00012608])
     #init_joint_config = np.array([-0.12344788,  0.30524102,  0.10091488, -0.01530737, -0.35935399, 0.44307293])
-    init_joint_config = np.array([ 0.01790902,  0.1723714 ,  0.1032145 ,  1.50662224, -0.14866051, 0.30908378])  # normal initial
-    # init_joint_config = np.array([ 0.07565189,  0.17845691,  0.10326765,  0.94926637, -0.16792626, 0.35338127]) # local contact adjust
-    init_joint_config = np.array([-0.01159954,  0.29955709,  0.10337005,  1.48280481, -0.10124765, 0.33021061])
-
-
+    init_joint_config = np.array([-0.06231473,  0.16237818,  0.09966655, -0.58776091, -0.04399695, 0.04330933]) # normal initial
+    init_joint_config = np.array([ 0.09045637,  0.22986714,  0.09129122,  0.79787023, -0.13540677, 0.10878157]) # local contact adjust
 
     psm.move_joint(init_joint_config)
 
@@ -180,6 +176,7 @@ if __name__ == '__main__':
                               [visual_info.deformJacobian[2], visual_info.deformJacobian[3]]])
             # x_dot_image = -K * np.matmul(np.linalg.pinv(Jd_np), pt_pos_error)
             x_dot_image = -K * np.matmul(Jd_np.T, pt_pos_error)
+            #x_dot_image = -K * np.matmul(np.linalg.inv(Jd_np), pt_pos_error)
 
             print('Jd_np')
             print(Jd_np)
@@ -198,7 +195,21 @@ if __name__ == '__main__':
 
             x_dot_kdl = PyKDL.Vector(x_dot_scale[0][0], x_dot_scale[1][0], x_dot_scale[2][0])
             psm.dmove(x_dot_kdl)
-            sleep(0.05)
+            sleep(0.1)
+
+        while not check_local_contact(visual_info):
+            print('Local Contact Adjustment')
+            if visual_info.contactDistancelr[0] > visual_info.contactDistancelr[1]:
+                adjust_local_contact(0)
+            else:
+                adjust_local_contact(1)
+            
+            log_feature = np.append(log_feature, current_pt_pos)
+            log_error = np.append(log_error, pt_pos_error)
+            log_contact_distance = np.append(log_contact_distance, max(visual_info.contactDistancelr))
+            log_manipulability = np.append(log_manipulability, visual_info.distancew)               
+            
+            visual_info = get_visual_info()
         
         while not check_manipulability(visual_info):
             print('Manipulability Adjustment')
@@ -230,3 +241,4 @@ if __name__ == '__main__':
     np.save('log_featurePt' + randIdxStr, log_feature)
     np.save('log_error' + randIdxStr, log_error)
     np.save('log_contact_distance' + randIdxStr, log_contact_distance)
+    np.save('log_manipulability' + randIdxStr, log_manipulability)
