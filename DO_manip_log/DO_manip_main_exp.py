@@ -148,8 +148,8 @@ if __name__ == '__main__':
         sys.exit()
     
     visual_info = get_visual_info()
-    current_pt_pos = np.array([i for i in visual_info.featurePoint])
-    target_pt_pos = np.array([i for i in visual_info.featurePointTarget])
+    current_pt_pos = np.array([i for i in visual_info.featurePoint]).T
+    target_pt_pos = np.array([i for i in visual_info.featurePointTarget]).T
     pt_pos_error = current_pt_pos - target_pt_pos
 
     log_feature = np.array([])
@@ -162,6 +162,7 @@ if __name__ == '__main__':
         current_pt_pos = np.array([[i for i in visual_info.featurePoint]]).T
         target_pt_pos = np.array([[i for i in visual_info.featurePointTarget]]).T
         pt_pos_error = current_pt_pos - target_pt_pos
+        
         log_feature = np.append(log_feature, current_pt_pos)
         log_error = np.append(log_error, pt_pos_error)
         log_contact_distance = np.append(log_contact_distance, max(visual_info.contactDistancelr))
@@ -203,7 +204,10 @@ if __name__ == '__main__':
                 adjust_local_contact(0)
             else:
                 adjust_local_contact(1)
-            
+
+            current_pt_pos = np.array([[i for i in visual_info.featurePoint]]).T
+            target_pt_pos = np.array([[i for i in visual_info.featurePointTarget]]).T
+            pt_pos_error = current_pt_pos - target_pt_pos
             log_feature = np.append(log_feature, current_pt_pos)
             log_error = np.append(log_error, pt_pos_error)
             log_contact_distance = np.append(log_contact_distance, max(visual_info.contactDistancelr))
@@ -214,6 +218,10 @@ if __name__ == '__main__':
         while not check_manipulability(visual_info):
             print('Manipulability Adjustment')
             adjust_manipulatbility(visual_info)
+          
+            current_pt_pos = np.array([[i for i in visual_info.featurePoint]]).T
+            target_pt_pos = np.array([[i for i in visual_info.featurePointTarget]]).T
+            pt_pos_error = current_pt_pos - target_pt_pos     
             
             log_feature = np.append(log_feature, current_pt_pos)
             log_error = np.append(log_error, pt_pos_error)
@@ -229,8 +237,12 @@ if __name__ == '__main__':
                 adjust_local_contact(0)
             else:
                 adjust_local_contact(1)
-            
+                
+            current_pt_pos = np.array([[i for i in visual_info.featurePoint]]).T
+            target_pt_pos = np.array([[i for i in visual_info.featurePointTarget]]).T
+            pt_pos_error = current_pt_pos - target_pt_pos                      
             log_feature = np.append(log_feature, current_pt_pos)
+            
             log_error = np.append(log_error, pt_pos_error)
             log_contact_distance = np.append(log_contact_distance, max(visual_info.contactDistancelr))
             log_manipulability = np.append(log_manipulability, visual_info.distancew)               
