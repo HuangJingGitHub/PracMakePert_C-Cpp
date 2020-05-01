@@ -12,9 +12,9 @@ import sys
 from time import sleep
 
 deg2rad = np.pi / 180
-camera2base = np.array([[-0.03647274692194044, -0.951725741046879, -0.304775085203395],
-                        [-0.6460496670349185, 0.2551327847558498, -0.7193935570095104],
-                        [0.7624234823613703, 0.1706615831741098, -0.6241674916017874]])
+camera2base = np.array([[0.06226093630316476, -0.9607452735300874, -0.2703554978176891],
+                        [-0.8422941263057356, 0.09473492498153524, -0.5306278345315104],
+                        [0.5354102918337584, 0.2607562336327552, -0.8033318156404297]])
 
 psm = dvrk.psm('PSM1')
 
@@ -49,7 +49,7 @@ def np_array2PyKDL_Rotation(np_array):
     return rot_kdl
 
 def check_local_contact(visual_info):
-    p_C_distance_threshold = 15
+    p_C_distance_threshold = 20
     p_C_distance = max(visual_info.contactDistancelr)
     # print(p_C_distance)
     return p_C_distance <= p_C_distance_threshold
@@ -99,7 +99,7 @@ def adjust_manipulatbility(visual_info):
     diff_lr = np.array(sl_list).T - np.array(sr_list).T
     diff_lr = diff_lr / np.linalg.norm(diff_lr)
     ne = np.array([[i for i in visual_info.ne]]).T
-    gama = 0.25
+    gama = 0.15
     area_indicator = visual_info.indicatorw
     pt_area_distance = visual_info.distancew
 
@@ -137,8 +137,11 @@ if __name__ == '__main__':
     psm.home()
     #init_joint_config = np.array([ 0.01037935, -0.01804803,  0.11688517, -0.00062907,  0.00054655, 0.00012608])
     #init_joint_config = np.array([-0.12344788,  0.30524102,  0.10091488, -0.01530737, -0.35935399, 0.44307293])
-    init_joint_config = np.array([-0.06231473,  0.16237818,  0.09966655, -0.58776091, -0.04399695, 0.04330933]) # normal initial
-    init_joint_config = np.array([ 0.09045637,  0.22986714,  0.09129122,  0.79787023, -0.13540677, 0.10878157]) # local contact adjust
+    init_joint_config = np.array([-0.02574759,  0.10811826,  0.1057306 ,  1.53996294, -0.26589463, 0.33541677]) # normal initial
+
+    init_joint_config = np.array([ 0.22779745,  0.36476012,  0.09347677,  0.67373379, -0.13909596, 0.26983821]) # local contact adjust
+    init_joint_config = np.array([ 0.08386116,  0.13080765,  0.08757346,  1.13064818, -0.12543231, 0.31693336]) # manipulability
+
 
     psm.move_joint(init_joint_config)
 
@@ -156,17 +159,20 @@ if __name__ == '__main__':
     log_error = np.array([])
     log_contact_distance = np.array([])
     log_manipulability = np.array([])
+    log_distanceLinelrp = np.array([])
 
     while (np.linalg.norm(pt_pos_error) > 5):
         visual_info = get_visual_info()
         current_pt_pos = np.array([[i for i in visual_info.featurePoint]]).T
         target_pt_pos = np.array([[i for i in visual_info.featurePointTarget]]).T
         pt_pos_error = current_pt_pos - target_pt_pos
-        
+        distance_linelrp = np.array([[i for i in visual_info.distancelrp]]).T
+
         log_feature = np.append(log_feature, current_pt_pos)
         log_error = np.append(log_error, pt_pos_error)
         log_contact_distance = np.append(log_contact_distance, max(visual_info.contactDistancelr))
         log_manipulability = np.append(log_manipulability, visual_info.distancew)
+        log_distanceLinelrp = np.append(log_distanceLinelrp, distance_linelrp)
                 
         ### when deformation control can be performed
         if check_local_contact(visual_info):
@@ -204,29 +210,32 @@ if __name__ == '__main__':
                 adjust_local_contact(0)
             else:
                 adjust_local_contact(1)
-
-            current_pt_pos = np.array([[i for i in visual_info.featurePoint]]).T
-            target_pt_pos = np.array([[i for i in visual_info.featurePointTarget]]).T
+            
+            current_pt_pos = np.array([i for i in visual_info.featurePoint]).T
+            distance_linelrp = np.array([[i for i in visual_info.distancelrp]]).T
             pt_pos_error = current_pt_pos - target_pt_pos
+            
             log_feature = np.append(log_feature, current_pt_pos)
             log_error = np.append(log_error, pt_pos_error)
             log_contact_distance = np.append(log_contact_distance, max(visual_info.contactDistancelr))
-            log_manipulability = np.append(log_manipulability, visual_info.distancew)               
+            log_manipulability = np.append(log_manipulability, visual_info.distancew)     
+            log_distanceLinelrp = np.append(log_distanceLinelrp, distance_linelrp)          
             
             visual_info = get_visual_info()
         
         while not check_manipulability(visual_info):
             print('Manipulability Adjustment')
             adjust_manipulatbility(visual_info)
-          
-            current_pt_pos = np.array([[i for i in visual_info.featurePoint]]).T
-            target_pt_pos = np.array([[i for i in visual_info.featurePointTarget]]).T
-            pt_pos_error = current_pt_pos - target_pt_pos     
             
+            current_pt_pos = np.array([i for i in visual_info.featurePoint]).T
+            distance_linelrp = np.array([[i for i in visual_info.distancelrp]]).T
+            pt_pos_error = current_pt_pos - target_pt_pos
+
             log_feature = np.append(log_feature, current_pt_pos)
             log_error = np.append(log_error, pt_pos_error)
             log_contact_distance = np.append(log_contact_distance, max(visual_info.contactDistancelr))
             log_manipulability = np.append(log_manipulability, visual_info.distancew)
+            log_distanceLinelrp = np.append(log_distanceLinelrp, distance_linelrp)
 
             visual_info = get_visual_info()
             
@@ -237,15 +246,16 @@ if __name__ == '__main__':
                 adjust_local_contact(0)
             else:
                 adjust_local_contact(1)
-                
-            current_pt_pos = np.array([[i for i in visual_info.featurePoint]]).T
-            target_pt_pos = np.array([[i for i in visual_info.featurePointTarget]]).T
-            pt_pos_error = current_pt_pos - target_pt_pos                      
-            log_feature = np.append(log_feature, current_pt_pos)
+
+            current_pt_pos = np.array([i for i in visual_info.featurePoint]).T
+            distance_linelrp = np.array([[i for i in visual_info.distancelrp]]).T
+            pt_pos_error = current_pt_pos - target_pt_pos
             
+            log_feature = np.append(log_feature, current_pt_pos)
             log_error = np.append(log_error, pt_pos_error)
             log_contact_distance = np.append(log_contact_distance, max(visual_info.contactDistancelr))
-            log_manipulability = np.append(log_manipulability, visual_info.distancew)               
+            log_manipulability = np.append(log_manipulability, visual_info.distancew)    
+            log_distanceLinelrp = np.append(log_distanceLinelrp, distance_linelrp)           
             
             visual_info = get_visual_info()
 
@@ -254,3 +264,4 @@ if __name__ == '__main__':
     np.save('log_error' + randIdxStr, log_error)
     np.save('log_contact_distance' + randIdxStr, log_contact_distance)
     np.save('log_manipulability' + randIdxStr, log_manipulability)
+    np.save('log_distance_linelrp' + randIdxStr, log_distanceLinelrp)
