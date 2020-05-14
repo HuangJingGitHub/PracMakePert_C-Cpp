@@ -1,4 +1,4 @@
-// See the favoriate solution for this. Easy to understand.
+// Can see the favoriate solution for this. Easy to understand.
 class Solution {
 public:
     vector<vector<int>> insert(vector<vector<int>>& intervals, vector<int>& newInterval) {
