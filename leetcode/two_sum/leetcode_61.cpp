@@ -24,8 +24,8 @@ public:
         return head;
     }
 
-    void rotateOnce(ListNode*& head)
-    {
+    void rotateOnce(ListNode*& head)    // pay attention pointer can be treated as a basic data type like int, so use passing by
+    {                                   // reference when necessary.
         ListNode *originalHead = head, *phead = head;
         for (; head->next != NULL; head = head->next){
                 phead = head;
