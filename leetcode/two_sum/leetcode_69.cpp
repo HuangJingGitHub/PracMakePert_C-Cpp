@@ -20,7 +20,7 @@ public:
     }
 };
 
-// Newton method
+// Newton method considering the quadratic function f(cur) = cur^2 - x
 class Solution {
 public:
     int mySqrt(int x) {
