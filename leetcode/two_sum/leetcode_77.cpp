@@ -10,7 +10,7 @@ public:
             return;
         }
 
-        for (int i = begin; i <= n; i++){
+        for (int i = begin; i <= n; i++){  // Optimize: for (int i = begin; i <= n-k+pre.size()+1; i++)
             pre.push_back(i);
             traceback(n, k, i+1, pre);
             pre.pop_back();
