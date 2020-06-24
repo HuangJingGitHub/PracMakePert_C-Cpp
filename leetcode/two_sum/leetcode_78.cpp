@@ -1,4 +1,4 @@
-// also good example for trace back, review last Problem 77
+// also good example for traceback, review last Problem 77
 class Solution {
 public:
     vector<vector<int>> res;
