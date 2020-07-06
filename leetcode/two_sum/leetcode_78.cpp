@@ -33,3 +33,25 @@ public:
         return res;
     }
 };
+
+// update: more compact code
+class Solution {
+public:
+    vector<vector<int>> res;
+    void trackback(int start, vector<int>& nums, vector<int>& path){
+        res.push_back(path);
+
+        for (int i = start; i < nums.size(); i++){
+            path.push_back(nums[i]);
+            trackback(i+1, nums, path);
+            path.pop_back();
+        }
+    }
+
+    vector<vector<int>> subsets(vector<int>& nums) 
+    {
+        vector<int> path;
+        trackback(0, nums, path);
+        return res;
+    }
+};
