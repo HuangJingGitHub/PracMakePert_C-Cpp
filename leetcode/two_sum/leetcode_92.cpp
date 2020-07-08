@@ -18,7 +18,7 @@ public:
                 pre = p;
                 p = p->next;
             }
-            else{
+            else{  // Keep inserting the nodes to the back of m-1 th node
                 ListNode  *tmp = p->next->next;
                 p->next->next = pre->next;
                 pre->next = p->next;
