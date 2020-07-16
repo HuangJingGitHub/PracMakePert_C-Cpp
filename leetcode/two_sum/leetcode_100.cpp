@@ -28,3 +28,19 @@ public:
         return res;
     }
 };
+
+
+// More compact, elegant, and efficient code with inorder traversal and recursion.
+class Solution {
+public:
+    bool isSameTree(TreeNode* p, TreeNode* q) {
+        if ((p == NULL && q != NULL) || (p != NULL && q == NULL))   // Node case judgement
+            return false;
+        else if (p == NULL && q == NULL)
+            return true;
+        else if (p->val != q->val)
+            return false;
+                
+        return isSameTree(p->left, q->left) && isSameTree(p->right, q->right);
+    }
+};
