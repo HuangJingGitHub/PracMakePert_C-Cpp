@@ -1,3 +1,4 @@
+// Similar to Problem 105
 /**
  * Definition for a binary tree node.
  * struct TreeNode {
@@ -29,8 +30,8 @@ public:
         }
 
         int leftChildNum = inorderRootIdx - iStart;
-        root->left = buildTreeHelper(postorder, pStart, pStart+leftChildNum+1, inorder, iStart, iStart+leftChildNum+1);
-        root->right = buildTreeHelper(postorder, pStart+leftChildNum+1, pEnd-1, inorder, inorderRootIdx+1, iEnd);
+        root->left = buildTreeHelper(postorder, pStart, pStart+leftChildNum, inorder, iStart, iStart+leftChildNum);
+        root->right = buildTreeHelper(postorder, pStart+leftChildNum, pEnd-1, inorder, inorderRootIdx+1, iEnd);
         return root;
     }
 };
