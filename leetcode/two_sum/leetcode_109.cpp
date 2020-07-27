@@ -29,7 +29,7 @@ public:
             return NULL;
         
         ListNode *fastPt = start, *slowPt = start;
-        while(fastPt != end && fastPt->next != end){
+        while(fastPt != end && fastPt->next != end){  // Use fast and slow pointer to find middle point
             fastPt = fastPt->next->next;
             slowPt = slowPt->next;
         }
