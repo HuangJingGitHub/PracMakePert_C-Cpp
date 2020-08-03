@@ -1,3 +1,4 @@
+// see how many continuous ones there are from back 
 class Solution {
 public:
     bool isOneBitCharacter(vector<int>& bits) {
@@ -16,5 +17,20 @@ public:
         }
 
         return oneCount % 2 == 0;
+    }
+};
+
+// More elegent using decoding
+class Solution {
+public:
+    bool isOneBitCharacter(vector<int>& bits) {
+        int start = 0, len = bits.size();
+        while (start <= len-2){
+            if (bits[start] == 0)
+                start++;
+            else
+                start += 2;
+        }
+        return start != len;
     }
 };
