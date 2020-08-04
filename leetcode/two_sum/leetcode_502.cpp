@@ -9,7 +9,7 @@ public:
         for (int i = 0; i < len; i++){
             capitalMinHeap.emplace(make_pair(Capital[i], Profits[i]));
         }
-        // gready algorithm
+        // greedy algorithm
         for (int i = 0; i < k; i++){
             while (!capitalMinHeap.empty() && capitalMinHeap.top().first <= W){
                 profitMaxHeap.emplace(capitalMinHeap.top().second);
