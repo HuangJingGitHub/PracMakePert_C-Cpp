@@ -29,7 +29,7 @@ public:
         while (!nodeQueue.empty()){
             int levelSize = nodeQueue.size();
             for (int i = 0; i < levelSize; i++){
-                Node* temp = nodeQueue.front();
+                temp = nodeQueue.front();
                 nodeQueue.pop();
                 if (i == levelSize - 1)
                   temp->next = NULL;
@@ -41,6 +41,30 @@ public:
                     nodeQueue.push(temp->right);
                 }
             }
+        }
+        return root;
+    }
+};
+
+
+// use constant extra space, cool
+class Solution {
+public:
+    Node* connect(Node* root) {
+        if (root == NULL)
+            return root;
+
+        Node *pre = root, *temp;
+        while (pre->left != NULL){
+            temp = pre;
+            while(temp != NULL){
+                temp->left->next = temp->right;
+                if (temp->next != NULL){
+                    temp->right->next = temp->next->left;
+                }
+                temp = temp->next;
+            }
+            pre = pre->left;
         }
         return root;
     }
