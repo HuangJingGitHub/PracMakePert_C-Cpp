@@ -8,13 +8,12 @@ public:
         int salePrice = prices.back();
 
         for (int i = prices.size()-2; i >= 0; i--){
-            int previousPrice = prices[i];
-            if (previousPrice < salePrice){
-                int profit = salePrice - previousPrice;
-                res = (profit > res) ? profit : res;
+            if (prices[i] < salePrice){
+                int profit = salePrice - prices[i];
+                res = (profit > res) ? profit : res;  // or res = max(profit, res);
             }
-            else if (previousPrice > salePrice){
-                salePrice = previousPrice;
+            else if (prices[i] > salePrice){
+                salePrice = prices[i];
             }
         }
 
