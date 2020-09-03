@@ -56,3 +56,22 @@ public:
         return max(0, sell2);
     }
 };
+
+
+// impressive dp, see the favorited solution analysis
+class Solution{
+public:
+    int maxProfit(vector<int>& prices){
+        if (prices.size() < 2)
+            return 0;
+        
+        vector<vector<int>> dp<prices.size(), vector<int>(3, 0)>;  // dp[day][sellTimes] represents the max profit until day with maximum sellTimes sele.
+        int minTemp0 = prices[0], minTemp1 = prices[0];
+        for (int i = 1; i < prices.size(); i++){
+            minTemp0 = min(minTemp0, prices[i-1] - dp[i-1][0]);
+            minTemp1 = min(minTemp1, prices[i-1] - dp[i-1][1];
+            dp[i][1] = max(prices[i] - minTemp0, dp[i-1][1]);
+            dp[i][2] = max(prices[i] - minTemp1, dp[i-1][2]);
+        }
+        return dp[prices.size()-1][2];                          
+};
