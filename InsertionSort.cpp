@@ -7,6 +7,7 @@ public:
         while(j > -1 && unsorted[j] > current){
           unsorted[j+1] = undorted[j];
           unsorted[j] = current;
+          j--;
         }
       }
 };
