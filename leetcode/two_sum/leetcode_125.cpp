@@ -11,7 +11,7 @@ public:
                 else
                     break;
             }
-            while (!( (back >= '0' && back <= '9') || (back >= 'a' && back <= 'z') || (back >= 'A' && back < 'Z') )){
+            while (!( (back >= '0' && back <= '9') || (back >= 'a' && back <= 'z') || (back >= 'A' && back <= 'Z') )){
                 j--;
                 if (j > i)
                     back = s[j];
