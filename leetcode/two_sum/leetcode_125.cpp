@@ -4,14 +4,14 @@ public:
         int i = 0, j = s.size() - 1;
         for (; i < j; i++, j--){
             char front = s[i], back = s[j];
-            while (!( (front >= '0' && front <= '9') || (front >= 'a' && front <= 'z') || (front >= 'A' && front <= 'Z') )){
+            while (!isalpnum(front)){
                 i++;
                 if (i < j)
                     front = s[i];
                 else
                     break;
             }
-            while (!( (back >= '0' && back <= '9') || (back >= 'a' && back <= 'z') || (back >= 'A' && back <= 'Z') )){
+            while (!isalnum(front)){
                 j--;
                 if (j > i)
                     back = s[j];
