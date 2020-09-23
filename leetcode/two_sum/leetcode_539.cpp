@@ -7,10 +7,10 @@ public:
             time[i] = stoi(timePoints[i].substr(0, 2)) * 60 + stoi(timePoints[i].substr(3, 2));
         
         sort(time.begin(), time.end());
-        int temp = time.back();
-        for (int i = time.size()-1; i > 0; i--)  // A trap to get the difference is loop from beginning, which will lose original time
-            time[i] = time[i] - time[i-1];
-        time[0] = time[0] + 24 * 60 - temp;
+        int temp = time[0];
+        for (int i = 0; i < time.size()-1; i++)  
+            time[i] = time[i+1] - time[i];
+        time.back() = 24 * 60 - time.back() + temp;
 
         return *min_element(time.begin(), time.end());
     }
