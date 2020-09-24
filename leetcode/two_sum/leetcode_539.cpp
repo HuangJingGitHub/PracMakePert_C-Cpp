@@ -1,6 +1,9 @@
 class Solution {
 public:
     int findMinDifference(vector<string>& timePoints) {
+        if (timePoints.size > 14 * 60)
+            return 0;
+        
         vector<int> time(timePoints.size(), 0);
 
         for (int i = 0; i < timePoints.size(); i++)
