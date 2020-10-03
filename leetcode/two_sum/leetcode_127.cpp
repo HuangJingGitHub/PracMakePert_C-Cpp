@@ -46,6 +46,7 @@ public:
 };
 
 
+// BFS, improved speed, but still exceed time limit.
 class Solution {
 public:
     int ladderLength(string beginWord, string endWord, vector<string>& wordList) {
@@ -73,9 +74,10 @@ public:
                     if (checkTrans(curEndWord, wordList, i)){
                         if (wordList[i] == endWord)
                             return path.size() + 1;
-
-                        path.push_back(wordList[i]);
-                        pathQueue.push(path);
+                        
+                        vector<string> newPath = path;
+                        newPath.push_back(wordList[i]);
+                        pathQueue.push(newPath);
                         subVisitedIdx.push_back(i);
                     }
 
