@@ -99,3 +99,134 @@ public:
         return diffCount == 1;
     }
 };
+
+// BFS, refer to the offical solution, AC, (heavy use of map, pair, set)
+class Solution {
+public:
+    int ladderLength(string beginWord, string endWord, vector<string>& wordList) {
+        if (std::find(wordList.begin(), wordList.end(), endWord) == wordList.end())
+            return 0;
+
+        int len = beginWord.size();
+        map<string, vector<string>> allCombDict;
+
+        for (int i = 0; i < wordList.size(); i++ ){
+            string curWord = wordList[i];
+            for (int j = 0; j < len; j++){
+                string keyStr = curWord.substr(0, j) + "*" + curWord.substr(j+1);
+                if (allCombDict.count(keyStr) == 0){
+                    vector<string> valueStrVec{curWord};
+                    allCombDict.insert(std::pair<string, vector<string>>(keyStr, valueStrVec));
+                }
+                else
+                    allCombDict[keyStr].push_back(curWord);
+            }
+        }
+
+        // BFS
+        queue<std::pair<string, int>> stringQueue;
+        stringQueue.push(std::pair<string, int>(beginWord, 1));
+
+        unordered_set<string> visited;
+        visited.insert(beginWord);
+
+        while (!stringQueue.empty()){
+            std::pair<string, int> front = stringQueue.front();
+            stringQueue.pop();
+            string word = front.first;
+            int step = front.second;
+
+            for (int i = 0; i < len; i++){
+                string newKeyStr = word.substr(0, i) + "*" + word.substr(i+1);
+                for (int j = 0; j < allCombDict[newKeyStr].size(); j++){
+                    string transWord = allCombDict[newKeyStr][j];
+                    if (transWord == endWord)
+                        return step + 1;
+                    if (visited.count(transWord) == 0){
+                        visited.insert(transWord);
+                        stringQueue.push(std::pair<string, int>(transWord, step + 1));
+                    }
+                }
+            }
+        }
+
+        return 0;
+    }
+};
+
+
+// Bidirectional BFS, refer to the offical solution, AC, faster
+class Solution {
+public:
+    int ladderLength(string beginWord, string endWord, vector<string>& wordList) {
+        if (std::find(wordList.begin(), wordList.end(), endWord) == wordList.end())
+            return 0;
+
+        int len = beginWord.size();
+        map<string, vector<string>> allCombDict;
+
+        for (int i = 0; i < wordList.size(); i++ ){
+            string curWord = wordList[i];
+            for (int j = 0; j < len; j++){
+                string keyStr = curWord.substr(0, j) + "*" + curWord.substr(j+1);
+                if (allCombDict.count(keyStr) == 0){
+                    vector<string> valueStrVec{curWord};
+                    allCombDict.insert(std::pair<string, vector<string>>(keyStr, valueStrVec));
+                }
+                else
+                    allCombDict[keyStr].push_back(curWord);
+            }
+        }
+
+        // Bidirectional BFS
+        queue<std::pair<string, int>> beginQueue, endQueue;
+        beginQueue.push(std::pair<string, int>(beginWord, 1));
+        endQueue.push(std::pair<string, int>(endWord, 1));
+
+        map<string, int> beginVisited, endVisited;
+        beginVisited.insert(std::pair<string, int>(beginWord, 1));
+        endVisited.insert(std::pair<string, int>(endWord, 1));
+
+        while (!beginQueue.empty() && !endQueue.empty()){
+            // one level forward from beginword
+            std::pair<string, int> front = beginQueue.front();
+            beginQueue.pop();
+            string word = front.first;
+            int level = front.second;
+
+            for (int i = 0; i < len; i++){
+                string newKeyStr = word.substr(0, i) + "*" + word.substr(i+1);
+                for (int j = 0; j < allCombDict[newKeyStr].size(); j++){
+                    string transWord = allCombDict[newKeyStr][j];
+                    if (endVisited.count(transWord) != 0)
+                        return level + endVisited[transWord];
+                    if (beginVisited.count(transWord) == 0){
+                        beginVisited.insert(std::pair<string, int>(transWord, level + 1));
+                        beginQueue.push(std::pair<string, int>(transWord, level + 1));
+                    }
+                }
+            }
+
+            // one level forward from endinword
+            front = endQueue.front();
+            endQueue.pop();
+            word = front.first;
+            level = front.second;
+
+            for (int i = 0; i < len; i++){
+                string newKeyStr = word.substr(0, i) + "*" + word.substr(i+1);
+                for (int j = 0; j < allCombDict[newKeyStr].size(); j++){
+                    string transWord = allCombDict[newKeyStr][j];
+                    if (beginVisited.count(transWord) != 0)
+                        return level + beginVisited[transWord];
+                    if (endVisited.count(transWord) == 0){
+                        endVisited.insert(std::pair<string, int>(transWord, level + 1));
+                        endQueue.push(std::pair<string, int>(transWord, level + 1));
+                    }
+                }
+            }
+        }
+
+        return 0;
+    }
+};
