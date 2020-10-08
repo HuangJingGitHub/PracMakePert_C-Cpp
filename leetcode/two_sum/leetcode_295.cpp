@@ -1,4 +1,4 @@
-/** Main idea is to maintain a max heap for small half elements and a min heap for larger half elements. Deal with their amount relationship 
+/** Main idea is to maintain a max heap for small half elements and a min heap for larger half elements.
  * Look the favorited solution for reference. 
  */
 class MedianFinder {
