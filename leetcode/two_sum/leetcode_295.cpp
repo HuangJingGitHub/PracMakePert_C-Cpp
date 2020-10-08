@@ -1,5 +1,6 @@
 /** Main idea is to maintain a max heap for small half elements and a min heap for larger half elements. Deal with their amount relationship 
- * Look the favorited solution for reference. */
+ * Look the favorited solution for reference. 
+ */
 class MedianFinder {
 private:
     int dataCount;
