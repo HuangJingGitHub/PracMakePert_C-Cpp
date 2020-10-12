@@ -39,3 +39,22 @@ public:
         return res;
     }
 };
+
+
+// recursion
+class Solution {
+public:
+    int sumNumbers(TreeNode* root) {
+        return helper(root, 0);
+    }
+
+    int helper(TreeNode* root, int parentVal){
+        if (root == NULL)
+            return 0;
+        parentVal = 10 * parentVal + root->val;
+        if (root->left == NULL && root->right == NULL)
+            return parentVal;
+        else
+            return helper(root->left, parentVal) + helper(root->right, parentVal);
+    }
+};
