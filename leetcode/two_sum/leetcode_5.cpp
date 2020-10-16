@@ -21,7 +21,7 @@ public:
 
 
     bool isPalindromic(const string& s, int endPos, int len){
-        if (endPos >= s.size() || len > endPos + 1)
+        if (endPos >= s.size() || len > endPos + 1 || len < 1)
             return false;
         
         int left = endPos - len + 1, right = endPos;
