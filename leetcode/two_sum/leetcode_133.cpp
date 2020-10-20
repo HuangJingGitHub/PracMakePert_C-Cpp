@@ -25,26 +25,27 @@ public:
 class Solution {
 public:
     Node* cloneGraph(Node* node) {
-        unordered_set<int> valBuilt;
+        unordered_map<int, Node*> built;
         Node* res;
         if (node == NULL)
             return res;
         
         res = new Node(node->val, node->neighbors);
-        valBuilt.insert(node->val);
+        built.emplace(node->val, res);
 
-        DFS_build(res, valBuilt);
+        DFS_build(res, built);
         return res;
     }
 
-    void DFS_build(Node* source, unordered_set<int>& built){
-        for (Node* nodePt : source->neighbors){
+    void DFS_build(Node* source, unordered_map<int, Node*>& built){
+        for (Node*& nodePt : source->neighbors){  // Note use reference as we need to modify the origial value
             if (built.find(nodePt->val) == built.end()){
-                built.insert(nodePt->val);
-                cout << nodePt->val << " OK\n";
                 nodePt = new Node(nodePt->val, nodePt->neighbors);
+                built.emplace(nodePt->val, nodePt);
                 DFS_build(nodePt, built);
             }
+            else
+                nodePt = built[nodePt->val];
         }
     }
 };
