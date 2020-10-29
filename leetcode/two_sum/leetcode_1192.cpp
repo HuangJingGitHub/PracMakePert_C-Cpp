@@ -1,4 +1,4 @@
-// Tarjar algorithm
+// Tarjan algorithm
 class Solution {
 public:
     vector<vector<int>> res;
