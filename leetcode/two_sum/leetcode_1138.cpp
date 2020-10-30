@@ -45,3 +45,40 @@ public:
         res += "!";        
     }
 };
+
+
+class Solution {
+public:
+    string alphabetBoardPath(string target) {
+        string res;
+
+        char startChar = 'a';
+        for (int i = 0; i < target.size(); i++){
+            char targetChar = target[i];
+            addPath(res, startChar, targetChar);
+            startChar = targetChar;
+        }
+        return res;
+    }
+
+    void addPath(string& res, char startChar, char targetChar){
+        int startInt = startChar - 'a', targetInt = targetChar - 'a';
+        int moveRow = targetInt / 5 - startInt / 5, moveCol = targetInt % 5 - startInt % 5;
+ 
+        // If we gurantee L is before U, U is before R, then 'z' does not need dealt with speically.
+        // No matter 'z' is target char or start char, the path won't exceed the table.
+        if (moveCol < 0)
+            for (int i = 0; i < -moveCol; i++)
+                res += "L";
+        if (moveRow > 0)
+            for (int i = 0; i < moveRow; i++)
+                res += "D";
+        else if (moveRow < 0)
+            for (int i = 0; i < -moveRow; i++)
+                res += "U";
+        if (moveCol > 0)
+            for (int i = 0; i < moveCol; i++)
+                res += "R";
+        res += "!";        
+    }
+};
