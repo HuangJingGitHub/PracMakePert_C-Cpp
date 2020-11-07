@@ -1,5 +1,4 @@
-  
-// sorting can help much.
+// Sorting can help much.
 class Solution {
 public:
     int findBestValue(vector<int>& arr, int target) {
@@ -15,12 +14,13 @@ public:
             else if (maxSum == target)
                 return arr[i];
             else{
-                int targetAvg = target / (arr.size() - i);
-                if (target - targetAvg * (arr.size() - i) > (targetAvg + 1) * (arr.size() - i) - target)
-                    targetAvg++;
-                return targetAvg;
+                res = target / (arr.size() - i);
+                if (target - res * (arr.size() - i) > (res + 1) * (arr.size() - i) - target)
+                    res++;
+                return res;
             }
         }
         return res;
     }
+};
 };
