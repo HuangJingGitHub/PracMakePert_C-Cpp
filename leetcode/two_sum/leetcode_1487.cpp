@@ -7,15 +7,15 @@ public:
             if (strLog.find(*itr) == strLog.end())
                 strLog[*itr] = 0;
             else{
-                int order = strLog[*itr] + 1;
-                string temp;
-                for (temp = *itr + "(" + to_string(order) + ")"; strLog.find(temp) != strLog.end(); ){
-                    order++;
-                    temp  = *itr + "(" + to_string(order) + ")";
+                int idx = strLog[*itr] + 1;
+                string tempStr = *itr + "(" + to_string(idx) + ")";                
+                while (strLog.find(tempStr) != strLog.end()){
+                    idx++;
+                    tempStr  = *itr + "(" + to_string(idx) + ")";
                 }
 
-                strLog[*itr] = order;
-                *itr = temp;
+                strLog[*itr] = idx;
+                *itr = tempStr;
                 strLog[*itr] = 0;
             }
         }
