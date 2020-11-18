@@ -31,7 +31,6 @@ public:
             if (colsum[i] == 1){
                 res[0][i] = 0;
                 res[1][i] = 1;
-                sumRow1++;
                 j++;
             }
         }
