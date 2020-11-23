@@ -10,10 +10,10 @@ public:
             indegree[pre[0]]++;
             outAdjacency[pre[1]].push_back(pre[0]);
         }
-        for (int i = 0; i < numCourses; i++){
+        for (int i = 0; i < numCourses; i++)
             if (indegree[i] == 0)
                 feasibleCourse.push(i);
-        }
+        
         while (!feasibleCourse.empty()){
             int feasibleCourseNum = feasibleCourse.size();
             for (int i = 0; i < feasibleCourseNum; i++){
