@@ -6,7 +6,7 @@ public:
         int maxRequest = 0, minNextTime = INT_MAX;
     
         for (int i = 0; i < arrival.size(); i++) {
-            if (i > k && minNextTime > arrival[i] + load[i])
+            if (i >= k && minNextTime > arrival[i] + load[i])
                 continue;
             for (int idx = i % k, j = 0; j < k; j++, idx = (i + j) % k) {
                 if (serverFreeTime[idx] <= arrival[i]) {
@@ -23,7 +23,6 @@ public:
             if (itr->second == maxRequest)
                 res.push_back(itr->first);
         }
-
         return res;
     }
 };
