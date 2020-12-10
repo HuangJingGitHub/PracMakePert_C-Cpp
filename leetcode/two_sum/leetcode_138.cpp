@@ -25,17 +25,17 @@ public:
          nodeMap[head] = resHead;
 
         while (head) {
-            if ( nodeMap.find(head->next) !=  nodeMap.end())
+            if (nodeMap.find(head->next) !=  nodeMap.end())
                 resHead->next =  nodeMap[head->next];
             else if (head->next){
                 resHead->next = new Node(head->next->val);
-                 nodeMap[head->next] = resHead->next;
+                nodeMap[head->next] = resHead->next;
             }
-            if (head->random &&  nodeMap.find(head->random) !=  nodeMap.end())
+            if (nodeMap.find(head->random) !=  nodeMap.end())
                 resHead->random =  nodeMap[head->random];
             else if (head->random) {
                 resHead->random = new Node(head->random->val);
-                 nodeMap[head->random] = resHead->random;
+                nodeMap[head->random] = resHead->random;
             }
             head = head->next;
             resHead = resHead->next;
