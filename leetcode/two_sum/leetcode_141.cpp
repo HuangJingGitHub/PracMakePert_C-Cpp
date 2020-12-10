@@ -9,7 +9,8 @@
 class Solution {
 public:
     bool hasCycle(ListNode *head) {
-        /* Sol 1: set
+        // Sol 1: set
+        /*
         unordered_set<ListNode*> visited;
         while (head) {
             if (visited.find(head) != visited.end())
@@ -18,10 +19,9 @@ public:
                 visited.insert(head);
             head = head->next;
         }
-        return false;
-        */
-        /* Sol 2: fast-slow pointer
-        */
+        return false; */
+        
+        // Sol 2: fast-slow pointers
         if (!head || !head->next)
             return false;
         ListNode *slowPt = head, *fastPt = head->next;
