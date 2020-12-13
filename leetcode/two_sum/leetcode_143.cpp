@@ -27,3 +27,28 @@ public:
         }
     }
 };
+
+// store nodes
+class Solution {
+public:
+    void reorderList(ListNode* head) {
+        if (!head || !head->next || !head->next->next)
+            return;
+
+        vector<ListNode*> nodeVec;
+        while (head) {
+            nodeVec.push_back(head);
+            head = head->next;
+        }
+        int left = 0, right = nodeVec.size() - 1;
+        for (; left < right - 1; left++, right--) {
+            ListNode* nextPt = nodeVec[left]->next;
+            nodeVec[left]->next = nodeVec[right];
+            nodeVec[right]->next = nextPt;
+        }
+        if (left == right) // odd node number
+            nodeVec[left]->next = NULL;
+        else // even node number
+            nodeVec[right]->next = NULL;
+    }
+};
