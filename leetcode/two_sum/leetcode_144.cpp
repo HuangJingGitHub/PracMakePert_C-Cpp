@@ -21,3 +21,26 @@ public:
         return res;
     }
 };
+
+ // It is cool to use a stack, actually similar to recursion (same O(n) time and space complexity), but more explicit.
+class Solution {
+public:
+    vector<int> preorderTraversal(TreeNode* root) {
+        if (!root)
+            return {};
+        vector<int> res;
+        stack<TreeNode*> nodeStack;
+        nodeStack.push(root);
+
+        while (!nodeStack.empty()) {
+            TreeNode* curNode = nodeStack.top();
+            res.push_back(curNode->val);
+            nodeStack.pop();
+            if (curNode->right)
+                nodeStack.push(curNode->right);
+            if (curNode->left)
+                nodeStack.push(curNode->left);  // Left node is always on the top of stack.
+        }
+        return res;
+    }
+};
