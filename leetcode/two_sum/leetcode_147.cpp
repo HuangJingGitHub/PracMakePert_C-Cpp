@@ -12,7 +12,7 @@ public:
         if (!head)
             return NULL;
 
-        ListNode* res = new ListNode(0);
+        ListNode* res = new ListNode();
         res->next = head;
         head = head->next;
         res->next->next = NULL;
