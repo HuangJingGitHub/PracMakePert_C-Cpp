@@ -12,13 +12,13 @@ public:
         if (!head)
             return NULL;
 
-        ListNode* res = new ListNode();
-        res->next = head;
+        ListNode dummyNode = ListNode(), *dummy = &dummyNode;  // To avoid potential memory leak, do not new a node.
+        dummy->next = head;
         head = head->next;
-        res->next->next = NULL;
+        dummy->next->next = NULL;
 
         while (head) {
-            ListNode *sortedPt = res->next, *sortedPtPre = res, *temp = head->next;
+            ListNode *sortedPt = dummy->next, *sortedPtPre = dummy, *temp = head->next;
             while (sortedPt && head->val > sortedPt->val) {
                 sortedPt = sortedPt->next;
                 sortedPtPre = sortedPtPre->next;
@@ -27,6 +27,6 @@ public:
             head->next = sortedPt;
             head = temp;
         }
-        return res->next;
+        return dummy->next;
     }
 };
