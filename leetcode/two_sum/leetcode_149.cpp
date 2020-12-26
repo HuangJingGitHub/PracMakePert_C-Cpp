@@ -1,3 +1,4 @@
+// Traverse all possiblities. 
 class Solution {
 public:
     int maxPoints(vector<vector<int>>& points) {
@@ -30,7 +31,7 @@ public:
         if (points[j][0] == points[k][0] && points[j][1] == points[k][1])
             return true;
         long long int g1 = gcd(points[j][1] - points[i][1], points[j][0] - points[i][0]),
-                      g2 = gcd(points[k][1] - points[j][1], points[k][0] - points[j][0]);
+                      g2 = gcd(points[k][1] - points[j][1], points[k][0] - points[j][0]);  // Will exceed the int range.
         
         return ((points[i][1] - points[j][1]) / g1 * ((points[k][0] - points[j][0]) / g2)) ==
                ((points[i][0] - points[j][0]) / g1 * ((points[k][1] - points[j][1]) / g2));
