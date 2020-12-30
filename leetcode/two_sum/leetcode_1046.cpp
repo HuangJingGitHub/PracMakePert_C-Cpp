@@ -4,6 +4,7 @@ public:
         priority_queue<int> maxHeap;
         for (int x : stones)
             maxHeap.push(x);
+        
         int maxWeight = 0;
         while (!maxHeap.empty()) {
             maxWeight = maxHeap.top();
