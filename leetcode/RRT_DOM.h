@@ -14,11 +14,12 @@
 using namespace cv;
 using namespace std;
 
-struct Node {
+struct RRT_Node {
     Point2f pos;
-    Node* parent;
-    vector<Node*> adjacency_list;
-    Node(Point2f initPos): pos(initPos), parent(nullptr) {}
+    RRT_Node* parent;
+    vector<RRT_Node*> adjacency_list;
+    RRT_Node(): pos(Point2f(0, 0)), parent(nullptr) {}
+    RRT_Node(Point2f initPos): pos(initPos), parent(nullptr) {}
 };
 
 class RRT_Planner {
@@ -28,55 +29,90 @@ public:
     float step_len_;
     float error_dis_;
     Size2f config_size_;
-    Node* search_graph_;
-    int MAX_TREE_SIZE_ = 300;
-    int CUR_TREE_SIZE_ = 0;
+    RRT_Node* search_graph_;
+    RRT_Node* graph_end_;
+    int MAX_GRAPH_SIZE = 300;
+    int CUR_GRAPH_SIZE = 0;
     bool plan_scuess_ = false;
 
-    RRT_Planner() {}
-    RRT_Planner(Point2f start, Point2f target, float step_len = 1, float error_dis = 1,
+    RRT_Planner(): search_graph_(nullptr), graph_end_(nullptr) {}
+    RRT_Planner(Point2f start, Point2f target, float step_len = 2, float error_dis = 2,
                 Size2f config_size = Size2f(640, 480)): 
-        start_pos_(start), target_pos_(end), step_len_(step_len), error_dis_(error_dis)
+        start_pos_(start), 
+        target_pos_(target), 
+        step_len_(step_len), 
+        error_dis_(error_dis),
         config_size_(config_size) {
-        search_graph_ = new Node(start);
-        CUR_TREE_SIZE_++;
+        search_graph_ = new RRT_Node(start);
+        graph_end_ = new RRT_Node();
+        CUR_GRAPH_SIZE++;
     }
 
     ~RRT_Planner() {
         delete search_graph_;
+        delete graph_end_;
     }
 
     bool Plan() {
         srand(time(NULL));
+        plan_scuess_ = false;
         float div_width = RAND_MAX / config_size_.width,
               div_height = RAND_MAX / config_size_.height;
         Point2f rand_pos = Point2f(0, 0);
-
-        while (CUR_TREE_SIZE_ < MAX_TREE_SIZE_) {
+        
+        while (CUR_GRAPH_SIZE < MAX_GRAPH_SIZE) {
             rand_pos.x = rand() / div_width;
             rand_pos.y = rand() / div_height;
-            
-            Node* nearest_node = NearestNode(rand_pos)
-            Node* new_node = AddNewNode(nearest_node, rand_pos);
 
+            cout << "CUR_GRAPH_SIZE " << CUR_GRAPH_SIZE << '\n';
+            RRT_Node* nearest_node = NearestNode(rand_pos);
+            RRT_Node* new_node = AddNewNode(nearest_node, rand_pos);
+            if (norm(new_node->pos - target_pos_) <= error_dis_) {
+                graph_end_= new_node;
+                plan_scuess_ = true;
+                return true;
+            }   
+            CUR_GRAPH_SIZE++;
         }
+        cout << "MAX_GRAPH_SIZE: " << MAX_GRAPH_SIZE << " is achieved with no path founded.\n";
+        return false;
     }
 
-    Node* NearestNode(Point2f& rand_node) {
-        Node* res = search_graph_;
-        queue<Node*> level_pt;
-        folat min_dis = norm(rand_node - search_graph_->pos), cur_dis;
+    RRT_Node* NearestNode(Point2f& rand_node) {
+        RRT_Node* res = search_graph_;
+        queue<RRT_Node*> level_pt;
+        float min_dis = norm(rand_node - search_graph_->pos), cur_dis;
         for (auto pt : search_graph_->adjacency_list)
             level_pt.push(pt);
+        
         // bfs
+        cout << "search_graph_: " << search_graph_ << '\n';
         while (!level_pt.empty()) {
+            queue<RRT_Node*> tempQueue = level_pt;
+            cout << "node_queue:\n";
+            while(!tempQueue.empty()) {
+                if (!tempQueue.front()->adjacency_list.empty())
+                cout << tempQueue.front() << " VS " << tempQueue.front()->adjacency_list[0]
+                    << '\n';
+                tempQueue.pop();
+            }
+
             int level_size = level_pt.size();
             for (int i = 0; i < level_size; i++) {
-                Node* cur_node = level_pt.front();
+                RRT_Node* cur_node = level_pt.front();
                 level_pt.pop();
-                for (auto pt : cur_node->adjacency_list)
+
+                string s;
+                cin >> s;
+
+                cout << "cur_node " << cur_node->pos << '\n';
+                cout << "adjacency_list: \n";
+                for (auto pt : cur_node->adjacency_list) {
                     level_pt.push(pt);
+                    cout << pt << '\n';
+                }
                 cur_dis = norm(rand_node - cur_node->pos);
+                cout << "cur_dis " << cur_dis << '\n';
                 if (cur_dis < min_dis)
                     res = cur_node;
             }
@@ -84,12 +120,27 @@ public:
         return res;
     }
 
-    Node* AddNewNode(Node* nearest_node, Point2f& rand_pos) {
+    RRT_Node* AddNewNode(RRT_Node* nearest_node, Point2f& rand_pos) {
         Point2f direction = (rand_pos - nearest_node->pos) / norm((rand_pos - nearest_node->pos));
         Point2f new_pos = nearest_node->pos + direction * step_len_;
-        Node* new_node = new Node(new_pos);   // exist time ?
+        static RRT_Node new_node_obj = RRT_Node(new_pos);   // exist time ?
+        RRT_Node* new_node = &new_node_obj;
         new_node->parent = nearest_node;
         nearest_node->adjacency_list.push_back(new_node);
         return new_node;
     }
+
+    vector<RRT_Node*> GetPath() {
+        vector<RRT_Node*> res;
+        if (!plan_scuess_) {
+            cout << "No valid path available.\n";
+            return res;
+        }
+        RRT_Node* reverse_node = graph_end_;
+        while (reverse_node) {
+            res.push_back(reverse_node);
+            reverse_node = reverse_node->parent;
+        }
+        return res;   
+    }    
 };
