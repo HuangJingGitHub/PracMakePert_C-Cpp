@@ -18,7 +18,7 @@ static void help() {
     cout << "\nHot keys: \n"
             "\tESC - quit the program\n"
             "\tc - delete all the points\n"
-            "To add/remove a feature point click it\n" << endl;
+            << endl;
 }
 
 
@@ -53,13 +53,11 @@ int main( int argc, char** argv) {
     setMouseCallback( "RRT Demo", onMouse, 0 );
     
     Mat frame;
-    bool updated = true;
+    bool planned = false;
     vector<Point2f> points;
     // RRT_Planner rrtPlanner;
-    int cnt = 0;
+    vector<RRT_Node*> path;    
     for(;;) {
-        cout << "frame: " << cnt << "  points.size() = " << points.size() << '\n';
-        cnt++;
         cap >> frame;
         if( frame.empty() )
             break;
@@ -68,24 +66,23 @@ int main( int argc, char** argv) {
             points.push_back(point);
             addRemovePt = false;
         }
-        if (points.size() == 2 && updated) {
-            updated = false;
-            RRT_Planner rrtPlanner(points[0], points[1]);
+        if (points.size() == 2 && !planned) {
+            RRT_Planner rrtPlanner (points[0], points[1], 5, 200);
+            
+            cout << "Planning...\n";
+            planned = rrtPlanner.Plan(frame);
+            path = rrtPlanner.GetPath();
 
-            // test
-            cout << points[0].x << " " << points[0].y << '\n';
-            cout << points[1].x << " " << points[1].y << '\n';
-            cout << "rrtPlanner.search_graph_ data: " << rrtPlanner.search_graph_->pos << '\n'; 
-         
-            rrtPlanner.Plan();
-            vector<RRT_Node*> path = rrtPlanner.GetPath();
-            for (int i = 0; i < path.size() - 2; i += 2)
-                line(frame, path[i]->pos, path[i + 2]->pos, Scalar(0,0,255), 2);
         }
 
         if (points.size() == 2) {
             circle(frame, points[0], 3, Scalar(0,255,0), -1, 8);
             circle(frame, points[1], 3, Scalar(0,255,0), -1, 8);
+        }
+
+        if (planned) {
+            for (int i = 0; i < path.size() - 1; i++)
+                line(frame, path[i]->pos, path[i + 1]->pos, Scalar(0,0,255), 2);
         }
 
         imshow("RRT Demo", frame);
