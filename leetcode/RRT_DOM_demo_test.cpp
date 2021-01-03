@@ -11,9 +11,18 @@ using namespace std;
 
 
 int main(int argc, char** argv) {
-    Point2f start = Point2f(100, 100), end = Point2f(200, 200);
+    Mat backImg(Size(640, 480), CV_64FC3, Scalar(255, 255, 255));
+    Point2f start = Point2f(100, 100), end = Point2f(300, 300);
     RRT_Planner rrtPlanner1(start, end);
 
-    cout << "Constructer1: " << rrtPlanner1.search_graph_->pos << '\n';
-    //rrtPlanner1.Plan();
+    //imshow("RRT path planning", backImg);
+    //waitKey(0);
+    rrtPlanner1.Plan(backImg);
+    vector<RRT_Node*> path = rrtPlanner1.GetPath();
+    for (int i = 0; i < path.size() - 1; i++)
+        line(backImg, path[i]->pos, path[i + 1]->pos, Scalar(255,0,0), 2);   
+
+    imshow("RRT path planning", backImg);
+    waitKey(0);
+    return 0;
 }

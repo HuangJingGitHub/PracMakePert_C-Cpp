@@ -64,25 +64,25 @@ public:
             rand_pos.x = rand() / div_width;
             rand_pos.y = rand() / div_height;
 
-            // cout << "*****-->CUR_GRAPH_SIZE " << CUR_GRAPH_SIZE << '\n';
+            cout << "*****-->CUR_GRAPH_SIZE " << CUR_GRAPH_SIZE << '\n';
             RRT_Node* nearest_node = NearestNode(rand_pos);
             // cout << "Nearest_node address: " << nearest_node << " --> pos "<< nearest_node->pos << '\n';
             RRT_Node* new_node = AddNewNode(nearest_node, rand_pos);
-            circle(source_img, new_node->pos, 3, Scalar(0,255,0), -1, 8);
-            imshow("RRT Demo", source_img);
-            waitKey(10);
-            // cout << "Added new node address: " << new_node << " --> pos " << new_node->pos << '\n';
+            cout << "Added new node address: " << new_node << " --> pos " << new_node->pos << '\n';
             if (norm(new_node->pos - target_pos_) <= error_dis_) {
                 cout << "Find path!!!\n";
                 graph_end_= new_node;
                 plan_scuess_ = true;
                 return true;
             }
-            float temp_dis = norm(new_node->pos - target_pos_);
-            min_dis_to_target = min(min_dis_to_target, temp_dis);
+            circle(source_img, start_pos_, 5, Scalar(0,0,255), -1);
+            circle(source_img, target_pos_, 5, Scalar(0,0,255), -1);
+            circle(source_img, new_node->pos, 3, Scalar(0,255,0), -1);
+            imshow("RRT path planning", source_img);
+            waitKey(10);
+            // float temp_dis = norm(new_node->pos - target_pos_);
+            // min_dis_to_target = min(min_dis_to_target, temp_dis);
             // cout << "Current min distance to target: " << min_dis_to_target << '\n';
-            for (int i = 0; i < 5; i++)
-                cout << '\n';
             CUR_GRAPH_SIZE++;
         }
         cout << "MAX_GRAPH_SIZE: " << MAX_GRAPH_SIZE << " is achieved with no path founded.\n";
@@ -104,12 +104,11 @@ public:
         while (!level_pt.empty()) {
             queue<RRT_Node*> tempQueue = level_pt;
             // cout << "RRT_Node queue size: " << tempQueue.size() << "\n";
-            while(!tempQueue.empty()) {
-                if (!tempQueue.front()->adjacency_list.empty())
-                // cout << tempQueue.front() << " VS " << tempQueue.front()->adjacency_list[0]
-                //     << '\n';
-                tempQueue.pop();
-            }
+            //while(!tempQueue.empty()) {
+            //    if (!tempQueue.front()->adjacency_list.empty())
+            //        cout << tempQueue.front() << "\n";
+            //    tempQueue.pop();
+            //}
 
             int level_size = level_pt.size();
             for (int i = 0; i < level_size; i++) {

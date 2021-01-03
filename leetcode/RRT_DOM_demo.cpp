@@ -67,7 +67,7 @@ int main( int argc, char** argv) {
             addRemovePt = false;
         }
         if (points.size() == 2 && !planned) {
-            RRT_Planner rrtPlanner (points[0], points[1], 5, 200);
+            RRT_Planner rrtPlanner (points[0], points[1], 5, 5);
             
             cout << "Planning...\n";
             planned = rrtPlanner.Plan(frame);
