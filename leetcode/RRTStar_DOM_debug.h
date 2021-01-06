@@ -48,7 +48,6 @@ public:
     int CUR_GRAPH_SIZE = 0;
     bool plan_scuess_ = false;
 
-
     RRTStarPlanner(): graph_start_(nullptr), graph_end_(nullptr) {}
     RRTStarPlanner(Point2f start, Point2f target, float step_len = 10, float error_dis = 10, float radius = 40,
                 Size2f config_size = Size2f(640, 480)): 
@@ -84,7 +83,7 @@ public:
             cout << "Added new node address: " << new_node << " --> pos " << new_node->pos << '\n';
             rewire(nearest_node, new_node);
             if (norm(new_node->pos - target_pos_) <= error_dis_) {
-                if (new_node->cost < min_cost){
+                if (new_node->cost + norm(graph_end_->pos - new_node->pos) < min_cost){
                     graph_end_->parent = new_node;
                     min_cost = new_node->cost + norm(graph_end_->pos - new_node->pos);
                 }
@@ -183,7 +182,7 @@ public:
                     }
                 near_node->parent = new_node;
                 near_node->cost = new_node->cost + norm(new_node->pos - near_node->pos);
-                near_node->adjacency_list.push_back(near_node);
+                new_node->adjacency_list.push_back(near_node);
             }
         }
 
