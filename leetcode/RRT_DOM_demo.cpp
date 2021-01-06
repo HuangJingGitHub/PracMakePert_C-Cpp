@@ -56,7 +56,7 @@ int main( int argc, char** argv) {
     bool planned = false;
     vector<Point2f> points;
     // RRT_Planner rrtPlanner;
-    vector<RRT_Node*> path;    
+    vector<RRTNode*> path;    
     for(;;) {
         cap >> frame;
         if( frame.empty() )
@@ -67,7 +67,7 @@ int main( int argc, char** argv) {
             addRemovePt = false;
         }
         if (points.size() == 2 && !planned) {
-            RRT_Planner rrtPlanner (points[0], points[1], 5, 5);
+            RRTPlanner rrtPlanner (points[0], points[1], 5, 5);
             
             cout << "Planning...\n";
             planned = rrtPlanner.Plan(frame);
