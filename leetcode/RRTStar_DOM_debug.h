@@ -8,8 +8,7 @@
 #include <string>
 #include <opencv2/core.hpp>
 #include <opencv2/highgui.hpp>
-#include <eigen3/Eigen/Dense>
-#include <eigen3/Eigen/Eigenvalues>
+#include "Obstacles.h"
 
 using namespace cv;
 using namespace std;
@@ -23,36 +22,29 @@ struct RRTStarNode {
     RRTStarNode(Point2f initPos): pos(initPos), cost(0), parent(nullptr) {}
 };
 
-class RRTStarNodeComparator {
-    Point2f reference_pos_;
-public:
-    RRTStarNodeComparator(Point2f pos): reference_pos_(pos) {}
-
-    bool operator()(const RRTStarNode* node1, const RRTStarNode* node2) {
-        return norm(node1->pos - reference_pos_) > norm(node2->pos - reference_pos_);
-    }
-};
-
 
 class RRTStarPlanner {
 public:
     Point2f start_pos_;
     Point2f target_pos_;
+    vector<PolyObstacle> obstacles_;
     float step_len_;
     float error_dis_;
     float radius_;
     Size2f config_size_;
     RRTStarNode* graph_start_;
     RRTStarNode* graph_end_;
-    int MAX_GRAPH_SIZE = 5000;
+    int MAX_GRAPH_SIZE = 10000;
     int CUR_GRAPH_SIZE = 0;
     bool plan_scuess_ = false;
 
     RRTStarPlanner(): graph_start_(nullptr), graph_end_(nullptr) {}
-    RRTStarPlanner(Point2f start, Point2f target, float step_len = 10, float error_dis = 10, float radius = 40,
-                Size2f config_size = Size2f(640, 480)): 
+    RRTStarPlanner(Point2f start, Point2f target, vector<PolyObstacle> obs, float step_len = 10, 
+                   float error_dis = 10, float radius = 40,
+                   Size2f config_size = Size2f(640, 480)): 
         start_pos_(start), 
         target_pos_(target), 
+        obstacles_(obs),
         step_len_(step_len), 
         error_dis_(error_dis),
         radius_(radius),
@@ -77,33 +69,37 @@ public:
             rand_pos.x = rand() / div_width;
             rand_pos.y = rand() / div_height;
 
-            cout << "*****-->CUR_GRAPH_SIZE " << CUR_GRAPH_SIZE << '\n';
             RRTStarNode* nearest_node = NearestNode(rand_pos);
             RRTStarNode* new_node = AddNewNode(nearest_node, rand_pos);
-            cout << "Added new node address: " << new_node << " --> pos " << new_node->pos << '\n';
-            rewire(nearest_node, new_node);
-            if (norm(new_node->pos - target_pos_) <= error_dis_) {
-                if (new_node->cost + norm(graph_end_->pos - new_node->pos) < min_cost){
-                    graph_end_->parent = new_node;
-                    min_cost = new_node->cost + norm(graph_end_->pos - new_node->pos);
+            if (PathObstacleFree(nearest_node, new_node)) {
+                    rewire(nearest_node, new_node);
+                if (norm(new_node->pos - target_pos_) <= error_dis_) {
+                    if (new_node->cost + norm(graph_end_->pos - new_node->pos) < min_cost){
+                        graph_end_->parent = new_node;
+                        min_cost = new_node->cost + norm(graph_end_->pos - new_node->pos);
+                    }
+                    plan_scuess_ = true;
                 }
-                plan_scuess_ = true;
+                CUR_GRAPH_SIZE++;
+                circle(source_img, new_node->pos, 3, Scalar(0,255,0), -1);
             }
+            else    
+                delete new_node;
+            rectangle(source_img, Point(310, 0), Point(330, 200), Scalar(0, 0, 0), -1);
+            rectangle(source_img, Point(310, 280), Point(330, 480), Scalar(0, 0, 0), -1);
             circle(source_img, start_pos_, 5, Scalar(0,0,255), -1);
             circle(source_img, target_pos_, 5, Scalar(0,0,255), -1);
-            circle(source_img, new_node->pos, 3, Scalar(0,255,0), -1);
             imshow("RRT path planning", source_img);
-            waitKey(10);
-            CUR_GRAPH_SIZE++;
+            waitKey(1);
+            cout << "-->CUR_GRAPH_SIZE " << CUR_GRAPH_SIZE << '\n';
         }
         if (!plan_scuess_)
             cout << "MAX_GRAPH_SIZE: " << MAX_GRAPH_SIZE << " is achieved with no path founded.\n";
         else
             cout << "Path found with cost: " << min_cost
-                << "\nOptimal cost: " << norm(graph_end_->pos - graph_start_->pos)
-                << '\n';   
+                 << "\nOptimal cost: " << norm(graph_end_->pos - graph_start_->pos)
+                 << '\n';   
         return plan_scuess_;
-        // return false;
     }
 
     RRTStarNode* NearestNode(Point2f& rand_node) {
@@ -135,8 +131,6 @@ public:
         Point2f direction = (rand_pos - nearest_node->pos) / norm((rand_pos - nearest_node->pos));
         Point2f new_pos = nearest_node->pos + direction * step_len_;
         RRTStarNode* new_node = new RRTStarNode(new_pos);
-        // new_node->parent = nearest_node;
-        // nearest_node->adjacency_list.push_back(new_node);
         return new_node;
     }
 
@@ -162,7 +156,7 @@ public:
         float min_cost = nearest_node->cost + norm(new_node->pos - nearest_node->pos);
         for (auto near_node : near_set) {
             float cur_cost = near_node->cost + norm(new_node->pos - near_node->pos);
-            if (cur_cost < min_cost) {
+            if (cur_cost < min_cost && PathObstacleFree(near_node, new_node)) {
                 cost_min_node = near_node;
                 min_cost = cur_cost;
             }
@@ -173,7 +167,8 @@ public:
         cost_min_node->adjacency_list.push_back(new_node);
 
         for (auto near_node : near_set) {
-            if (new_node->cost + norm(new_node->pos - near_node->pos) < near_node->cost) {
+            if (new_node->cost + norm(new_node->pos - near_node->pos) < near_node->cost 
+                && PathObstacleFree(near_node, new_node)) {
                 RRTStarNode* near_node_parent = near_node->parent;
                 for (int i = 0; i < near_node_parent->adjacency_list.size(); i++)
                     if (near_node_parent->adjacency_list[i] == near_node) {
@@ -188,6 +183,13 @@ public:
 
     }
 
+    bool PathObstacleFree(RRTStarNode* near_node, RRTStarNode* new_node) {
+        for (auto& obs : obstacles_)
+            if (!ObstacleFree(obs, near_node->pos, new_node->pos))
+                return false;
+        return true;
+    }
+    
     vector<RRTStarNode*> GetPath() {
         vector<RRTStarNode*> res;
         if (!plan_scuess_) {
@@ -213,6 +215,7 @@ RRTStarPlanner::~RRTStarPlanner() {
 RRTStarPlanner::RRTStarPlanner(const RRTStarPlanner& planner) {
     start_pos_ = planner.start_pos_;
     target_pos_ = planner.target_pos_;
+    obstacles_ = planner.obstacles_;
     step_len_ = planner.step_len_;
     error_dis_ = planner.error_dis_;
     config_size_ = planner.config_size_;
@@ -232,6 +235,7 @@ RRTStarPlanner::RRTStarPlanner(const RRTStarPlanner& planner) {
 RRTStarPlanner& RRTStarPlanner::operator=(const RRTStarPlanner& rhs) {
     start_pos_ = rhs.start_pos_;
     target_pos_ = rhs.target_pos_;
+    obstacles_ = rhs.obstacles_;
     step_len_ = rhs.step_len_;
     error_dis_ = rhs.error_dis_;
     config_size_ = rhs.config_size_;
@@ -248,6 +252,16 @@ RRTStarPlanner& RRTStarPlanner::operator=(const RRTStarPlanner& rhs) {
     plan_scuess_ = rhs.plan_scuess_;
 }
 
+
+/* class RRTStarNodeComparator {
+    Point2f reference_pos_;
+public:
+    RRTStarNodeComparator(Point2f pos): reference_pos_(pos) {}
+
+    bool operator()(const RRTStarNode* node1, const RRTStarNode* node2) {
+        return norm(node1->pos - reference_pos_) > norm(node2->pos - reference_pos_);
+    }
+}; */
 
 /* class NodeMinHeap {
     priority_queue<RRTStarNode*, vector<RRTStarNode*>, RRTStarNodeComparator> node_min_heap_;
