@@ -35,7 +35,7 @@ class Solution {
 public:
     int findPeakElement(vector<int>& nums) {
         int left = 0, right = nums.size() - 1, mid;
-        // use left < right - 1 instead left < right to avoid discussion cases where left, mid overlap
+        // use left < right - 1 instead of left < right to avoid discussing cases where left, mid overlap, which can be cumbersome.
         while (left < right - 1) {
             mid = left + (right - left) / 2;
             if (nums[mid] > nums[mid - 1] && nums[mid] > nums[mid + 1])
