@@ -1,24 +1,26 @@
+// Implement manual devision process
 class Solution {
 public:
     string fractionToDecimal(int numerator, int denominator) {
+        long long int num = numerator, dem = denominator;   
         vector<long long int> numeratorVec, resNum;
         string res;
         bool recurring = false, negative = false;
         int recurStart = 0;
 
-        if (numerator % denominator == 0)
-            return to_string(numerator / denominator);
+        if (num % dem == 0)
+            return to_string(num / dem);
         
-        if ((numerator > 0 && denominator < 0) || (numerator < 0 && denominator > 0)) {
+        if ((num > 0 && dem < 0) || (num < 0 && dem > 0)) {
             negative = true;
         }
-        numerator = abs(numerator);
-        denominator = abs(denominator);
+        num = abs(num);
+        dem = abs(dem);
         
-        numeratorVec.push_back(numerator);
-        while (numerator % denominator != 0) {
-            resNum.push_back(numerator / denominator);
-            long long int newNumerator = 10 * (numerator % denominator);
+        numeratorVec.push_back(num);
+        while (num % dem != 0) {
+            resNum.push_back(num / dem);
+            long long int newNumerator = 10 * (num % dem);   // Avoid exceeding int range, e.g. 10 * (1 % 2147483648) > INT_MAX, use long long int
             
             for (int i = 0; i < numeratorVec.size(); i++) {
                 if (numeratorVec[i] == newNumerator) {
@@ -31,11 +33,11 @@ public:
                 break;
             
             numeratorVec.push_back(newNumerator);
-            numerator = newNumerator;
+            num = newNumerator;
         } 
 
         if (!recurring) {
-            resNum.push_back(numerator / denominator);
+            resNum.push_back(num / dem);
             if (negative)
                 res = "-" + to_string(resNum[0]) + ".";
             else
