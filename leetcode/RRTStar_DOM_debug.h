@@ -109,10 +109,8 @@ public:
     RRTStarNode* NearestNode(Point2f& rand_node) {
         RRTStarNode* res = graph_start_;
         queue<RRTStarNode*> level_pt;
+        level_pt.push(graph_start_);
         float min_dis = norm(rand_node - graph_start_->pos), cur_dis;
-        for (auto pt : graph_start_->adjacency_list) {
-            level_pt.push(pt);
-        }
         
         // bfs
         while (!level_pt.empty()) {
@@ -124,8 +122,10 @@ public:
                     level_pt.push(pt);
                 }
                 cur_dis = norm(rand_node - cur_node->pos);
-                if (cur_dis < min_dis)
+                if (cur_dis < min_dis) {
                     res = cur_node;
+                    min_dis = cur_dis;
+                }
             }
         }
         return res;
