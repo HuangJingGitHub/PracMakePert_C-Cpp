@@ -123,8 +123,10 @@ public:
                 }
                 cur_dis = norm(rand_node - cur_node->pos);
                 // cout << "\nCurrent distance " << cur_dis << '\n';
-                if (cur_dis < min_dis)
+                if (cur_dis < min_dis) {
+                    min_dis = cur_dis;
                     res = cur_node;
+                }
             }
         }
         return res;
