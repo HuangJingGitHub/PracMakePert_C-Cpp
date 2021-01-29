@@ -35,11 +35,13 @@ public:
     }
 };
 
+
 // 3D dp
 class Solution {
 public:
     int maxProfit(int k, vector<int>& prices) {
         int res = 0;
+        // If k >= prices.size() / 2, equal to no limit on transaction times.
         if (k >= prices.size() / 2) {
             for (int i = 1; i < prices.size(); i++)
                 if (prices[i] > prices[i - 1])
@@ -47,8 +49,10 @@ public:
             return res;
         }
 
-        vector<vector<vector<int>>> dp(prices.size(), vector<vector<int>>(k+1, vector<int>(2)));    // profit of dp[i][j][0] i-th day with j times transaction / buy, no stock
-        for (int i = 0; i < prices.size(); i++) {                                                   // profit of dp[i][j][0] i-th day with j times transaction / buy, with stock
+        // profit of dp[i][j][0] i-th day with j times transaction / buy, no stock
+        // profit of dp[i][j][1] i-th day with j times transaction / buy, with stock
+        vector<vector<vector<int>>> dp(prices.size(), vector<vector<int>>(k+1, vector<int>(2)));
+        for (int i = 0; i < prices.size(); i++) {
             dp[i][0][0] = 0;
             dp[i][0][1] = -INT_MAX;
         }
