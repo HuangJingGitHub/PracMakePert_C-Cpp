@@ -41,22 +41,19 @@ public:
             if (idx0 == -1)
                 return -1;
             else 
-                res = classVec[idx0];
-                idx0--;
+                res = classVec[idx0--];
         }
         else if (stackNum == 1) {
             if (idx1 == stackSize_ - 1)
                 return -1;
             else
-                res = classVec[idx1];
-                idx1--;
+                res = classVec[idx1--];
         }
         else if (stackNum == 2) {
             if (idx2 == stackSize_ * 2 - 1)
                 return -1;
             else 
-                res = classVec[idx2];
-                idx2--;
+                res = classVec[idx2--];
         }
         return res;
     }
