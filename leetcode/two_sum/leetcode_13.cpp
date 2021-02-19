@@ -75,3 +75,23 @@ public:
     return result;    
     }
 };
+
+
+// compact and effective
+class Solution {
+public:
+    int romanToInt(string s) {
+        vector<string> romanStr = { "M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", 
+                                    "IX", "V", "IV", "I"};
+        vector<int> values = {1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1};
+
+        int res = 0, idx = 0;
+        for (int i = 0; i < romanStr.size(); i++) {
+            while (idx < s.size() && s.substr(idx, romanStr[i].size()) == romanStr[i]) {
+                res += values[i];
+                idx += romanStr[i].size();
+            }
+        }
+        return res;
+    }
+};
