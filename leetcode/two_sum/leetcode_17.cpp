@@ -83,3 +83,33 @@ int main()
     for (auto x:ansTest)
         cout << x << " ";
 }
+
+// backtrace
+class Solution {
+public:
+    vector<string> letterMap{"abc", "def", "ghi", "jkl", "mno", "pqrs", "tuv", "wxyz"};
+
+    vector<string> letterCombinations(string digits) {
+        vector<string> res;
+        if (digits.empty())
+            return res;
+        string curStr;
+        backtrace(digits, curStr, res, 0);
+        return res;
+    }
+
+    void backtrace(string& digits, string& curStr, vector<string>& res, int idx) {
+        if (idx == digits.size()) {
+            res.push_back(curStr);
+            return;
+        }
+
+        int digit = digits[idx] - '2';
+        string buttonStr = letterMap[digit];
+        for (int i = 0; i < buttonStr.size(); i++) {
+            curStr += buttonStr[i];
+            backtrace(digits, curStr, res, idx + 1);
+            curStr.pop_back();
+        }
+    }
+};
