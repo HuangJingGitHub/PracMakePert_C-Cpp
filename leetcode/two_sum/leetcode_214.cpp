@@ -33,3 +33,34 @@ public:
         return true;
     }
 };
+
+
+class Solution {
+public:
+    int computeNext(string pattern) {
+        vector<int> next(pattern.size() + 1, 0);
+        next[0] = -1;
+        next[1] = 0;
+        int i = 2, k = 0;
+        while (i < next.size()) {
+            if (pattern[i - 1] == pattern[k]) {
+                next[i] = k + 1;
+                k = next[i];
+                i++;
+            }
+            else if (k == 0)
+                i++;
+            else 
+                k = next[k];
+        }
+        return next.back();
+    }
+
+    string shortestPalindrome(string s) {
+        if (s.size() <= 1)
+            return s;
+        string sRev(s.rbegin(), s.rend()), pattern = s + "#" + sRev;
+        int maxLen = computeNext(pattern);
+        return sRev.substr(0, sRev.size() - maxLen) + s;
+    }
+};
