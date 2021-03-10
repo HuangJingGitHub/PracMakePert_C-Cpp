@@ -35,6 +35,7 @@ public:
 };
 
 
+// KMP algorithm
 class Solution {
 public:
     int computeNext(string pattern) {
