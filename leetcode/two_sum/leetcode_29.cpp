@@ -42,3 +42,39 @@ public:
         
     }
 };
+
+
+// To deal with extreme case is curbersome.
+class Solution {
+public:
+    int divide(int dividend, int divisor) {
+        if (dividend == INT_MIN && divisor == -1)
+		    return INT_MAX;   
+        if (dividend == INT_MIN && divisor == 1)
+		    return INT_MIN;              
+        
+        int sign = (dividend > 0) ^ (divisor > 0);
+        unsigned long dividendU = abs(dividend);  // Use unsinged for shift, use long for extreme limits.
+        unsigned long divisorU = abs(divisor);
+        int cnt = 0, res = 0;
+        while (dividendU >= divisorU) {
+            divisorU <<= 1;
+            cnt++;
+        }
+
+        while (cnt > 0) {
+            cnt--;
+            divisorU >>= 1;
+            if (dividendU >= divisorU) {
+                res += (1 << cnt);
+                dividendU -= divisorU;
+            }
+        }
+
+        if (sign) 
+            res *= -1;
+        if (-2147483648 <= res && res <= 21474836487)
+            return res;
+        return 2147483647;
+    }
+};
