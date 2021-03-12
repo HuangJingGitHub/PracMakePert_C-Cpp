@@ -13,10 +13,10 @@ public:
         if (s.size() < charNum)
             return ret;
 
-        for (int i = 0, j = 0; i + charNum <= s.size(); i++){
+        for (int i = 0, j = 0; i + charNum <= s.size(); i++) {
             string firstStr = s.substr(i, wordLength);
             vector<string> currentWords = words;
-                for (j = i; j <= i + charNum - wordLength; j += wordLength){
+                for (j = i; j <= i + charNum - wordLength; j += wordLength) {
                     string currentStr = s.substr(j, wordLength);
                     if (!isInWords(currentStr, currentWords))
                         break;
@@ -25,17 +25,16 @@ public:
                 ret.push_back(i);
         }
         return ret;        
-        }
+    }
 
-        bool isInWords(string s, vector<string>& words)
-        {
-            for (int i = 0; i < words.size(); i++)
-                if (words[i] == s){
-                    words.erase(words.begin() + i);
-                    return true;
-                }
-            return false;
-        }     
+    bool isInWords(string s, vector<string>& words) {
+        for (int i = 0; i < words.size(); i++)
+            if (words[i] == s) {
+                words.erase(words.begin() + i);
+                return true;
+            }
+        return false;
+    }     
 };
 
 // This solution can pass the test with the usage of hashmap to deal with the words check. 
@@ -56,7 +55,7 @@ public:
         for (int i = 0; i < wordNum; i++)
             hmap1[words[i]]++;
 
-        for (int i = 0, j = 0; i + charNum <= s.size(); i++){
+        for (int i = 0, j = 0; i + charNum <= s.size(); i++) {
             for(j = i; j <= i + charNum - wordLength; j += wordLength){
                     string currentStr = s.substr(j, wordLength);
                     if (hmap1[currentStr] == 0)
@@ -72,5 +71,5 @@ public:
             hmap2.clear();
         }
         return ret;
-        } 
+    } 
 };
