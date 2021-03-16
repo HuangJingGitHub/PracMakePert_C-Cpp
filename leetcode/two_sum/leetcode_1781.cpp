@@ -1,3 +1,4 @@
+// In theory, this algorithm has better complexity for long str, but will exceed time limit sometimes.
 class Solution {
 public:
     int beautySum(string s) {
@@ -16,7 +17,7 @@ public:
         vector<int> freq;
         for (int i = 2; i < s.size(); i++)
             for (int j = 0; j <= i - 2; j++) {
-                if (j == 0){
+                if (j == 0) {
                     for (int num : freqLog[i])
                         if (num != 0)
                             freq.push_back(num);
@@ -30,6 +31,29 @@ public:
                 res += maxFreq - minFreq;
                 freq.clear();
             }
+        return res;
+    }
+};
+
+
+// Pass
+class Solution {
+public:
+    int beautySum(string s) {
+        int res = 0;
+
+        for (int i = 0; i < s.size(); i++) {
+            unordered_map<char, int> freq;
+            for (int j = i; j < s.size(); j++) {
+                freq[s[j]]++;
+                int maxFreq = INT_MIN, minFreq = INT_MAX;
+                for (auto [ch, chFreq] : freq) {
+                    maxFreq = max(maxFreq, chFreq);
+                    minFreq = min(minFreq, chFreq);
+                }
+                res += maxFreq - minFreq;
+            }
+        }
         return res;
     }
 };
