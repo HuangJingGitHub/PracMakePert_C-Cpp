@@ -39,3 +39,24 @@ public:
         return res;
     }
 };
+
+
+// Use hash table to store info
+class Solution {
+public:
+    vector<int> findDiagonalOrder(vector<vector<int>>& nums) {
+        vector<int> res;
+        unordered_map<int, vector<int>> idxHash;
+        int maxIdxSum = 0;
+        for (int i = 0; i < nums.size(); i++) 
+            for (int j = 0; j < nums[i].size(); j++) {
+                idxHash[i + j].push_back(nums[i][j]);  // Row and col idx sum is the criterion.
+                maxIdxSum = max(maxIdxSum, i + j);
+            }
+        for (int i = 0; i <= maxIdxSum; i++) {
+            reverse(idxHash[i].begin(), idxHash[i].end());  // reverse the order
+            res.insert(res.end(), idxHash[i].begin(), idxHash[i].end());
+        }
+        return res;
+    }
+};
