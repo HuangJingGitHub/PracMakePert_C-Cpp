@@ -1,4 +1,4 @@
-// The solution use the idea of the offical solution, which is good. And some details in the C++ implementation is noteworthy.  
+// The solution uses the idea of the offical solution, which is good. And some details in the C++ implementation is noteworthy.  
 class Solution {
 public:
     bool isValidSudoku(vector<vector<char>>& board) {
@@ -12,8 +12,8 @@ public:
                     continue;
                 else 
                 {
-                    digit =  board[i][j] - '0';     // Pay attention how to convert char number to int. Not use std::stoi() here as the
-                    boxIndex = i / 3 + 3 * (j / 3); // char here is in a vector. std::stoi() need passing of address.
+                    digit =  board[i][j] - '0';     // Pay attention how to convert char number to int. Do not use std::stoi() as stoi() converts str not char.
+                    boxIndex = i / 3 + 3 * (j / 3); 
                     rowLog[i][digit]++;
                     columnLog[j][digit]++;
                     subboxLog[boxIndex][digit]++;
