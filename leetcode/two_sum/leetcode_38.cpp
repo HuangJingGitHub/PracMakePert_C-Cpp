@@ -58,3 +58,28 @@ public:
        return res;
     }
 };
+
+// SImilar thought as above
+class Solution {
+public:
+    string countAndSay(int n) {
+        vector<string> log(n);
+        log[0] = "1";
+        
+        for (int i = 1; i < n; i++) {
+            string lastStr = log[i - 1], curStr;
+            int count = 1;
+            for (int i = 1; i < lastStr.size(); i++) {
+                if (lastStr[i] == lastStr[i-1])
+                    count++;
+                else {
+                    curStr += to_string(count) + lastStr[i - 1];
+                    count = 1;
+                }
+            }
+            curStr += to_string(count) + lastStr.back();
+            log[i] = curStr;
+        }
+        return log.back();
+    }
+};
