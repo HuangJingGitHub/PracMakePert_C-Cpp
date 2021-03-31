@@ -25,3 +25,35 @@ public:
         return res;
     }
 };
+
+
+// Personal sol, basically the same as above
+class Solution {
+private:
+    vector<vector<int>> res;
+    vector<int> path;
+
+public:
+    vector<vector<int>> combinationSum(vector<int>& candidates, int target) {
+        sort(candidates.begin(), candidates.end());
+        backtrace(0, target, candidates);
+        return res;
+    }
+
+    void backtrace(int startIdx, int target, vector<int>& candidates) {
+        if (target == 0) {
+            res.push_back(path);
+            return;
+        }
+
+        for (int i = startIdx; i < candidates.size(); i++) {
+            if (candidates[i] <= target) {
+                path.push_back(candidates[i]);
+                backtrace(i, target - candidates[i], candidates);
+                path.pop_back();
+            }
+            else
+                return;
+        }
+    }
+};
