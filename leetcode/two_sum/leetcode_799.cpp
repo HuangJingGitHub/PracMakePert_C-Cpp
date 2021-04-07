@@ -16,7 +16,6 @@ public:
 
         if (rowState[query_glass] > 1)
             return 1;
-        else
-            return rowState[query_glass];
+        return rowState[query_glass];
     }
 };
