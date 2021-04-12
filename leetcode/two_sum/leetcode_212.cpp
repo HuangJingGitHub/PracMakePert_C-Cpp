@@ -1,3 +1,4 @@
+// will exceed the time limit for large number of words with similar looks.
 class Solution {
 public:
     vector<string> findWords(vector<vector<char>>& board, vector<string>& words) {
@@ -40,5 +41,71 @@ public:
             }
         board[row][col] = originChar;
         return false;
+    }
+};
+
+
+struct TireNode {
+    bool isEnd;
+    string word;
+    vector<TireNode*> children;
+    TireNode(): isEnd(false), children(vector<TireNode*>(26, NULL)) {}
+};
+
+
+// Trie tree + dfs to decrease invocation times of functions.
+class Solution {
+    TireNode* root;
+public:
+    vector<string> findWords(vector<vector<char>>& board, vector<string>& words) {
+        root = new TireNode();
+
+        for (string word : words) {
+            TireNode* cur = root;
+            for (char ch : word) {
+                int idx = ch - 'a';
+                if (!cur->children[idx])
+                    cur->children[idx] = new TireNode();
+                cur = cur->children[idx];
+            }
+            cur->isEnd = true;
+            cur->word  = word;
+        }
+
+        vector<string> res;
+        if (board.empty() || board[0].empty())
+            return res;
+
+        for (int i = 0; i < board.size(); i++)
+            for (int j = 0; j < board[0].size(); j++) {         
+                dfs(board, i, j, res, root);
+            }
+        return res;
+    }
+
+
+    void dfs(vector<vector<char>>& board, int row, int col, vector<string>& res, TireNode* curNode) {
+        if (board[row][col] == '*')
+            return;
+
+        char curChar = board[row][col];
+        int idx = curChar - 'a';
+        if (!curNode->children[idx])
+            return;
+        else if (curNode->children[idx]->isEnd) {
+            res.push_back(curNode->children[idx]->word);
+            curNode->children[idx]->isEnd = false;
+        }
+
+        board[row][col] = '*';  // Important detail. This line cannot be palced ahead, otherwise '*' cannot be retrieved if current char is not in the tire.
+        if (col < board[0].size() - 1)
+            dfs(board, row, col + 1, res, curNode->children[idx]);
+        if (col > 0)
+            dfs(board, row, col - 1, res, curNode->children[idx]);
+        if (row < board.size() - 1)
+            dfs(board, row + 1, col, res, curNode->children[idx]);
+        if (row > 0)
+            dfs(board, row - 1, col, res, curNode->children[idx]);
+        board[row][col] = curChar;
     }
 };
