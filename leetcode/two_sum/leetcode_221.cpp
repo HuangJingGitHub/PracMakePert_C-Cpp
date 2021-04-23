@@ -29,7 +29,7 @@ public:
                             if (matrix[i][j - cnt] == '0' || matrix[i - cnt][j] == '0')
                                 break;
                         }
-                        dp[i][j] = cnt;
+                        dp[i][j] = cnt;    // or directly use the more efficient recurrence relation dp[i][j] = 1 + min({dp[i - 1][j - 1], dp[i][j - 1], dp[i - 1][j]}).
                     }
                     resLen = max(resLen, dp[i][j]);
                 }
