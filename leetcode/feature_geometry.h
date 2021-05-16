@@ -1,7 +1,3 @@
-#include <math.h>
-#include <iostream>
-#include <algorithm>
-#include <vector>
 #include <eigen3/Eigen/Dense>
 #include "obstacles.h"
 
@@ -31,6 +27,7 @@ public:
         }
         angle_val_ = 0;
     }
+
 
     void Update(vector<float> new_point_pos) {
         if (new_point_pos.size() != 6) {
@@ -64,6 +61,7 @@ public:
         gradient_(5,0) = const_1 * ((y_1-y_0)*pow(n_2,2)*n_1 - (y_2-y_0)*const_2*n_1) / (pow(n_1,2)*pow(n_2,3));
     }
 
+
     int GetPivotIndex() {
         vector<pair<float, int>> gradient_square_to_index;
         for (int i = 0; i < 3; i++) {
@@ -73,6 +71,7 @@ public:
         pair<float, int> max_square_pair = *max_element(gradient_square_to_index.begin(), gradient_square_to_index.end());
         return max_square_pair.second;
     }
+
 
     vector<float> DetermineTarget(vector<float> initial_pos, float desired_angle_val, vector<float> complete_pt_pos, 
                                   int complete_pt_idx = 0, float shape_ratio_constraint = 0.05,
@@ -86,6 +85,8 @@ public:
         vector<float> ref_pos(6, 0), dif_pos(2, 0);
         dif_pos[0] = complete_pt_pos[0] - initial_pos[2 * complete_pt_idx];
         dif_pos[1] = complete_pt_pos[1] - initial_pos[2 * complete_pt_idx + 1];
+        target_pos[0] = complete_pt_pos[0];
+        target_pos[1] = complete_pt_pos[1];
         for (int i = 0; i < 3; i++) {
             ref_pos[2 * i] = initial_pos[2 * i] + dif_pos[0];
             ref_pos[2 * i + 1] = initial_pos[2 * i + 1] + dif_pos[1];
@@ -95,21 +96,51 @@ public:
               ref_length_v_2 = sqrt(pow(ref_pos[4] - ref_pos[0], 2) + pow(ref_pos[5] - ref_pos[1], 2)),
               cur_angle_parameter, cur_angle_accumulated,
               cur_x_1, cur_y_1, cur_x_2, cur_y_2,
-              lambda = 0.5, evaluation_H = 0;
+              distance_pt_1, distance_pt_2,
+              lambda = 0.5, evaluation_H = 0,
+              min_evaluation_H = FLT_MAX;
+        Point2f cv_complete_pt(complete_pt_pos[0], complete_pt_pos[1]), 
+                cv_ref_pt_1(ref_pos[2], ref_pos[3]),
+                cv_ref_pt_2(ref_pos[4], ref_pos[5]),
+                cv_pt_1, cv_pt_2;
+        
         for (int i = 0; i <= 100; i++) {
             cur_angle_parameter = i / 100 * 2 * M_PI;
             cur_angle_accumulated = cur_angle_parameter + desired_angle_val;
-            for (float ratio_1 = 1 - shape_ratio_constraint; ration_1 <= 1 + shape_ratio_constraint; 
+            for (float ratio_1 = 1 - shape_ratio_constraint; ratio_1 <= 1 + shape_ratio_constraint; 
                 ratio_1 += shape_ratio_constraint/5) {
                 cur_x_1 = complete_pt_pos[0] + ref_length_v_1 * ratio_1 * cos(cur_angle_parameter);
                 cur_y_1 = complete_pt_pos[1] + ref_length_v_1 * ratio_1 * sin(cur_angle_parameter);
-                for (float ratio_2 = 1 - shape_ratio_constraint; ration_2 <= 1 + shape_ratio_constraint; 
+                
+                cv_pt_1.x = cur_x_1; 
+                cv_pt_1.y = cur_y_1;
+                for (auto obs : obstacles)
+                    if (!ObstacleFree(obs, cv_complete_pt, cv_pt_1))
+                        continue;
+                distance_pt_1 = MinDistanceToObstaclesVec(obstacles, cv_pt_1);
+
+                for (float ratio_2 = 1 - shape_ratio_constraint; ratio_2 <= 1 + shape_ratio_constraint; 
                 ratio_2 += shape_ratio_constraint/5) {
                     cur_x_2 = complete_pt_pos[0] + ref_length_v_2 * ratio_2 * cos(cur_angle_accumulated);
                     cur_y_2 = complete_pt_pos[1] + ref_length_v_2 * ratio_2 * sin(cur_angle_accumulated);
-            }
-            
-        }
 
+                    cv_pt_2.x = cur_x_2;
+                    cv_pt_2.y = cur_y_2;
+                    for (auto obs : obstacles)
+                        if (!ObstacleFree(obs, cv_complete_pt, cv_pt_2))
+                           continue;
+                    distance_pt_2 = MinDistanceToObstaclesVec(obstacles, cv_pt_2);
+                    evaluation_H = lambda * (distance_pt_1 + distance_pt_2) + 
+                                (1 - lambda) * (norm(cv_pt_1 - cv_ref_pt_1) + norm(cv_pt_2 - cv_ref_pt_2));
+                    if (evaluation_H < min_evaluation_H) {
+                        target_pos[2] = cur_x_1;
+                        target_pos[3] = cur_y_1;
+                        target_pos[4] = cur_x_2;
+                        target_pos[5] = cur_y_2;
+                    }
+                }
+            }
+        }
+        return target_pos;
     }
 };
