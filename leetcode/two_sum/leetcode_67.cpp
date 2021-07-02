@@ -45,3 +45,46 @@ public:
         return res;
     }
 };
+
+
+class Solution {
+public:
+    string addBinary(string a, string b) {
+        int len_a = a.size(), len_b = b.size(), resLen = max(len_a, len_b);
+        vector<char> resChar(resLen, '0');
+        string res;
+
+        bool carry = false;
+        for (int i = 0; i < resLen; i++) {
+            char aChar, bChar;
+            if (i < len_a)
+                aChar = a[len_a - 1 - i];
+            else 
+                aChar = '0';
+            if (i < len_b)
+                bChar = b[len_b - 1 - i];
+            else
+                bChar = '0';
+            int sum = aChar - '0' + bChar - '0';
+            if (carry) {
+                sum++;
+                carry = false;
+            }
+            
+            if (sum <= 1)
+                resChar[resLen - 1 - i] = '0' + sum;
+            else if (sum == 2) {
+                resChar[resLen - 1 - i] = '0';
+                carry = true;
+            }
+            else {
+                resChar[resLen - 1 - i] = '1';
+                carry = true;
+            }
+        }
+        res = carry ? "1" : "";
+        for (char& ch : resChar)
+            res += ch;
+        return res;
+    }
+};
