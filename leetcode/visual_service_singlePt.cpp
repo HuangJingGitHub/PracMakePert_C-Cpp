@@ -17,7 +17,7 @@ class VisualServiceCore {
 private:
     ros::NodeHandle node_handle_;
     ros::ServiceServer visual_info_service = node_handle_.advertiseService("visual_info_service_singlePt", 
-                                                                    &VisualServiceCore::GetVisualInfoService, this);
+                                                            &VisualServiceCore::GetVisualInfoService, this);
     image_transport::ImageTransport image_trans_;
     image_transport::Subscriber image_subscriber_;
 
@@ -27,9 +27,14 @@ private:
     LK_Tracker tracker_;
     ImgExtractor extractor_;
     PathSetTracker path_set_tracker_;
+    PathSetTracker ee_path_singleton_tracker_;
     vector<vector<Point2f>> path_set_;
+    vector<vector<Point2f>> ee_path_singleton_;
+    bool plan_ee_path_request_ = false;
+    bool ee_path_singleton_planned_ = false;
     vector<vector<float>> path_local_width_set_;
     vector<Point2f> projection_pts_on_path_set_;
+    vector<Point2f> ee_projection_pt_on_path_;
     vector<Point2f> target_feedback_pts_;
 
 public:
@@ -81,6 +86,8 @@ public:
         else if (path_set_planned_) {
             tracker_.UpdateJd();
             projection_pts_on_path_set_ = path_set_tracker_.ProjectPtsToPathSet(tracker_.GetFeedbackPoints());
+            if (ee_path_singleton_planned_)
+                ee_projection_pt_on_path_ = ee_path_singleton_tracker_.ProjectPtsToPathSet(tracker_.GetEEPointAsVec());
             for (auto& path : path_set_) {
                 for (int i = 0; i < int(path.size() - 1); i++)
                     line(cv_ptr->image, path[i], path[i + 1], Scalar(0, 250, 250), 2);
@@ -89,6 +96,9 @@ public:
                         Scalar(0, 0, 255), 2, 8, 0, 0.05);
             circle(cv_ptr->image, path_set_[0].back(), 5, Scalar(0, 255, 0), 2);
         }
+
+        if (plan_ee_path_request_) 
+            PlanLocalEEPath(cv_ptr->image);
 
         if (extractor_.DO_extract_succeed_)
             drawContours(cv_ptr->image, extractor_.DO_contours_, extractor_.largest_DO_countor_idx_, Scalar(250, 0, 150), 1);
@@ -107,11 +117,49 @@ public:
         waitKey(2);
     }
 
+    void PlanLocalEEPath(Mat& display_image) {
+        Point2f projection_to_ee_vec = tracker_.ee_points_[0][0] - projection_pts_on_path_set_[0];
+        int projection_index = path_set_tracker_.tracked_indices_log_[0], target_idx = projection_index;
+        
+        for (; target_idx < path_set_[0].size(); target_idx++) {
+            bool obs_free = true;
+            for (auto& obs : extractor_.obs_polygons_) {
+                if (ObstacleFree(obs, path_set_[0][target_idx], path_set_[0][target_idx] + projection_to_ee_vec))
+                    continue;
+                else
+                    obs_free = false;
+            }
+            if (obs_free == false)
+                break;
+        }
+        for (; target_idx < path_set_[0].size(); target_idx++) {
+            bool obs_free = true;
+            for (auto& obs: extractor_.obs_polygons_) {
+                if (ObstacleFree(obs, path_set_[0][target_idx], path_set_[0][target_idx] + projection_to_ee_vec) == false) {
+                    obs_free = false;
+                    break;
+                }  
+            }
+            if (obs_free == true)
+                break;
+        }
+
+        vector<Point2f> ee_start_set{tracker_.ee_points_[0][0]}, ee_targart_set{path_set_[0][target_idx] + projection_to_ee_vec};
+        ee_path_singleton_ = GeneratePathSet(ee_start_set, ee_targart_set, 0, 10,
+                                                            extractor_.obs_polygons_, display_image);
+        ee_path_singleton_planned_ = !ee_path_singleton_.empty(); 
+        if (ee_path_singleton_planned_) {
+            ee_path_singleton_tracker_ = PathSetTracker(ee_path_singleton_);
+        }        
+    }
+
     bool GetVisualInfoService(  visual_module::visual_info_service_singlePt::Request &request,
                                 visual_module::visual_info_service_singlePt::Response &response) {
         if (tracker_.points_[0].empty() || tracker_.ee_points_[0].empty() || 
             extractor_.DO_to_obs_projections_.empty() || projection_pts_on_path_set_.empty())
             return false;
+        
+        plan_ee_path_request_ = request.need_ee_path;
 
         response.feedback_pt[0] = tracker_.points_[0][0].x;
         response.feedback_pt[1] = tracker_.points_[0][0].y;
@@ -130,6 +178,11 @@ public:
                 response.Jd[cnt] = tracker_.cur_Jd_(row, col);
                 cnt++;
             }
+
+        if (ee_path_singleton_planned_ && ee_projection_pt_on_path_.empty() == false) {
+            response.projection_on_ee_path_pt[0] = ee_projection_pt_on_path_[0].x;
+            response.projection_on_ee_path_pt[1] = ee_projection_pt_on_path_[0].y;
+        }
 
         return true;
     }

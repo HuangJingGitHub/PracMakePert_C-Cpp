@@ -50,7 +50,7 @@ int main(int argc, char** argv) {
     ros::ServiceClient service_client = node_handle.serviceClient<visual_module::visual_info_service_singlePt>
                                         ("visual_info_service_singlePt");
     visual_module::visual_info_service_singlePt srv;
-    srv.request.need_plan_ee_path = false;
+    srv.request.need_ee_path = false;
 
     std::string start_flag;
     std::cout << "Press 1 to start the manipulation experiment.\n";
@@ -71,17 +71,30 @@ int main(int argc, char** argv) {
         ProcessServece(srv);
         WriteDataToFile();
         velocity_controller.DetectViolation(srv);
-        if (velocity_controller.IsConstrained() == false) {
+        if (velocity_controller.IsConstrained() == false && total_adjust_time <= 5 && track_ee_path_mode == false) {
             ee_velocity_3D = camera_to_base * ee_velocity_image_3D;
             ee_velocity_3D = motion_magnitude / ee_velocity_3D.norm() * ee_velocity_3D;
+            pre_motion_mode_flag = 0;
         }
-        else if (velocity_controller.IsConstrained() == true) {
-            ee_velocity_3D = camera_to_base * velocity_controller.GenerateAdjustmentVelocity();
+        else if (velocity_controller.IsConstrained() && track_ee_path_mode == false) {
+            ee_velocity_3D = camera_to_base * velocity_controller.GenerateAdjustmentVelocity();  // direct move end-effector
             ee_velocity_3D = motion_magnitude * ee_velocity_3D;
+            if (pre_motion_mode_flag == 0) 
+                total_adjust_time++;
+            pre_motion_mode_flag = 1;
         }
-        else if (total_adjust_time > 10) {
+        else if (velocity_controller.IsConstrained() == false && total_adjust_time > 5 && track_ee_path_mode == false) {
             ee_path_planned = false;
-            srv.request.need_plan_ee_path = true;
+            track_ee_path_mode = true;
+            srv.request.need_ee_path = true;
+            total_adjust_time = 0;
+        }
+        else if (ee_path_planned && track_ee_path_mode) {
+            ee_velocity_image_3D(0, 0) = ee_path_error_pt(0, 0);
+            ee_velocity_image_3D(1, 0) = ee_path_error_pt(1, 0);
+            ee_velocity_image_3D(2, 0) = 0;
+            ee_velocity_3D = camera_to_base * (-ee_velocity_image_3D);
+            ee_velocity_3D = motion_magnitude / ee_velocity_3D.norm() * ee_velocity_3D; 
         }
 
         if (robot_connection.robotConnected() == false) {

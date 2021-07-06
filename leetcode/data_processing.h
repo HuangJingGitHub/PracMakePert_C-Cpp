@@ -10,17 +10,20 @@
 #include "visual_module/visual_info_service_singlePt.h"
 
 const int total_data_dim = 16;
+int pre_motion_mode_flag = 0; // 0 - not constrained, 1 - constrained
 int total_adjust_time = 0;
+bool ee_path_planned = false;
+bool track_ee_path_mode = false;
+
 Eigen::Matrix3f camera_to_base = Eigen::Matrix3f::Identity();
 Eigen::Vector2f feedback_pt, target_pt,
                 ee_pt, DO_to_obs_DO_pt, DO_to_obs_obs_pt,
-                projection_on_path_pt,
-                path_error_pt, total_error_pt,
+                projection_on_path_pt, projection_on_ee_path_pt,
+                path_error_pt, ee_path_error_pt, total_error_pt,
                 ee_velocity_image;
 Eigen::Vector3f ee_velocity_image_3D = Eigen::Array3f::Zero(),
                 ee_velocity_3D;
 Eigen::Matrix2f Jd = Eigen::Matrix2f::Identity();
-bool ee_path_planned = false;
 
 std::string save_directory = "./src/visual_module/src/data/";
 std::ofstream  data_save_os;
@@ -72,7 +75,13 @@ void ProcessServece(const visual_module::visual_info_service_singlePt& srv) {
         for (int col = 0; col < 2; col++) {
             Jd(row, col) = srv.response.Jd[cnt];
             cnt++;
-        }  
+        }
+    
+    if (srv.response.ee_path_planned) {
+        projection_on_ee_path_pt[0] = srv.response.projection_on_ee_path_pt[0];
+        projection_on_ee_path_pt[0] = srv.response.projection_on_ee_path_pt[1];
+        ee_path_error_pt = ee_pt - projection_on_ee_path_pt;
+    }
     std::cout << "Jd: \n" << Jd << '\n' 
             << "Jd^-1:\n" << Jd.inverse() << '\n';    
 
