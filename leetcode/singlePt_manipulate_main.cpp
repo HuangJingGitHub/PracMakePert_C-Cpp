@@ -33,9 +33,9 @@ int main(int argc, char** argv) {
     std::cout << "Extrinsic camera matrix:\n" << camera_to_base << '\n';
 
     std::shared_ptr<FvrRobotClient> robot = std::make_shared<FvrRobotClient>();   
-    const std::string server_address = "192.106.2.100";
-    const std::string client_address = "192.106.2.109";
-    ConnectionManager robot_connection(robot, server_address, client_address);
+    const std::string server_address = "192.168.2.100";
+    const std::string client_address = "192.168.2.109";
+/*     ConnectionManager robot_connection(robot, server_address, client_address);
     std::thread connection([&]() {
         while (true) {
             if (robot_connection.run() != true)
@@ -43,7 +43,7 @@ int main(int argc, char** argv) {
             std::this_thread::sleep_for(std::chrono::seconds(1));
         }
     });
-    ClientTestFunction client_tester(robot);
+    ClientTestFunction client_tester(robot); */
 
     ros::init(argc, argv, "manipulate_singelePt_main");
     ros::NodeHandle node_handle;
@@ -72,11 +72,13 @@ int main(int argc, char** argv) {
         WriteDataToFile();
         velocity_controller.DetectViolation(srv);
         if (velocity_controller.IsConstrained() == false && total_adjust_time <= 5 && track_ee_path_mode == false) {
+            std::cout << "Normal--->>> " << total_adjust_time << "\n";
             ee_velocity_3D = camera_to_base * ee_velocity_image_3D;
             ee_velocity_3D = motion_magnitude / ee_velocity_3D.norm() * ee_velocity_3D;
             pre_motion_mode_flag = 0;
         }
         else if (velocity_controller.IsConstrained() && track_ee_path_mode == false) {
+            std::cout << "Constrained--->>>" << total_adjust_time << "\n";
             ee_velocity_3D = camera_to_base * velocity_controller.GenerateAdjustmentVelocity();  // direct move end-effector
             ee_velocity_3D = motion_magnitude * ee_velocity_3D;
             if (pre_motion_mode_flag == 0) 
@@ -90,6 +92,7 @@ int main(int argc, char** argv) {
             total_adjust_time = 0;
         }
         else if (ee_path_planned && track_ee_path_mode) {
+            srv.request.need_ee_path = false;
             ee_velocity_image_3D(0, 0) = ee_path_error_pt(0, 0);
             ee_velocity_image_3D(1, 0) = ee_path_error_pt(1, 0);
             ee_velocity_image_3D(2, 0) = 0;
@@ -97,7 +100,7 @@ int main(int argc, char** argv) {
             ee_velocity_3D = motion_magnitude / ee_velocity_3D.norm() * ee_velocity_3D; 
         }
 
-        if (robot_connection.robotConnected() == false) {
+/*         if (robot_connection.robotConnected() == false) {
             std::cout << "Fial to connect to robot server!\n";
             continue;
         }
@@ -105,8 +108,11 @@ int main(int argc, char** argv) {
             std::cout << "Fail to execute the command!\n";
             break;
         }
-        std::this_thread::sleep_for(std::chrono::milliseconds(motion_interval));
+        std::this_thread::sleep_for(std::chrono::milliseconds(motion_interval)); */
         
+        if (ee_path_planned && ee_total_error_pt.norm() < 5) 
+            track_ee_path_mode = false;
+
         if (total_error_pt.norm() < error_threshold) {
             if (data_save_os.is_open())
                 data_save_os.close();
