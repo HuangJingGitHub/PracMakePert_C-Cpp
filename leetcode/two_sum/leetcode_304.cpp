@@ -1,7 +1,7 @@
 class NumMatrix {
 private:
-    vector<vector<int>> cumSum;
-    int rowNum;  // matrix cumulative sum
+    vector<vector<int>> cumSum; // matrix cumulative sum
+    int rowNum;
     int colNum;
 public:
     NumMatrix(vector<vector<int>>& matrix) {
