@@ -1,34 +1,42 @@
 class Solution {
 public:
     vector<int> findMinHeightTrees(int n, vector<vector<int>>& edges) {
-        vector<int> res, leaf;
-        vector<unordered_set<int>> indegree(n);
+        vector<vector<int>> graph(n);
+        vector<int> res;
 
-        for (auto& edge : edges) {
-            indegree[edge[0]].insert(edge[1]);
-            indegree[edge[1]].insert(edge[0]);
+        if (n == 1) {
+            res.push_back(0);
+            return res;
         }
 
-        while (true) {
-            leaf.clear();
-            for (int idx = 0 ; idx < n; idx++) {
-                if (indegree[idx].size() == 1)
-                    leaf.push_back(idx);
+        vector<int> outdegree(n, 0);
+        for (int i = 0; i < edges.size(); i++) {
+            graph[edges[i][0]].push_back(edges[i][1]);
+            graph[edges[i][1]].push_back(edges[i][0]);
+            outdegree[edges[i][0]]++;
+            outdegree[edges[i][1]]++;
+        }
+
+        queue<int> leaf;
+        for (int i = 0; i < n; i++)
+            if (outdegree[i] == 1)
+                leaf.push(i);
+        
+        while (!leaf.empty()) {
+            int leafNum = leaf.size();
+            vector<int> temp;
+            for (int i = 0; i < leafNum; i++) {
+                int curNode = leaf.front();
+                leaf.pop();
+                temp.push_back(curNode);
+                int pairNode = graph[curNode][0];
+                outdegree[pairNode]--;
+                auto itr = find(graph[pairNode].begin(), graph[pairNode].end(), curNode);
+                graph[pairNode].erase(itr);
+                if (outdegree[pairNode] == 1)
+                    leaf.push(pairNode);
             }
-            
-            if (leaf.size() == 0)
-                break;
-            else {
-                for (int& nodeIdx : leaf) {
-                    int pair_node = *(indegree[nodeIdx].begin());
-                    indegree[nodeIdx].clear();
-                    indegree[pair_node].erase(nodeIdx);
-                }
-                res.clear();
-                for (int idx = 0; idx < n; idx++)
-                    if (indegree[idx].size() == 1)
-                        res.push_back(idx);
-            }
+            res = temp;
         }
         return res;
     }
