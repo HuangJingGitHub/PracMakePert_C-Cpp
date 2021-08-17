@@ -33,3 +33,28 @@ public:
         return res;
     }
 };
+
+
+class Solution {
+public:
+    int maxProduct(vector<string>& words) {
+        map<int, int> bitHash;
+        int bitMask = 0, res = 0;
+
+        for (auto& str : words) {
+            bitMask = 0;
+            for (char ch : str)
+                bitMask |= 1 << (ch - 'a');
+            bitHash[bitMask] = max(bitHash[bitMask], (int)str.size());
+        }
+
+        for (auto it = bitHash.begin(); it != bitHash.end(); it++) {
+            auto iter = ++it;
+            it--;
+            for (; iter != bitHash.end(); iter++)
+                if ((it->first & iter->first) == 0)
+                    res = max(res, it->second * iter->second);
+        }
+        return res;
+    }
+};
