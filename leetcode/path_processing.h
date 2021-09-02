@@ -141,8 +141,18 @@ vector<vector<Point2f>> GeneratePathSet(vector<Point2f>& initial_feedback_pts,
 
 vector<Point2f> ProcessCollisionPath(vector<Point2f>& pivot_path, 
                                     Point2f pivot_pt, Point2f cur_pt, Point2f cur_target_pt,
-                                    PolygonObstacle& obstacle, 
-                                    float safety_dis = 10) {
+                                    PolygonObstacle& original_obstacle, 
+                                    float safety_dis = 20) {
+    vector<Point2f> inflated_obs_vertices = original_obstacle.vertices;
+    Point2f vertices_centroid = Point2f(0, 0);
+    for (Point2f& pt : inflated_obs_vertices)
+        vertices_centroid += pt;
+    vertices_centroid /= (float) inflated_obs_vertices.size();
+    for (Point2f& pt : inflated_obs_vertices)
+        pt = vertices_centroid + 1.1 * (pt - vertices_centroid);
+    PolygonObstacle obstacle(inflated_obs_vertices);
+
+
     vector<Point2f> res_path(pivot_path.size());
     Point2f cur_dif = cur_pt - pivot_pt;
     float cur_dif_norm = cv::norm(cur_dif);
@@ -152,14 +162,11 @@ vector<Point2f> ProcessCollisionPath(vector<Point2f>& pivot_path,
         Point2f ref_pt = pivot_path[i] + cur_dif;
         if (!ObstacleFree(obstacle, pivot_path[i], ref_pt))
             collision_indices.push_back(i);
-            // res_path[i] = ref_pt;
-        // else {
-            // Point2f intersection_pt = GetClosestIntersectionPt(obstacle, pivot_path[i], ref_pt, pivot_path[i]);
-            // res_path[i] = intersection_pt - safety_dis / cur_dif_norm * cur_dif;
-        // }
     }
+    
     std::sort(collision_indices.begin(), collision_indices.end());
-    int collision_start_idx = collision_indices.front(), collision_end_idx = collision_indices.back(),
+    int collision_start_idx = collision_indices.front(), 
+        collision_end_idx = collision_indices.back(),
         reconnection_start_idx = collision_start_idx, reconnection_end_idx = collision_end_idx;
     float dis_ref = 3 * safety_dis;
     for (int i = collision_start_idx - 1; i >= 0; i--) {
@@ -169,9 +176,13 @@ vector<Point2f> ProcessCollisionPath(vector<Point2f>& pivot_path,
             break;
         }
     }
-    if (reconnection_start_idx = collision_start_idx)
+    if (reconnection_start_idx == collision_start_idx)
         reconnection_start_idx = 0;
     
+    Point2f intersection_start_pt = GetClosestIntersectionPt(obstacle, pivot_path[collision_start_idx],
+                            pivot_path[collision_start_idx] + cur_dif, pivot_path[collision_start_idx]),
+            shaft_pt_1 = intersection_start_pt - safety_dis / cur_dif_norm * cur_dif 
+                         - (pivot_path[reconnection_start_idx] + cur_dif); 
     for (int i = collision_end_idx + 1; i < pivot_path.size(); i++) {
         float dis_to_obs = MinDistanceToObstacle(obstacle, pivot_path[i] + cur_dif);
         if (dis_to_obs >= dis_ref) {
@@ -179,22 +190,28 @@ vector<Point2f> ProcessCollisionPath(vector<Point2f>& pivot_path,
             break;
         }
     }
-    if (reconnection_end_idx = collision_end_idx)
-        reconnection_start_idx = pivot_path.size() - 1;
-
+    if (reconnection_end_idx == collision_end_idx)
+        reconnection_end_idx = pivot_path.size() - 1;
+    Point2f intersection_end_pt = GetClosestIntersectionPt(obstacle, pivot_path[collision_end_idx],
+                            pivot_path[collision_end_idx] + cur_dif, pivot_path[collision_end_idx]),
+            shaft_pt_2 = pivot_path[reconnection_end_idx] + cur_dif - 
+                        (intersection_end_pt - safety_dis / cur_dif_norm * cur_dif); 
+                        
     for (int i = 0; i < reconnection_start_idx; i++)
         res_path[i] = pivot_path[i] + cur_dif;
     int step_num = collision_start_idx - reconnection_start_idx;
     for (int i = reconnection_start_idx; i < collision_start_idx; i++) {
-        float shaft_ratio = (float)(i - reconnection_start_idx) / step_num;
-        res_path[i] = pivot_path[i] + cur_dif - shaft_ratio * safety_dis / cur_dif_norm * cur_dif;
+        float shaft_ratio = (float)(i - reconnection_start_idx) / (float)step_num;
+        res_path[i] = pivot_path[reconnection_start_idx] + cur_dif + shaft_ratio * shaft_pt_1;
     }
-    for (int i = collision_start_idx; i < collision_end_idx; i++)
-        res_path[i] = pivot_path[i] + cur_dif - safety_dis / cur_dif_norm * cur_dif;
+    for (int i = collision_start_idx; i < collision_end_idx; i++) {
+        Point2f intersection_pt = GetClosestIntersectionPt(obstacle, pivot_path[i], pivot_path[i] + cur_dif, pivot_path[i]);
+        res_path[i] = intersection_pt - safety_dis / cur_dif_norm * cur_dif;
+    }
     step_num = reconnection_end_idx - collision_end_idx;
     for (int i = collision_end_idx; i < reconnection_end_idx; i++) {
         float shaft_ratio = (float) (i - collision_end_idx) / step_num;
-        res_path[i] = pivot_path[i] + cur_dif + shaft_ratio * safety_dis / cur_dif_norm * cur_dif;
+        res_path[i] = intersection_end_pt - safety_dis / cur_dif_norm * cur_dif + shaft_ratio * shaft_pt_2;
     }
     for (int i = reconnection_end_idx; i < pivot_path.size(); i++)
         res_path[i] = pivot_path[i] + cur_dif;
@@ -214,6 +231,7 @@ vector<Point2f> ProcessCollisionPath(vector<Point2f>& pivot_path,
         interpolation_ratio = (float)interpolation_idx / segment_pt_num;
         res_path.push_back(temp_end + segment * interpolation_ratio);
     }
+    std::cout << "OK5\n";
     return res_path; 
 }
 
@@ -248,6 +266,11 @@ vector<float>  GetLocalPathWidth2D( vector<Point2f>& path,
         if (0 <= y_at_x_max && y_at_x_max <= y_max)
             boundary_insection_pts.push_back(Point2f(x_max, y_at_x_max));
         
+        std::cout << "OK_1\n";
+        if (boundary_insection_pts.empty()) {
+            std::cout << "Error!\n";
+            std::cout << path[i] << '\n' << "slope: " << slope << '\n';
+        }
         Point2f end_pt1 = boundary_insection_pts[0], end_pt2 = boundary_insection_pts[1],
                 direction1 = end_pt1 - path[i], direiction2 = end_pt2 - path[i];
         vector<Point2f> obs_intersection_pts, direction1_pts, direction2_pts;
