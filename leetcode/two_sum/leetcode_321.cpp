@@ -1,3 +1,4 @@
+// Problematic when two numbers in nums1 and nums2 are equal.
 class Solution {
 public:
     vector<int> maxNumber(vector<int>& nums1, vector<int>& nums2, int k) {
@@ -45,6 +46,43 @@ public:
         else
             for (i++; i < k; i++)
                 res[i] = nums1[ptr1++];
+        return res;
+    }
+};
+
+
+class Solution {
+public:
+    vector<int> maxNumber(vector<int>& nums1, vector<int>& nums2, int k) {
+        vector<int> res(k, 0);
+        int n1 = nums1.size(), n2 = nums2.size();
+        for (int s = max(0, k - n2); s <= min(k, n1); s++) {
+            vector<int> temp;
+            int i = 0, j = 0;
+            vector<int> temp1 = maxKsequence(nums1, s);
+            vector<int> temp2 = maxKsequence(nums2, k - s);
+
+            auto iter1 = temp1.begin(), iter2 = temp2.begin();
+            while (iter1 != temp1.end() || iter2 != temp2.end())
+                temp.push_back(lexicographical_compare(iter1, temp1.end(), iter2, temp2.end()) ? *iter2++ : *iter1++);
+            res = lexicographical_compare(res.begin(), res.end(), temp.begin(), temp.end()) ? temp : res;
+        }
+        return res;
+    }
+
+    vector<int> maxKsequence(vector<int>& v, int k) {
+        int n = v.size();
+        if (n <= k)
+            return v;
+        
+        vector<int> res;
+        int pop = n - k;
+        for (int i = 0; i < n; i++) {
+            while (!res.empty() && v[i] > res.back() && pop-- > 0)
+                res.pop_back();
+            res.push_back(v[i]);
+        }
+        res.resize(k);
         return res;
     }
 };
