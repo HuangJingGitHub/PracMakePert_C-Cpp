@@ -22,8 +22,6 @@ public:
             evenHead->next = oddHead->next;
             evenHead = evenHead->next;
         }
-        if (oddHead)
-            oddHead->next = nullptr;
         oddHead->next = evenHeadLog;
         return head;
     }
