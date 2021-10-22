@@ -17,8 +17,7 @@ public:
         return check(root->left, root->right);       
     }
 
-    bool check(TreeNode* node1, TreeNode* node2)
-    {
+    bool check(TreeNode* node1, TreeNode* node2) {
         if (node1 == NULL && node2 != NULL)
             return false;
         else if (node1 != NULL && node2 == NULL)
