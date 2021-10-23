@@ -14,13 +14,14 @@ public:
         vector<vector<int>> res;
         if (root == NULL)
             return res;
+        
         queue<TreeNode*> nodeQueue;
         nodeQueue.push(root);
 
-        while (!nodeQueue.empty()){
+        while (!nodeQueue.empty()) {
             int count = nodeQueue.size();
             vector<int> level;
-            while (count > 0){
+            while (count > 0) {
                 TreeNode* node = nodeQueue.front();
                 nodeQueue.pop();
                 level.push_back(node->val);
