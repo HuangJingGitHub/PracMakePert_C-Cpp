@@ -49,3 +49,96 @@ public:
         return res;
     }
 };
+
+
+/**
+ * Definition for a binary tree node.
+ * struct TreeNode {
+ *     int val;
+ *     TreeNode *left;
+ *     TreeNode *right;
+ *     TreeNode() : val(0), left(nullptr), right(nullptr) {}
+ *     TreeNode(int x) : val(x), left(nullptr), right(nullptr) {}
+ *     TreeNode(int x, TreeNode *left, TreeNode *right) : val(x), left(left), right(right) {}
+ * };
+ */
+class Solution {
+public:
+    vector<vector<int>> zigzagLevelOrder(TreeNode* root) {
+        vector<vector<int>> res;
+        if (root == nullptr)
+            return res;
+
+        deque<TreeNode*> levelNode;
+        int levelSize;
+        levelNode.push_back(root);
+        bool leftToRight = true;
+
+        while (levelNode.empty() == false) {
+            levelSize = levelNode.size();
+            vector<int> levelRes;
+            TreeNode* curNode;
+
+            if (leftToRight == true) {
+                for (int i = 0; i < levelSize; i++) {
+                    curNode = levelNode.back();
+                    levelNode.pop_back();
+                    levelRes.push_back(curNode->val);
+                    if (curNode->left)
+                        levelNode.push_front(curNode->left);
+                    if (curNode->right)
+                        levelNode.push_front(curNode->right);
+                }
+            }
+            else {
+                for (int i = 0; i < levelSize; i++) {
+                    curNode = levelNode.front();
+                    levelNode.pop_front();
+                    levelRes.push_back(curNode->val);
+                    if (curNode->right)
+                        levelNode.push_back(curNode->right);
+                    if (curNode->left)
+                        levelNode.push_back(curNode->left);                    
+                }
+            }
+            res.push_back(levelRes);
+            leftToRight = !leftToRight;
+        }
+        return res;
+    }
+};
+
+// simpler
+class Solution {
+public:
+    vector<vector<int>> zigzagLevelOrder(TreeNode* root) {
+        vector<vector<int>> res;
+        if (root == nullptr)
+            return res;
+
+        queue<TreeNode*> levelNode;
+        int levelSize;
+        levelNode.push(root);
+        bool leftToRight = true;
+
+        while (levelNode.empty() == false) {
+            levelSize = levelNode.size();
+            vector<int> levelRes(levelSize, 0);
+            TreeNode* curNode;
+
+            for (int i = 0; i < levelSize; i++) {
+                curNode = levelNode.front();
+                levelNode.pop();
+                int idx = leftToRight ? i : levelSize - 1 - i;
+                levelRes[idx] = curNode->val;
+                if (curNode->left)
+                    levelNode.push(curNode->left);
+                if (curNode->right)
+                    levelNode.push(curNode->right);
+            }
+            res.push_back(levelRes);
+            leftToRight = !leftToRight;
+        }
+        return res;
+    }
+};
