@@ -14,16 +14,15 @@ public:
         return buildTreeHelper(postorder, 0, postorder.size(), inorder, 0, inorder.size());
     }
 
-    TreeNode* buildTreeHelper(vector<int>& postorder, int pStart, int pEnd, vector<int>& inorder, int iStart, int iEnd)
-    {
+    TreeNode* buildTreeHelper(vector<int>& postorder, int pStart, int pEnd, vector<int>& inorder, int iStart, int iEnd) {
         if (pStart == pEnd)
             return NULL;
         
         TreeNode* root = new TreeNode(postorder[pEnd-1]);
 
         int inorderRootIdx = 0;
-        for (int i = iStart; i < iEnd; i++){
-            if (inorder[i] == postorder[pEnd-1]){
+        for (int i = iStart; i < iEnd; i++) {
+            if (inorder[i] == postorder[pEnd-1]) {
                 inorderRootIdx = i;
                 break;
             }
