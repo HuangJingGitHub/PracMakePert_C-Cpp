@@ -1,3 +1,4 @@
+// mathematical solution
 class Solution {
 public:
     int integerBreak(int n) {
