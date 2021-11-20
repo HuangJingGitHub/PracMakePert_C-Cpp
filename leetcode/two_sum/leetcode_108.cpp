@@ -12,16 +12,10 @@ public:
     TreeNode* sortedArrayToBST(vector<int>& nums) {
         if (nums.empty())   
             return NULL;
-
-        int mid = nums.size() / 2;
-        TreeNode* root = new TreeNode(nums[mid]);
-        root->left = buildBranch(nums, 0, mid-1);
-        root->right = buildBranch(nums, mid+1, nums.size()-1);
-        return root;
+        return helper(nums, 0, nums.size() - 1);
     }
 
-    TreeNode* buildBranch(vector<int>& nums, int start, int end)
-    {
+    TreeNode* helper(vector<int>& nums, int start, int end) {
         if (start > end)
             return NULL;
 
