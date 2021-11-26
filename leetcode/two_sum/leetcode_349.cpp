@@ -2,19 +2,19 @@ class Solution {
 public:
     vector<int> intersection(vector<int>& nums1, vector<int>& nums2) {
         vector<int> res;
-        map<int, int> log1, log2, totalLog;
+        set<int> set1, resSet;
         
-        for (int& num : nums1) {
-            log1[num]++;
-            totalLog[num]++;
-        }
+        
+        for (int& num : nums1)
+            set1.insert(num);
         for (int& num : nums2) {
-            log2[num]++;
-            totalLog[num]++;
+            if (set1.find(num) != set1.end())
+                resSet.insert(num);
         }
         
-        for (auto it = totalLog(); it != totalLog.end(); it++)
-            if (it->second > 1)å
-                
+        for (auto it = resSet.begin(); it != resSet.end(); it++)
+            res.push_back(*it);
+        
+        return res;
     }
 };
