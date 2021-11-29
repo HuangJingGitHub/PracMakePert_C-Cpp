@@ -14,8 +14,7 @@ public:
         return checkHeight(root) != -1;
     }
     
-    int checkHeight(TreeNode* root)
-    {
+    int checkHeight(TreeNode* root) {
         if (root == NULL)
             return 0;
         int leftHeight = checkHeight(root->left);
@@ -25,6 +24,23 @@ public:
         int rightHeight = checkHeight(root->right);
         if (rightHeight == -1)
             return -1;
-        return abs(leftHeight - rightHeight) < 2 ? (max(leftHeight, rightHeight)+1) : -1;   // Note the height of a tree = max(leftHeight, rightHeight).
+        return abs(leftHeight - rightHeight) < 2 ? (max(leftHeight, rightHeight) + 1) : -1;   // Note the height of a tree = max(leftHeight, rightHeight).
+    }
+};
+
+
+class Solution {
+public:
+    bool isBalanced(TreeNode* root) {
+        if (root == nullptr)
+            return true;
+
+        return abs(getHeight(root->left) - getHeight(root->right)) <= 1 && isBalanced(root->left) && isBalanced(root->right);
+    }
+
+    int getHeight(TreeNode* root) {
+        if (root == nullptr)
+            return 0;
+        return max(getHeight(root->left), getHeight(root->right)) + 1;
     }
 };
