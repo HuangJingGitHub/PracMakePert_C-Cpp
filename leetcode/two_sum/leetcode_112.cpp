@@ -19,6 +19,7 @@ public:
         //    return hasPathSum(root->left, sum - root->val);
         // else if (!root->left && root->right)
         //    return hasPathSum(root->right, sum - root->val);
+        
         else
             return hasPathSum(root->left, sum - root->val) || hasPathSum(root->right, sum - root->val);
     }
