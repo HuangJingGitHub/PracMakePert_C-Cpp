@@ -30,3 +30,37 @@ public:
         return left && right && up && down;
     }
 };
+
+
+// classical DFS, lighter implementation
+class Solution {
+public:
+    vector<int> dx{-1, 0, 0, 1}, dy{0, -1, 1, 0};
+    int m, n;
+
+    int numIslands(vector<vector<char>>& grid) {
+        int res = 0;
+        m = grid.size(), n = grid[0].size();
+
+        for (int row = 0; row < m; row++) {
+            for (int col = 0; col < n; col++)
+                if (grid[row][col] == '1') {
+                    dfs(grid, row, col);
+                    res++;
+                }
+        }
+        return res;
+    }
+    
+    void dfs(vector<vector<char>>& grid, int row, int col) {
+        grid[row][col] = '0';
+
+        for (int i = 0; i < 4; i++) {
+            int newRow = row + dx[i], newCol = col + dy[i];
+            if (0 <= newRow && newRow < m && 0 <= newCol && newCol < n) {
+                if (grid[newRow][newCol] == '1')
+                    dfs(grid, newRow, newCol);
+            }
+        }    
+    }
+};
