@@ -42,3 +42,36 @@ public:
         }
     }
 };
+
+
+// DFS, backtrack
+class Solution {
+public:
+    vector<vector<int>> pathSum(TreeNode* root, int targetSum) {
+        vector<vector<int>> res;
+        vector<int> path;
+        if (root == nullptr)
+            return res;
+        
+        helper(root, targetSum, path, res);
+        return res;
+    }
+
+    void helper(TreeNode* root, int targetSum, vector<int>& path, vector<vector<int>>& res) {
+        if (root == nullptr)
+            return;
+        else if (root->left == nullptr && root->right == nullptr) {
+            if (root->val == targetSum) {
+                path.push_back(root->val);
+                res.push_back(path);
+                path.pop_back();
+            }
+            return;
+        }
+
+        path.push_back(root->val);
+        helper(root->left, targetSum - root->val, path, res);
+        helper(root->right, targetSum - root->val, path, res);
+        path.pop_back();
+    }
+};
