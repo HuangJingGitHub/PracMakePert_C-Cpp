@@ -47,15 +47,15 @@ public:
 };
 
 
-// use constant extra space, cool
+// use constant extra space, just traverse at each level
 class Solution {
 public:
     Node* connect(Node* root) {
         if (root == NULL)
             return root;
 
-        Node *pre = root, *temp;
-        while (pre->left != NULL){
+        Node *preLevel = root, *temp;
+        while (preLevel->left != NULL){
             temp = pre;
             while(temp != NULL){
                 temp->left->next = temp->right;
@@ -64,8 +64,33 @@ public:
                 }
                 temp = temp->next;
             }
-            pre = pre->left;
+            preLevel = preLevel->left;
         }
         return root;
+    }
+};
+
+
+// recursion
+class Solution {
+public:
+    Node* connect(Node* root) {
+        dfs(root);
+        return root;
+    }
+
+    void dfs(Node* root) {
+        if (root == nullptr)
+            return;
+        
+        Node *left = root->left, *right = root->right;
+        while (left != nullptr) {
+            left->next = right;
+            left = left->right;
+            right = right->left;
+        }
+
+        dfs(root->left);
+        dfs(root->right);
     }
 };
