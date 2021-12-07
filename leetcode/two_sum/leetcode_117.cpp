@@ -44,3 +44,59 @@ public:
         return root;
     }
 };
+
+
+// Do not use extra space, traverse in each level
+class Solution {
+public:
+    Node* connect(Node* root) {
+        if (root == nullptr)
+            return root;
+        
+        Node* levelHead = root;
+        while (levelHead != nullptr) {
+            Node *curLevelNode = levelHead, *curLevelHead = curLevelNode;
+            while (curLevelNode != nullptr) {
+                // skip node without child
+                if (curLevelNode->left == nullptr && curLevelNode->right == nullptr) {
+                    curLevelNode = curLevelNode->next;
+                    continue;
+                }
+
+                // find next node in the same level with child
+                Node *nextNode = curLevelNode->next;
+                while (nextNode != nullptr) {
+                    if (nextNode->left != nullptr || nextNode->right != nullptr)
+                        break;
+                    nextNode = nextNode->next;
+                }
+
+                // connect
+                if (curLevelNode->left != nullptr && curLevelNode->right != nullptr)
+                    curLevelNode->left->next = curLevelNode->right;
+                if (curLevelNode->right != nullptr && nextNode != nullptr)
+                    curLevelNode->right->next = (nextNode->left != nullptr) ? nextNode->left : nextNode->right;
+                else if (curLevelNode->left != nullptr && nextNode != nullptr)
+                    curLevelNode->left->next = (nextNode->left != nullptr) ? nextNode->left : nextNode->right;
+                
+                curLevelNode = nextNode;
+            }
+            
+            // find head node of the next level
+            levelHead = nullptr;
+            while (curLevelHead != nullptr) {
+                if (curLevelHead->left != nullptr) {
+                    levelHead = curLevelHead->left;
+                    break;
+                }
+                else if (curLevelHead->right != nullptr) {
+                    levelHead = curLevelHead->right;
+                    break;
+                }
+                curLevelHead = curLevelHead->next;
+            }
+        }
+
+        return root;
+    }
+};
