@@ -16,7 +16,7 @@ public:
         return res;
     }
 
-    int getMax(TreeNode* r){
+    int getMax(TreeNode* r) {
         if (r == NULL)
             return 0;
         int left = max(0, getMax(r->left));
