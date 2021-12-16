@@ -65,7 +65,7 @@ public:
         if (prices.size() < 2)
             return 0;
         
-        vector<vector<int>> dp<prices.size(), vector<int>(3, 0)>;  // dp[day][sellTimes] represents the max profit until day with maximum sellTimes sele.
+        vector<vector<int>> dp<prices.size(), vector<int>(3, 0)>;  // dp[day][sellTimes] represents the max profit until day with maximum sellTimes sale.
         int minTemp0 = prices[0], minTemp1 = prices[0];
         for (int i = 1; i < prices.size(); i++){
             minTemp0 = min(minTemp0, prices[i-1] - dp[i-1][0]);
@@ -74,4 +74,29 @@ public:
             dp[i][2] = max(prices[i] - minTemp1, dp[i-1][2]);
         }
         return dp[prices.size()-1][2];                          
+};
+
+
+// Another dp implementation
+class Solution {
+public:
+    int maxProfit(vector<int>& prices) {
+        if (prices.size() < 2)
+            return 0;
+        
+        vector<vector<int>> dp(prices.size(), vector<int>(5, 0));
+        // [0]: no action, [1]: buy once, [2]: sell once, [3]: buy twice, [4]: sell twice
+        dp[0][1] = -prices[0];
+        dp[0][2] = 0;
+        dp[0][3] = -prices[0];
+        
+        for (int i = 1; i < prices.size(); i++){
+            dp[i][1] = max(dp[i - 1][1], -prices[i]);
+            dp[i][2] = max(dp[i - 1][2], prices[i] + dp[i - 1][1]);
+            dp[i][3] = max(dp[i - 1][3], dp[i - 1][2] - prices[i]);
+            dp[i][4] = max(dp[i - 1][4], prices[i] + dp[i - 1][3]);
+        }
+
+        return max(dp.back()[2], dp.back()[4]);
+    }
 };
