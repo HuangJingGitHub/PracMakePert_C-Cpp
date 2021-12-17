@@ -19,6 +19,7 @@ public:
     int getMax(TreeNode* r) {
         if (r == NULL)
             return 0;
+        
         int left = max(0, getMax(r->left));
         int right = max(0, getMax(r->right));
         res = max(res, r->val + left + right);
