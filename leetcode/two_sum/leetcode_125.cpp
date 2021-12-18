@@ -27,3 +27,29 @@ public:
         return i >= j;
     }
 };
+
+
+class Solution {
+public:
+    bool isPalindrome(string s) {
+        int left = 0, right = s.size() - 1;
+        while (left < right) {
+            while (left < s.size() && !isalnum(s[left]))
+                left++;
+            while (right >= 0 && !isalnum(s[right]))
+                right--;
+            if (left == s.size() || right < 0)
+                break;
+
+            if (s[left] == s[right] || (max(s[left], s[right]) - min(s[left], s[right]) == 32 && max(s[left], s[right]) >= 'a')) {
+                left++;
+                right--;
+                continue;
+            }
+            else
+                break;
+        }
+
+        return left >= right;
+    }
+};
