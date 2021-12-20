@@ -20,3 +20,28 @@ public:
         return res;
     }
 };
+
+
+// dp solution, but it calls for sorting first.
+class Solution {
+public:
+    int longestConsecutive(vector<int>& nums) {
+        if (nums.size() == 0)
+            return 0;
+            
+        int res = 1;
+        map<int, int> numToRes;
+        for (int& num : nums)
+            numToRes[num] = 1;
+        
+        sort(nums.begin(), nums.end());
+        for (int& num : nums) {
+            if (numToRes.find(num - 1) != numToRes.end()) {
+                numToRes[num] = numToRes[num - 1] + 1;
+                res = max(res, numToRes[num]);
+            }
+        }
+
+        return res;
+    }
+};
