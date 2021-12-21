@@ -38,3 +38,44 @@ public:
         DFS_BorderProcess(board, row + 1, col);
     }
 };
+
+
+class Solution {
+public:
+    void solve(vector<vector<char>>& board) {
+        int rowNum = board.size(), colNum = board[0].size();
+        vector<vector<bool>> isSurrounded(rowNum, vector<bool>(colNum, true));
+
+        // From boarder, sieve unsurrounded positions
+        for (int col = 0; col < colNum; col++) {
+            if (board[0][col] == 'O')
+                dfs(board, isSurrounded, 0, col);
+            if (board.back()[col] == 'O')
+                dfs(board, isSurrounded, rowNum - 1, col);
+        }
+        for (int row = 1; row < rowNum - 1; row++) {
+            if (board[row][0] == 'O')
+                dfs(board, isSurrounded, row, 0);
+            if (board[row].back() == 'O')
+                dfs(board, isSurrounded, row, colNum - 1);
+        }
+
+        for (int row = 1; row < rowNum - 1; row++)
+            for (int col = 1; col < colNum - 1; col++)
+                if (board[row][col] == 'O' && isSurrounded[row][col] == true)
+                    board[row][col] = 'X';
+    }
+
+    void dfs(vector<vector<char>>& board, vector<vector<bool>>& isSurrounded, int row, int col) {
+        if (row < 0 || row >= board.size() || col < 0 || col >= board[0].size()
+            || board[row][col] == 'X' 
+            || isSurrounded[row][col] == false)
+            return;
+        
+        isSurrounded[row][col] = false;
+        dfs(board, isSurrounded, row - 1, col);
+        dfs(board, isSurrounded, row + 1, col);
+        dfs(board, isSurrounded, row, col - 1);
+        dfs(board, isSurrounded, row, col + 1);
+    }
+};
