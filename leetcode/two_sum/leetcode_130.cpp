@@ -69,7 +69,7 @@ public:
     void dfs(vector<vector<char>>& board, vector<vector<bool>>& isSurrounded, int row, int col) {
         if (row < 0 || row >= board.size() || col < 0 || col >= board[0].size()
             || board[row][col] == 'X' 
-            || isSurrounded[row][col] == false)
+            || isSurrounded[row][col] == false)  // check wheter the position has been processed before to avoid infinite loop, like [['O','O'], ['O', 'O']]
             return;
         
         isSurrounded[row][col] = false;
