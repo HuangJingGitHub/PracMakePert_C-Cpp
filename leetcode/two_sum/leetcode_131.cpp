@@ -39,3 +39,39 @@ public:
         return true;
     }
 };
+
+class Solution {
+public:
+    vector<vector<string>> partition(string s) {
+        vector<vector<string>> res;
+        if (s.size() == 1) {
+            res.push_back(vector<string>{string(1, s[0])});
+            return res;
+        }
+
+        for (int i = 1; i < s.size(); i++) {
+            vector<vector<string>> tempRes = partition(s.substr(0, i));
+            if (isEndPalindrome(s, i)) {
+                for (vector<string>& strVec : tempRes) {
+                    strVec.push_back(s.substr(i));
+                    res.push_back(strVec);
+                }
+            }
+        }
+        if (isEndPalindrome(s, 0))
+            res.push_back(vector<string>{s});
+
+        return res;
+    }
+
+    bool isEndPalindrome(string& s, int start) {
+        int startIdx = start, endIdx = s.size() - 1;
+        while (startIdx < endIdx) {
+            if (s[startIdx] != s[endIdx])
+                return false;
+            startIdx++;
+            endIdx--;
+        }
+        return true;
+    }
+};
