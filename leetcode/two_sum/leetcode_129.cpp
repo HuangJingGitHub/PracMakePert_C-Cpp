@@ -48,7 +48,7 @@ public:
         return helper(root, 0);
     }
 
-    int helper(TreeNode* root, int parentVal){
+    int helper(TreeNode* root, int parentVal) {
         if (root == NULL)
             return 0;
         parentVal = 10 * parentVal + root->val;
