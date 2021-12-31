@@ -50,3 +50,26 @@ public:
         }
     }
 };
+
+
+class Solution {
+    Node* cloneGraph(Node* node) {
+        if (node == nullptr)
+            return nullptr;
+        
+        unordered_map<Node*, Node*> oldToNew;
+        DFS_build(node, oldToNew);
+        return oldToNew[node];
+    }
+    
+    void DFS_build(Node* oldNode, unordered_map<Node*, Node*>& oldToNew) {
+        if (oldToNew.find(oldNode) != oldToNew.end())
+            return;
+        
+        oldToNew[oldNode] = new Node(oldNode->val);
+        for (Node*& neighbor : oldNode->neighbors) {
+            DFS_build(neighbor, oldToNew);
+            oldToNew[oldNode]->neighbors.push_back(oldToNew[neighbor]);
+        }
+    }
+};
