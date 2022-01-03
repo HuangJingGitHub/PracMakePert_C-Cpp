@@ -43,8 +43,27 @@ public:
     }
 };
                    
-// straightforward and also efficient
+// straightforward and efficient
 class Solution {
     int longestConsecutive(vector<int>& nums) {
+        if (nums.empty() == true)
+            return 0;
+        
+        int res = 1, curLongest = 1;
+        sort(nums.begin(), nums.end());
+        
+        for (int i = 1; i < nums.size(); i++) {
+            if (nums[i] != nums[i - 1]) {
+                if (nums[i] == nums[i - 1] + 1) {
+                    curLongest++;
+                }
+                else {
+                    res = max(res, curLongest);
+                    curLongest = 1;
+                }
+            }
+        }
+        
+        return max(res, curLongest);
     }
 };                   
