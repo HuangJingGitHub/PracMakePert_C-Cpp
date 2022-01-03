@@ -42,3 +42,9 @@ public:
         return res;
     }
 };
+                   
+// straightforward and also efficient
+class Solution {
+    int longestConsecutive(vector<int>& nums) {
+    }
+};                   
