@@ -38,3 +38,31 @@ public:
         }
     }
 };
+
+// insertion sort O(n^2) complexity, the time limit exceeded
+class Solution {
+public:
+    ListNode* sortList(ListNode* head) {
+        if (head == nullptr || head->next == nullptr)
+            return head;
+            
+        ListNode dummyNode = ListNode(0);
+        ListNode* dummy = &dummyNode;
+        dummy->next = head;
+        head = head->next;
+        dummy->next->next = nullptr;
+
+        while (head) {
+            ListNode *sortedHead = dummy->next, *sortedPre = dummy, *unSortedHead = head->next;
+            while (sortedHead != nullptr && sortedHead->val < head->val) {
+                sortedHead = sortedHead->next;
+                sortedPre = sortedPre->next;
+            }
+            sortedPre->next = head;
+            head->next = sortedHead;
+            head = unSortedHead;
+        }
+
+        return dummy->next;
+    }
+};
