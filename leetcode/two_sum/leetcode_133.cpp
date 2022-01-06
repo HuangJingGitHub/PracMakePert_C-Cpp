@@ -73,3 +73,32 @@ class Solution {
         }
     }
 };
+
+
+// BFS
+class Solution {
+public:
+    Node* cloneGraph(Node* node) {
+        if (node == nullptr)    
+            return node;
+        
+        unordered_map<Node*, Node*> visited;
+        queue<Node*> nodeQueue;
+        visited[node] = new Node(node->val);
+        nodeQueue.push(node);
+
+        while (nodeQueue.empty() == false) {
+            Node* curNode = nodeQueue.front();
+            nodeQueue.pop();
+            for (auto& n : curNode->neighbors) {
+                if (visited.find(n) == visited.end()) {
+                    visited[n] = new Node(n->val);
+                    nodeQueue.push(n);
+                }
+                visited[curNode]->neighbors.push_back(visited[n]);
+            }
+        }
+
+        return visited[node];
+    }
+};
