@@ -66,3 +66,29 @@ public:
         return res;
     }
 };
+
+// Same as solution 1
+class Solution {
+public:
+    int candy(vector<int>& ratings) {
+        if (ratings.empty() == true)
+            return 0;
+
+        int res = 0;
+        vector<int> toLeft(ratings.size(), 1), toRight(ratings.size(), 1);
+
+        for (int i = 1; i < ratings.size(); i++) {
+            if (ratings[i] > ratings[i - 1] && toLeft[i] <= toLeft[i - 1])
+                toLeft[i] = toLeft[i - 1] + 1;
+        }
+        for (int i = ratings.size() - 2; i >= 0; i--) {
+            if (ratings[i] > ratings[i + 1] && toRight[i] <= toRight[i + 1])
+                toRight[i] = toRight[i + 1] + 1;
+        }
+
+        for (int i = 0; i < ratings.size(); i++) {
+            res += max(toLeft[i], toRight[i]);
+        }
+        return res;
+    }
+};
