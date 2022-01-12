@@ -30,6 +30,7 @@ public:
             if (fastPt == slowPt)
                 break;
         }
+        
         fastPt = head;
         while (fastPt != slowPt) {
             slowPt = slowPt->next;
