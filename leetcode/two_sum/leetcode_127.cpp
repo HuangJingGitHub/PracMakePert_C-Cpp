@@ -207,7 +207,7 @@ public:
                 }
             }
 
-            // one level forward from endinword
+            // one level forward from endword
             front = endQueue.front();
             endQueue.pop();
             word = front.first;
