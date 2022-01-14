@@ -230,3 +230,33 @@ public:
         return 0;
     }
 };
+
+
+// more concise
+class Solution {
+public:
+    int ladderLength(string beginWord, string endWord, vector<string>& wordList) {
+        int res = 0;
+        unordered_set<string> wordSet(wordList.begin(), wordList.end());
+        queue<pair<string, int>> wordQueue;
+        wordQueue.push(pair<string, int>(beginWord, 1));
+
+        while (wordQueue.empty() == false) {
+            string curString = wordQueue.front().first;
+            int curLevel = wordQueue.front().second;
+            wordQueue.pop();
+            if (curString == endWord)
+                return curLevel;
+
+            for (int i = 0; i < curString.size(); i++)
+                for (int letter = 'a'; letter <= 'z'; letter++) {
+                    string newStr = curString.substr(0, i) + char (letter) + curString.substr(i + 1);
+                    if (wordSet.find(newStr) != wordSet.end()) {
+                        wordQueue.push(pair<string, int>(newStr, curLevel + 1));
+                        wordSet.erase(newStr);
+                    }
+                }
+        }
+        return 0;
+    }
+};
