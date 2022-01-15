@@ -1,4 +1,4 @@
-// good example of application of double linked list 
+// good example of application of double-linked list 
 // implementation of LRU cache mechanism  
 struct DLinkedNode {
     int key, value;
@@ -70,6 +70,77 @@ public:
         tailNode->prev->next = tail;
         tail->prev = tailNode->prev;
         return tailNode;
+    }
+};
+
+
+// personal same implementation
+struct DNode {
+    int key;
+    int value;
+    DNode* prev;
+    DNode* next;
+    DNode(): key(0), value(0), prev(nullptr), next(nullptr) {}
+    DNode(int k, int v): key(k), value(v), prev(nullptr), next(nullptr) {}
+};
+
+class LRUCache {
+    int capacity_;
+    int size_ = 0;
+    DNode* head_;
+    DNode* tail_;
+    unordered_map<int, DNode*> keyNodeMap_;
+public:
+    LRUCache(int capacity) {
+        capacity_ = capacity;
+        head_ = new DNode(0, 0);
+        tail_ = new DNode(0, 0);
+        head_->next = tail_;
+        tail_->prev = head_;
+    }
+    
+    int get(int key) {
+        if (keyNodeMap_.find(key) != keyNodeMap_.end()) {
+            moveToLatest(keyNodeMap_[key]);
+            return keyNodeMap_[key]->value;
+        }
+        return -1;
+        
+    }
+    
+    void put(int key, int value) {
+        if (keyNodeMap_.find(key) != keyNodeMap_.end()) {
+            keyNodeMap_[key]->value = value;
+            moveToLatest(keyNodeMap_[key]);
+        }
+        else {
+            if (size_ == capacity_) {
+                DNode* evicted = head_->next;
+                head_->next = evicted->next;
+                evicted->next->prev = head_;
+                keyNodeMap_.erase(evicted->key);
+                delete evicted;
+                size_--;
+            }
+
+            DNode* newNode = new DNode(key, value);
+            keyNodeMap_[key] = newNode;
+
+            tail_->prev->next = newNode;
+            newNode->prev = tail_->prev;
+            newNode->next = tail_;
+            tail_->prev = newNode;
+            size_++;
+        }
+    }
+
+    void moveToLatest(DNode*& latestNode) {
+        latestNode->prev->next = latestNode->next;
+        latestNode->next->prev = latestNode->prev;
+        tail_->prev->next = latestNode;
+        latestNode->prev = tail_->prev;
+        latestNode->next = tail_;
+        tail_->prev = latestNode;
     }
 };
 
