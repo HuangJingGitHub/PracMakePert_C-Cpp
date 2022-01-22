@@ -53,9 +53,6 @@ public:
 class Solution {
 public:
     int findPeakElement(vector<int>& nums) {
-        if (nums.size() == 1)
-            return 0;
-
         int mid = 0, left = 0, right = nums.size() - 1;
         while (left < right) {
             mid = left + (right - left) / 2;
