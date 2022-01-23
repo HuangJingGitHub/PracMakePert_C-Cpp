@@ -5,7 +5,8 @@ struct bucket{
     int min = INT_MAX;
     int max = INT_MIN;
 };
-
+// Or use pair<int, int>
+    
 public:
     int maximumGap(vector<int>& nums) {
         if (nums.size() < 2)
@@ -32,6 +33,40 @@ public:
                 continue;
             res = max(res, bucketVec[i].min - preMax);
             preMax = bucketVec[i].max;
+        }
+        return res;
+    }
+};
+
+
+// implementation for the same algorithm
+class Solution {
+public:
+    int maximumGap(vector<int>& nums) {
+        if (nums.size() < 2)
+            return 0;
+
+        int res = 0;
+        int maxNum = *std::max_element(nums.begin(), nums.end()),
+            minNum = *std::min_element(nums.begin(), nums.end());
+        
+        int bucketLen = max(1, (maxNum - minNum) / (int)nums.size()),
+            bucketNum = (maxNum - minNum) / bucketLen + 1;
+        
+        vector<pair<int, int>> bucketVec(bucketNum, pair<int, int>(INT_MAX, INT_MIN));
+        for (int& num : nums) {
+            int idx = (num - minNum) / bucketLen;
+            bucketVec[idx].first = min(num, bucketVec[idx].first);
+            bucketVec[idx].second = max(num, bucketVec[idx].second);
+        }
+
+        int preMax = bucketVec[0].second;
+        for (int i = 0; i < bucketNum; i++) {
+            if (bucketVec[i].first == INT_MAX)
+                continue;
+            
+            res = max(res, bucketVec[i].first - preMax); 
+            preMax = bucketVec[i].second;
         }
         return res;
     }
