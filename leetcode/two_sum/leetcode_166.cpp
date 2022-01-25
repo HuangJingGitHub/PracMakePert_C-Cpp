@@ -59,3 +59,50 @@ public:
         }
     }
 };
+
+class Solution {
+public:
+    string fractionToDecimal(int numerator, int denominator) {
+        string res;
+        long int num = abs(numerator), 
+                 den = abs(denominator),
+                 quotient = num / den, residue = num % den;
+        int sign1 = numerator > 0 ? 1 : -1,
+            sign2 = denominator > 0 ? 1 : -1,
+            sign = sign1 * sign2;
+
+        if (residue == 0)
+            return to_string(sign * quotient);
+
+        vector<int> decimalNum;
+        unordered_map<int, int> residueToIdx;
+
+        while (true) {
+            residueToIdx[residue] = (int) decimalNum.size();
+            residue *= 10;
+            decimalNum.push_back(residue / den);
+            residue %= den;
+
+            if (residue == 0 || residueToIdx.find(residue) != residueToIdx.end())
+                break;
+        }
+
+        if (sign == -1)
+            res = "-";
+        res += to_string(quotient) + ".";
+        if (residue == 0) {
+            for (int i = 0; i < decimalNum.size(); i++)
+                res += to_string(decimalNum[i]);
+            return res;
+        }
+
+        for (int i = 0; i < residueToIdx[residue]; i++)
+            res += to_string(decimalNum[i]);
+        res += "(";
+        for (int i = residueToIdx[residue]; i < decimalNum.size(); i++)
+            res += to_string(decimalNum[i]);
+        res += ")";
+
+        return res;
+    }
+};
