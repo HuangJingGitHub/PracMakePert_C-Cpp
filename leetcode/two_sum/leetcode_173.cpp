@@ -44,3 +44,29 @@ public:
  * int param_1 = obj->next();
  * bool param_2 = obj->hasNext();
  */
+
+class BSTIterator {
+public:
+    vector<TreeNode*> nodeVec_;
+    int idx_ = -1;
+    void inorderTraversal(TreeNode* root) {
+        if (root != nullptr) {
+            inorderTraversal(root->left);
+            nodeVec_.push_back(root);
+            inorderTraversal(root->right);
+        }
+    }
+
+    BSTIterator(TreeNode* root) {
+        inorderTraversal(root);
+    }
+    
+    int next() {
+        idx_++;
+        return nodeVec_[idx_]->val;
+    }
+    
+    bool hasNext() {
+        return idx_ + 1 < nodeVec_.size();
+    }
+};
