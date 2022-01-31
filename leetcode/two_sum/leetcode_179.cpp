@@ -1,6 +1,6 @@
 class Solution {
 public:
-    static bool cmp(const int &a, const int &b) {
+    static bool cmp(const int& a, const int& b) {
         int lenA = 1, lenB = 1;
         int temp = a / 10;
         while (temp > 0) {
@@ -18,7 +18,7 @@ public:
     string largestNumber(vector<int>& nums) {
         string res;
         sort(nums.begin(), nums.end(), cmp);
-        for (int num : nums) 
+        for (int& num : nums) 
             res += to_string(num);
         if (res[0] == '0')
             return "0";
