@@ -15,3 +15,36 @@ public:
             nums[i] = numsCopy[i - k];
     } 
 };
+
+
+public:
+    void rotate(vector<int>& nums, int k) {
+        k %= nums.size();
+        vector<int> rotatedNum(k);
+        for (int i = nums.size() - k; i < nums.size(); i++)
+            rotatedNum[i - nums.size() + k] = nums[i];
+        for (int i = nums.size() - 1; i >= k; i--)
+            nums[i] = nums[i - k];
+        for (int i = 0; i < k; i++)
+            nums[i] = rotatedNum[i];
+    } 
+};
+
+
+class Solution {
+public:
+    void rotateVec(vector<int>& nums, int left, int right) {
+        while (left < right) {
+            swap(nums[left], nums[right]);
+            left++;
+            right--;
+        }
+    }
+
+    void rotate(vector<int>& nums, int k) {
+        k %= nums.size();
+        rotateVec(nums, 0, nums.size() - 1);
+        rotateVec(nums, 0, k - 1);
+        rotateVec(nums, k, nums.size() - 1);
+    }
+};
