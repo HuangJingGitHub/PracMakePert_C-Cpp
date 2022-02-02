@@ -35,6 +35,9 @@ public:
 class Solution {
 public:
     vector<string> findRepeatedDnaSequences(string s) {
+        if (s.size() <= 10)
+            return {};
+        
         vector<string> res;
         unordered_map<string, int> visitedStr;
 
