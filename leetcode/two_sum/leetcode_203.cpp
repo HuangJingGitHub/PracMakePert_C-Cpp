@@ -36,7 +36,7 @@ public:
     ListNode* removeElements(ListNode* head, int val) {
         ListNode* dummy = new ListNode(0);
         dummy->next = head;
-        ListNode *prev = dummy;
+        ListNode* prev = dummy;
         while (prev->next) {
             if (prev->next->val == val)
                 prev->next = prev->next->next;
