@@ -73,8 +73,8 @@ public:
 
         if (sign) 
             res *= -1;
-        if (-2147483648 <= res && res <= 21474836487)
+        if (INT_MIN <= res && res <= INT_MAX)
             return res;
-        return 2147483647;
+        return INT_MAX;
     }
 };
