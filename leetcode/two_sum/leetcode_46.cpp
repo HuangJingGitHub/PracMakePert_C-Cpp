@@ -29,7 +29,7 @@ public:
 };
 
 
-// This is the backtracking algorithm + dfs. See the discussion for details.
+// This is the backtrack algorithm + dfs. See the discussion for details.
 class Solution {
 public:
     vector<vector<int>> permute(vector<int>& nums) {
@@ -37,31 +37,27 @@ public:
         vector<vector<int>> res;
         vector<bool> used(len, false);
         vector<int> path;
-        
-        if (len == 0 || len == 1) {
-            res.push_back(nums);
-            return res;
-        }
 
-        dfs(nums, len, 0, path, used, res);
+        dfs(nums, path, used, res);
         return res;
     }
 
 private:
-    void dfs(vector<int> nums, int len, int depth, vector<int> path, vector<bool> used, 
-            vector<vector<int>>& res) {
-            if (depth == len) {
+    void dfs(vector<int> nums, vector<int> path, vector<bool> used, vector<vector<int>>& res) {
+            if (path.size() == nums.size()) {
                 res.push_back(path);
                 return;
             }
 
             for (int i = 0; i < len; i++) {
-                if (!used[i]) {
-                    path.push_back(nums[i]);
-                    used[i] = true;
-                    dfs(nums, len, depth + 1, path, used, res);
-                    used[i] = false;
-                    path.pop_back();
+                if (used[i] == true)
+                    continue;
+                
+                path.push_back(nums[i]);
+                used[i] = true;
+                dfs(nums, path, used, res);
+                used[i] = false;
+                path.pop_back();
                 }
             }
         }        
