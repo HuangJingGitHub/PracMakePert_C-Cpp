@@ -20,13 +20,13 @@ public:
 
 private:
     void dfs(vector<int> nums, int len, int depth, vector<int> path, vector<bool> used, 
-            vector<vector<int>>& res){
+            vector<vector<int>>& res) {
             if (depth == len){
                 res.push_back(path);
                 return;
             }
 
-            for (int i = 0; i < len; i++){
+            for (int i = 0; i < len; i++) {
                 if (!used[i]){
                     if (i > 0 && nums[i-1] == nums[i] && !used[i-1]) // Add judgement.
                         continue;
