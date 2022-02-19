@@ -88,33 +88,20 @@ public:
     }
 };
 
-class Solution_ref{
+class Solution {
     public: 
-    string intToRoman(int num)
-    {
+    string intToRoman(int num) {
         vector<int> values = {1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1};
         vector<string> romanStr = { "M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", 
                                     "IX", "V", "IV", "I"};
-        string romanStrResult;
+        string res;
         
-        for (int i = 0; i < values.size(); i++)
-        {
-            while (num >= values[i])
-            {
-                romanStrResult += romanStr[i];
+        for (int i = 0; i < values.size(); i++) {
+            while (num >= values[i]) {
+                res += romanStr[i];
                 num -= values[i];
             }
         }
-        return romanStrResult;
+        return res;
     }
-
 };
-
-int main()
-{
-    Solution_self sol;
-    cout << sol.intToRoman(1434) << endl;
-
-    Solution_ref solRef;
-    cout << solRef.intToRoman(1434);
-}
