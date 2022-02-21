@@ -61,3 +61,39 @@ int main()
         cout << endl;
     }
 }
+
+
+// compact implementation
+class Solution {
+public:
+    vector<vector<int>> threeSum(vector<int>& nums) {
+        vector<vector<int>> res;
+        if (nums.size() < 3)
+            return res;
+
+        sort(nums.begin(), nums.end());
+        for (int i = 0; i <= nums.size() - 3; i++) {
+            if (i > 0 && nums[i] == nums[i - 1])
+                continue;
+
+            int leftPt = i + 1, rightPt = nums.size() - 1, sum;
+            while (leftPt < rightPt) {
+                sum = nums[i] + nums[leftPt] + nums[rightPt];
+                if (sum < 0)
+                    leftPt++;
+                else if (sum > 0)
+                    rightPt--;
+                else {
+                    res.push_back({nums[i], nums[leftPt], nums[rightPt]});
+                    leftPt++;
+                    while (leftPt < rightPt && nums[leftPt] == nums[leftPt - 1])
+                        leftPt++;
+                    rightPt--;
+                    while (leftPt < rightPt && nums[rightPt] == nums[rightPt + 1])
+                        rightPt--;
+                }
+            }
+        }
+        return res;
+    }
+};
