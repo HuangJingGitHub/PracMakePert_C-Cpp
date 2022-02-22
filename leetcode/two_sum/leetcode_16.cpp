@@ -49,3 +49,39 @@ int main()
     int testAns = sol.threeSumClosest(testNums, testTarget);
     cout << testAns << endl;
 }
+
+
+class Solution {
+public:
+    int threeSumClosest(vector<int>& nums, int target) {
+        int res = 0, sum, dif = INT_MAX;
+        sort(nums.begin(), nums.end());
+
+        for (int i = 0; i <= nums.size() - 3; i++) {
+            if (i > 0 && nums[i] == nums[i - 1])
+                continue;
+
+            int leftPt = i + 1, rightPt = nums.size() - 1;
+            while (leftPt < rightPt) {
+                sum = nums[i] + nums[leftPt] + nums[rightPt];
+                if (sum == target)
+                    return sum;
+                if (abs(sum - target) < dif) {
+                    dif = abs(sum - target);
+                    res = sum;
+                }
+                if (sum > target) {
+                    rightPt--;
+                    while (leftPt < rightPt && nums[rightPt] == nums[rightPt + 1])
+                        rightPt--;
+                }
+                else {
+                    leftPt++;
+                    while (leftPt < rightPt && nums[leftPt] == nums[leftPt - 1])
+                        leftPt++;
+                }
+            }
+        }
+        return res;
+    }
+};
