@@ -32,14 +32,6 @@ public:
 
 
 // The follwing solution is correct and simpler.
-/**
- * Definition for singly-linked list.
- * struct ListNode {
- *     int val;
- *     ListNode *next;
- *     ListNode(int x) : val(x), next(NULL) {}
- * };
- */
 class Solution {
 public:
     ListNode* swapPairs(ListNode* head) {
@@ -59,14 +51,6 @@ public:
 };
 
 
-/**
- * Definition for singly-linked list.
- * struct ListNode {
- *     int val;
- *     ListNode *next;
- *     ListNode(int x) : val(x), next(NULL) {}
- * };
- */
 class Solution {
 public:
     ListNode* swapPairs(ListNode* head) {
@@ -123,14 +107,6 @@ public:
 };
 
 // Correct version.
-/**
- * Definition for singly-linked list.
- * struct ListNode {
- *     int val;
- *     ListNode *next;
- *     ListNode(int x) : val(x), next(NULL) {}
- * };
- */
 class Solution {
 public:
     ListNode* swapPairs(ListNode* head) {
@@ -148,5 +124,20 @@ public:
             point = swap1;
         }
         return dummy->next;
+    }
+};
+
+// recursion
+class Solution {
+public:
+    ListNode* swapPairs(ListNode* head) {
+        if (head == nullptr || head->next == nullptr)
+            return head;
+        
+        ListNode* res = head->next;
+        head->next = swapPairs(head->next->next);
+        res->next = head;
+
+        return res;
     }
 };
