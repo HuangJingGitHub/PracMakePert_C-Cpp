@@ -44,3 +44,39 @@ public:
         return stackStr.size() == 0;
     }
 };
+
+
+class Solution {
+public:
+    bool isValid(string s) {
+        if (s.size() == 0)
+            return true;
+        
+        stack<char> rightStk;
+        rightStk.push(s.back());
+
+        for (int i = s.size() - 2; i >= 0; i--) {
+            if (s[i] == '(') {
+                if (rightStk.empty() == false && rightStk.top() == ')')
+                    rightStk.pop();
+                else 
+                    rightStk.push('(');
+            }
+            else if (s[i] == '[') {
+                if (rightStk.empty() == false && rightStk.top() == ']')
+                    rightStk.pop();
+                else
+                    rightStk.push('[');
+            }
+            else if (s[i] == '{') {
+                if (rightStk.empty() == false && rightStk.top() == '}')
+                    rightStk.pop();
+                else
+                    rightStk.push('{');
+            }
+            else 
+                rightStk.push(s[i]);
+        }
+        return rightStk.empty();
+    }
+};
