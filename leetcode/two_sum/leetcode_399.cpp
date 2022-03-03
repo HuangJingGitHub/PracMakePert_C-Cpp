@@ -1,46 +1,54 @@
 class Solution {
 public:
     vector<double> calcEquation(vector<vector<string>>& equations, vector<double>& values, vector<vector<string>>& queries) {
-        unordered_map<string, vector<string>> adjacencyMap;
-        unordered_map<string, double> strPairToValue;
-
-        for (int i = 0; i < equations.size(); i++) {
-            string dividend = equations[i][0],
-                    divisor = equations[i][1];
-            adjacencyMap[dividend].push_back(divisor);
-            adjacencyMap[divisor].push_back(dividend);
-            strPairToValue[dividend + divisor] = values[i];
-            strPairToValue[divisor + dividend] = 1 / values[i];
+        unordered_map<string, unordered_map<string, double>> graph;
+        int cur = 0;
+        for (auto& eq : equations) {
+            graph[eq[0]][eq[1]] = values[cur];
+            graph[eq[1]][eq[0]] = 1 / values[cur];
+            cur++;
         }
-        cout << "OK\n";
-        vector<double> res(queries.size(), 1);
-        for (int i = 0; i < queries.size(); i++) {
-            if (queries[i][0] == queries[i][1]) {
-                continue;
+           
+        vector<double> res;  
+        for (auto q : queries) {
+            set<string> visited;
+            bool found = false;
+            double r = dfs(graph, visited, q[0], q[1], found);
+            if (found) {
+                res.push_back(r);
+                graph[q[0]][q[1]] = r;
+                graph[q[1]][q[0]] = 1 / r;
+            } else {
+                res.push_back(-1);
             }
-            vector<string> path;
-            dfs(adjacencyMap, path, queries[i][0], queries[i][1]);
-            if (path.empty() == true)
-                res[i] = -1.0;
-            for (int i = 0; i < path.size() - 1; i++)
-                res[i] *= strPairToValue[path[i] + path[i + 1]];
         }
+      
         return res;
     }
 
-    void dfs(unordered_map<string, vector<string>>& adjacencyMap, vector<string>& path, string start, string end) {
-        if (adjacencyMap.find(start) == adjacencyMap.end())
-            return;
-
-        path.push_back(start);
-        for (int i = 0; i < adjacencyMap[start].size(); i++) {
-            path.push_back(adjacencyMap[start][i]);
-            if (adjacencyMap[start][i] == end)
-                return;
-            else {
-                dfs(adjacencyMap, path, adjacencyMap[start][i], end);
-                path.pop_back();
+    double dfs(unordered_map<string, unordered_map<string, double>>& g, set<string> visited, string begin, string end, bool& found) {
+        if (g.find(begin) == g.end() || g.find(end) == g.end()) {
+            found = false;
+            return -1;
+        }
+        if (visited.find(begin) != visited.end()) {
+            found = false;
+            return -1;
+        }
+        if (g[begin].find(end) != g[begin].end()) {
+            found = true;
+            return g[begin][end];
+        }
+        visited.insert(begin);
+        for (auto it : g[begin]) {
+            double r = dfs(g, visited, it.first, end, found);
+            if (found) {
+                double res = r * it.second;
+                return res;
             }
         }
+        visited.erase(begin);
+        found = false;
+        return -1;
     }
 };
