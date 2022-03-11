@@ -20,3 +20,25 @@ public:
         return dpLog.back();
     }
 };
+
+
+// concise
+class Solution {
+public:
+    bool wordBreak(string s, vector<string>& wordDict) {
+        vector<bool> dp(s.size() + 1, false);
+        dp.front() = true;
+        unordered_set<string> wordSet(wordDict.begin(), wordDict.end());
+
+        for (int i = 0; i < s.size(); i++) {
+            for (int j = i; j >= 0; j--) {
+                if (dp[j] == true && wordSet.find(s.substr(j, i - j + 1)) != wordSet.end()) {
+                    dp[i + 1] = true;
+                    break;
+                }
+            }
+        }
+
+        return dp.back();
+    }
+};
