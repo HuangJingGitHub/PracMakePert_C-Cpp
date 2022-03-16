@@ -60,5 +60,5 @@ private:
                 path.pop_back();
                 }
             }
-        }        
+        }
 };
