@@ -47,3 +47,48 @@ public:
         return -1;
     }
 };
+
+
+// refer to geeksforgeeks for KMP algorithm
+class Solution {
+public:
+    int strStr(string haystack, string needle) {
+        if (needle.size() == 0)
+            return 0;
+        
+        vector<int> next(needle.size(), 0);
+
+        for (int i = 1, len = 0; i < next.size(); ) {
+            if (needle[len] == needle[i]) {
+                len++;
+                next[i] = len;
+                i++;
+            }
+            else {
+                if (len != 0) {
+                    len = next[len - 1];
+                }
+                else {
+                    next[i] = 0;
+                    i++;
+                }
+            }
+        }
+
+        for (int i = 0, j = 0; i < haystack.size(); ) {
+            if (haystack[i] == needle[j]) {
+                i++;
+                j++;
+            }
+            if (j == needle.size())
+                return i - j;
+            else if (haystack[i] != needle[j]) {
+                if (j != 0)
+                    j = next[j - 1];
+                else
+                    i++;
+            }
+        }
+        return -1;
+    }
+};
