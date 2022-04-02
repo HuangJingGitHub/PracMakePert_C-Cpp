@@ -73,3 +73,35 @@ public:
         return ret;
     } 
 };
+
+
+// simplified by not using hmap2
+class Solution {
+public:
+    vector<int> findSubstring(string s, vector<string>& words) {
+        vector<int> res;
+        unordered_map<string, int> occuranceLog;
+        for (string& word : words)
+            occuranceLog[word]++;
+        int wordLen = words[0].size(), concatenationSize = wordLen * words.size();
+
+        for (int i = 0; i <= (int)s.size() - concatenationSize; i++) {
+            if (occuranceLog.count(s.substr(i, wordLen)) != 0) {
+                int j = i;
+                unordered_map<string, int> currentLog;
+                for( ; j < i + concatenationSize; j += wordLen) {
+                    string tempStr = s.substr(j, wordLen);
+                    if (occuranceLog.count(tempStr) == 0)
+                        break;
+                    else
+                        currentLog[tempStr]++;
+                    if (currentLog[tempStr] > occuranceLog[tempStr])
+                        break;
+                }
+                if (j == i + concatenationSize)
+                    res.push_back(i);
+            }
+        }
+        return res;
+    }
+};
