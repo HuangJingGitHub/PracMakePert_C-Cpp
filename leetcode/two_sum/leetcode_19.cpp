@@ -13,15 +13,13 @@ public:
         dummy.next = head;
         int length = 0;
         ListNode* first = head;
-        while (first != NULL)
-        {
+        while (first != NULL) {
             length++;
             first = (*first).next;
         }
         length -= n;
         first = &dummy;
-        while (length > 0)
-        {
+        while (length > 0) {
             length--;
             first = (*first).next;
         }
