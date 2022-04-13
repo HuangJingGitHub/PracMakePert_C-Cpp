@@ -7,10 +7,8 @@ public:
         vector<char> stackStr;
         stackStr.push_back(s[0]);
 
-        for (int i = 1; i < s.length(); i++)
-        {
-            switch(s[i])
-            {
+        for (int i = 1; i < s.length(); i++) {
+            switch(s[i]) {
                 case '(':
                     stackStr.push_back(s[i]);
                     break;
@@ -78,5 +76,37 @@ public:
                 rightStk.push(s[i]);
         }
         return rightStk.empty();
+    }
+};
+
+class Solution {
+public:
+    bool isValid(string s) {
+        stack<char> stk;
+        stk.push(s[0]);
+
+        for (int i = 1; i < s.size(); i++) {
+            if (s[i] == ')') {
+                if (stk.empty() == false && stk.top() == '(')
+                    stk.pop();
+                else
+                    stk.push(s[i]);
+            }
+            else if (s[i] == ']') {
+                if (stk.empty() == false && stk.top() == '[')
+                    stk.pop();
+                else
+                    stk.push(s[i]);
+            }
+            else if (s[i] == '}') {
+                if (stk.empty() == false && stk.top() == '{')
+                    stk.pop();
+                else
+                    stk.push(s[i]);
+            }             
+            else
+                stk.push(s[i]);
+        }
+        return stk.empty();
     }
 };
