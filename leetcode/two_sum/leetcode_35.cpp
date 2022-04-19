@@ -11,6 +11,6 @@ public:
             else 
                 right = mid - 1;
         }
-        return left;  // Note left is always the right idx target should be inserted no matter what case the binary search ends with.
+        return left;  // Note left is always the right idx the target should be inserted to no matter what case the binary search ends with.
     }                 // If it connot find the target, then binary search will always end in a subrange of length 1 or 2!!!
 };
