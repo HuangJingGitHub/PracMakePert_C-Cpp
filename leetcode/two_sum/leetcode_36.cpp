@@ -6,12 +6,10 @@ public:
 
         int digit, boxIndex;
         for (int i = 0; i < 9; i++)
-            for (int j = 0; j < 9; j++)
-            {
+            for (int j = 0; j < 9; j++) {
                 if (board[i][j] == '.')
                     continue;
-                else 
-                {
+                else {
                     digit =  board[i][j] - '0';     // Pay attention how to convert char number to int. Do not use std::stoi() as stoi() converts str not char.
                     boxIndex = i / 3 + 3 * (j / 3); 
                     rowLog[i][digit]++;
@@ -22,6 +20,37 @@ public:
                 if (rowLog[i][digit] > 1 || columnLog[j][digit] > 1 || 
                     subboxLog[boxIndex][digit] > 1)
                     return false;
+            }
+        return true;  
+    }
+};
+
+
+// use set
+class Solution {
+public:
+    bool isValidSudoku(vector<vector<char>>& board) {
+        vector<set<int>> rowLog(9), columnLog(9), subboxLog(9);
+
+        int digit, boxIndex;
+        for (int row = 0; row < 9; row++)
+            for (int col = 0; col < 9; col++) {
+                if (board[row][col] == '.')
+                    continue;
+                else {
+                    digit =  board[row][col] - '0';
+                    boxIndex = col / 3 + 3 * (row / 3);
+                    
+                    if (rowLog[row].find(digit) != rowLog[row].end())
+                        return false;  
+                    rowLog[row].insert(digit);
+                    if (columnLog[col].find(digit) != columnLog[col].end())
+                        return false;
+                    columnLog[col].insert(digit);
+                    if (subboxLog[boxIndex].find(digit) != subboxLog[boxIndex].end())
+                        return false;
+                    subboxLog[boxIndex].insert(digit);
+                }
             }
         return true;  
     }
