@@ -7,7 +7,7 @@ private:
 
 public:
     void backtrack(int start, int target) {
-        if (target == 0){
+        if (target == 0) {
             res.push_back(path);
             return;
         }
@@ -36,11 +36,11 @@ private:
 public:
     vector<vector<int>> combinationSum(vector<int>& candidates, int target) {
         sort(candidates.begin(), candidates.end());
-        backtrace(0, target, candidates);
+        backtrack(0, target, candidates);
         return res;
     }
 
-    void backtrace(int startIdx, int target, vector<int>& candidates) {
+    void backtrack(int startIdx, int target, vector<int>& candidates) {
         if (target == 0) {
             res.push_back(path);
             return;
@@ -49,7 +49,7 @@ public:
         for (int i = startIdx; i < candidates.size(); i++) {
             if (candidates[i] <= target) {
                 path.push_back(candidates[i]);
-                backtrace(i, target - candidates[i], candidates);
+                backtrack(i, target - candidates[i], candidates);
                 path.pop_back();
             }
             else
