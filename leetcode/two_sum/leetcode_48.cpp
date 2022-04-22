@@ -1,4 +1,4 @@
-// Effect: i-th row becomes n - i th col. First transpose then get the mirror image.
+// Effect: i-th row becomes n - i th col. First transpose then get the mirror image. Anew[i][j] = Aold[n - 1 - j][i]
 class Solution {
 public:
     void rotate(vector<vector<int>>& matrix) {
