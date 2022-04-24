@@ -39,19 +39,39 @@ public:
         vector<vector<string>> res;  
         unordered_map<string, int> strMap;
         int mapSize = 0;
+       
         string temp;
-        for (auto str:strs){
+        for (auto str:strs) {
             temp = str;
             sort(temp.begin(), temp.end());
             if (strMap.count(temp)){
                 res[strMap[temp]].push_back(str);
             }
-            else{
+            else {
                 vector<string> vec{str};
                 res.push_back(vec);
                 strMap[temp] = mapSize++;
             }
         }
+        return res;
+    }
+};
+
+class Solution {
+public:
+    vector<vector<string>> groupAnagrams(vector<string>& strs) {
+        vector<vector<string>> res;
+        map<string, vector<string>> ordedStrtoStr;
+
+        for (auto& s : strs) {
+            string copyStr = s;
+            sort(copyStr.begin(), copyStr.end());
+            ordedStrtoStr[copyStr].push_back(s);
+        }
+
+        for (auto itr = ordedStrtoStr.begin(); itr != ordedStrtoStr.end(); itr++)
+            res.push_back(itr->second);
+
         return res;
     }
 };
