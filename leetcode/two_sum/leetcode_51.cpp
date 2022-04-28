@@ -7,8 +7,8 @@ public:
         backtrack(board, 0);
         return res;
     }
-    void backtrack(vector<string>& board, int row)
-    {
+    
+    void backtrack(vector<string>& board, int row) {
         if (row == board.size()){
             res.push_back(board);
             return;
@@ -24,20 +24,19 @@ public:
         }
     }
 
-    bool isValid(vector<string>& board, int row, int col)
-    {
+    bool isValid(vector<string>& board, int row, int col) {
         int n = board.size();
-        for (int i = 0; i < n; i++){
+        for (int i = 0; i < row; i++) {
             if (board[i][col] == 'Q')
                 return false;
         }
 
-        for (int i = row - 1, j = col + 1; i >= 0 && j < n; i--, j++){
+        for (int i = row - 1, j = col + 1; i >= 0 && j < n; i--, j++) {
             if (board[i][j] == 'Q')
                 return false;
         }
 
-        for (int i = row - 1, j = col - 1; i >= 0 && j >= 0; i--, j--){
+        for (int i = row - 1, j = col - 1; i >= 0 && j >= 0; i--, j--) {
             if (board[i][j] == 'Q')
                 return false;
         }
