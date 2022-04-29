@@ -12,3 +12,19 @@ public:
         return res;
     }
 };
+
+
+class Solution {
+public:
+    int lengthOfLastWord(string s) {
+        int endIdx = s.size() - 1, startIdx;
+        while (s[endIdx] == ' ')
+            endIdx--;
+
+        startIdx = endIdx - 1;
+        while (startIdx >= 0 && s[startIdx] != ' ')
+            startIdx--;
+        
+        return endIdx - startIdx;
+    }
+};
