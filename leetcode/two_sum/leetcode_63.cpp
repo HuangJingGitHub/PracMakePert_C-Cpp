@@ -28,3 +28,29 @@ public:
         return dp[m-1][n-1];
     }
 };
+
+
+class Solution {
+public:
+    int uniquePathsWithObstacles(vector<vector<int>>& obstacleGrid) {
+        if (obstacleGrid[0][0] == 1 || obstacleGrid.back().back() == 1)
+            return 0;
+
+        int rowNum = obstacleGrid.size(), colNum = obstacleGrid[0].size();
+        obstacleGrid[0][0] = 1;
+        for (int col = 1; col < colNum; col++)
+            obstacleGrid[0][col] = (obstacleGrid[0][col] == 1 ? 0 : obstacleGrid[0][col - 1]);
+        for (int row = 1; row < rowNum; row++)
+            obstacleGrid[row][0] = (obstacleGrid[row][0] == 1 ? 0 : obstacleGrid[row - 1][0]);
+        
+        for (int row = 1; row < rowNum; row++)
+            for (int col = 1; col < colNum; col++) {
+                if (obstacleGrid[row][col] == 1)
+                    obstacleGrid[row][col] = 0;
+                else
+                    obstacleGrid[row][col] = obstacleGrid[row - 1][col] + obstacleGrid[row][col - 1];
+            }
+
+        return obstacleGrid.back().back();
+    }
+};
