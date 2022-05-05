@@ -3,7 +3,6 @@
 #include <vector>
 #include <iostream>
 #include <string.h>
-
 using namespace std;
 
 class Solution_self {
@@ -19,10 +18,9 @@ public:
         intToRomanMap[1000] = "M";
         
         string tempStr;
-        for(int i = 1; i < 9; i++)
-        {
-            if (i < 3)
-            {   tempStr = intToRomanMap[i];
+        for(int i = 1; i < 9; i++) {
+            if (i < 3) {   
+                tempStr = intToRomanMap[i];
                 intToRomanMap[i+1] = tempStr.append(intToRomanMap[1]);
                 tempStr = intToRomanMap[i*10];
                 intToRomanMap[(i+1)*10] = tempStr.append(intToRomanMap[10]);
@@ -31,8 +29,7 @@ public:
                 tempStr = intToRomanMap[i*1000];
                 intToRomanMap[(i+1)*1000] = tempStr.append(intToRomanMap[1000]);
             }
-            else if (i == 3)
-            {
+            else if (i == 3) {
                 tempStr = intToRomanMap[1];
                 intToRomanMap[i+1] = tempStr.append(intToRomanMap[5]);
                 tempStr = intToRomanMap[10];
@@ -67,8 +64,7 @@ public:
 
         int dec = 10, remainder = num % dec;
         vector<int> digits{remainder};
-        while(num-remainder != 0)
-        {
+        while(num-remainder != 0) {
             num -= remainder;
             dec *= 10;
             remainder = num % dec;
@@ -78,8 +74,7 @@ public:
 
         string romanStr = intToRomanMap[digits[0]];
         cout << digits[0] << " ";
-        for (int i = 1; i < digits.size(); i++)
-        {
+        for (int i = 1; i < digits.size(); i++) {
             cout << digits[i] << " ";
             romanStr.append(intToRomanMap[digits[i]]);
         }
