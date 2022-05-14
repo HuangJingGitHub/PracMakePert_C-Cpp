@@ -18,3 +18,23 @@ public:
         return idx;
     }
 };
+
+
+class Solution {
+public:
+    int removeDuplicates(vector<int>& nums) {
+        if (nums.size() <= 2)
+            return nums.size();
+            
+        int newIdx = 1, idx = 2;
+        for (;idx < nums.size(); idx++) {
+            if (nums[newIdx] == nums[idx] && newIdx > 0 && nums[newIdx - 1] == nums[newIdx])
+                    continue;
+            else {
+                newIdx++;
+                nums[newIdx] = nums[idx];
+            }
+        }
+        return newIdx + 1;
+    }
+};
