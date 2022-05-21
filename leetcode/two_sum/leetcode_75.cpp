@@ -22,3 +22,27 @@ public:
         }
     }
 };
+
+
+class Solution {
+public:
+    void sortColors(vector<int>& nums) {
+        int zeroEnd = -1, twoStart = nums.size();
+
+        int i = 0;
+        while (i < twoStart) {
+            if (nums[i] == 0) {
+                swap(nums[zeroEnd + 1], nums[i]);
+                zeroEnd++;
+                i++;
+            }
+            else if (nums[i] == 1)
+                i++;
+            else if (nums[i] == 2) {
+                swap(nums[i], nums[twoStart - 1]);
+                twoStart--;
+            }         
+
+        }
+    }
+};
