@@ -15,7 +15,7 @@ public:
         head = p;
         ListNode *left, *right;
         
-        while (p->next){
+        while (p->next) {
             left = p->next;
             right = left;
             while (right->next && right->next->val == left->val)
