@@ -13,11 +13,11 @@ public:
     long long top = LLONG_MIN;    // smaller than int minimum INT_MIN
     bool isValid = true;
     bool isValidBST(TreeNode* root) {
-        if (root){
+        if (root) {
             isValidBST(root->left);
             if (root->val <= top)
                 isValid = false;
-            else{
+            else {
                 top = root->val;
                 isValidBST(root->right);
             }
