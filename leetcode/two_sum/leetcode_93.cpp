@@ -35,11 +35,11 @@ class Solution {
 public:
     vector<string> restoreIpAddresses(string s) {
         vector<string> res, path;
-        backtrace(s, 0, res, path);
+        backtrack(s, 0, res, path);
         return res;
     }
     
-    void backtrace(string& s, int startIdx, vector<string>& res, vector<string>& path) {
+    void backtrack(string& s, int startIdx, vector<string>& res, vector<string>& path) {
         if (startIdx == s.size() && path.size() == 4) {
             string temp = path[0];
             for (int i = 1; i < 4; i++)
@@ -57,7 +57,7 @@ public:
             if ((tempStr[0] == '0' && len > 1) || (stoi(tempStr) > 255))
                 continue;
             path.push_back(tempStr);
-            backtrace(s, startIdx + len, res, path);
+            backtrack(s, startIdx + len, res, path);
             path.pop_back();
         }
     }
