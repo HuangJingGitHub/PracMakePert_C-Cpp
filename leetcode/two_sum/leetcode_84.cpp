@@ -19,7 +19,7 @@ public:
             stk.push(i);
         }
 
-        while(!stk.empty()){
+        while(!stk.empty()) {
             int h = heights[stk.top()], w = len;
             stk.pop();
             if (!stk.empty())
