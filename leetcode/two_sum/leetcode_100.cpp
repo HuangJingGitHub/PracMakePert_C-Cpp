@@ -34,13 +34,12 @@ public:
 class Solution {
 public:
     bool isSameTree(TreeNode* p, TreeNode* q) {
-        if ((p == NULL && q != NULL) || (p != NULL && q == NULL))   // Node case judgement
-            return false;
-        else if (p == NULL && q == NULL)
+        if (p == nullptr && q == nullptr)
             return true;
-        else if (p->val != q->val)
+        if ((p && !q) || (!p && q))
             return false;
-                
+        if (p->val != q->val)
+            return false;
         return isSameTree(p->left, q->left) && isSameTree(p->right, q->right);
     }
 };
