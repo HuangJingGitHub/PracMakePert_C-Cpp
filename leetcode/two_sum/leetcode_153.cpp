@@ -37,8 +37,7 @@ public:
 class Solution {
 public:
     int findMin(vector<int>& nums) {
-        int res = nums[0], left = 0, right = nums.size() - 1, mid;
-
+        int res = nums[0], left = 0, right = nums.size() - 1, mid = 0;
         while (left <= right) {
             mid = left + (right - left) / 2;
             if (nums[mid] > nums[right])
