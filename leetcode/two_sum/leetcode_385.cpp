@@ -62,6 +62,7 @@ public:
                 stk.top().add(top);
             }
         }
+        
         return stk.top();
     }
 };
