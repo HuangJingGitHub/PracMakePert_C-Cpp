@@ -60,7 +60,7 @@ public:
         ListNode* pt = head;
         while (pt) {
             nodeNum_++;
-            pt = pt->nextt;
+            pt = pt->next;
         }
         srand(time(0));
     }
@@ -70,7 +70,7 @@ public:
         int cnt = 0, res = 0;
         ListNode* pt = classHead_;
 
-        while (pos < cnt) {
+        while (cnt < pos) {
             pt = pt->next;
             cnt++;
         }
