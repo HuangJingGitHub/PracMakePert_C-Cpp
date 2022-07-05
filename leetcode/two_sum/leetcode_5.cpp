@@ -5,7 +5,9 @@ public:
             return s;
         
         int start = 0, len = 1;
-        for (int i = 1; i < s.size(); i++){  // Similar to a dp idea. If the longest palindromic string contain s[i], its length can only be len + 1 or len + 2.
+        for (int i = 1; i < s.size(); i++){  // Similar to a dp idea, if the longest palindromic string ends with s[i], starts with s[x] and its length is dp[i], 
+                                             // its length can only be dp[i - 1] + 1 (s[x]-s[i - 1] is palindromic) or dp[i - 1] + 2（only s[x + 1]-s[i-1]
+                                             // is palidromic）. 
             if (isPalindromic(s, i, len + 2)){
                 len += 2;
                 start = i - len + 1;
