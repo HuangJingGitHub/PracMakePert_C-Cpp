@@ -93,6 +93,7 @@ public:
         vector<string> res;
         if (digits.empty())
             return res;
+        
         string curStr;
         backtrace(digits, curStr, res, 0);
         return res;
