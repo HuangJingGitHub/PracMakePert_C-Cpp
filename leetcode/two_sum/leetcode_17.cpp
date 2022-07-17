@@ -6,36 +6,6 @@
 
 using namespace std;
 
-/*class Solution {
-public:
-    vector<string> letterCombinations(string digits) {
-        vector<string> digitsMap{"2", "3", "4", "5", "6", "7", "8", "9"};
-        vector<string> lettersMap{"abc", "def", "ghi", "jkl", "mno", "pqrs", "tuv", "wxyz"};
-        int ansSize = 1, repeatTimes;
-        for (auto x:digits)
-        {
-            if (x == "7" || x == "9")
-                ansSize *= 4;
-            else
-                ansSize *= 3;  
-        }
-        repeatTimes = ansSize;
-        vector<string> ans(ansSize);
-
-        for(int i = 0; i < digits.size(); i++)
-        {
-            string currentDigitStr = digits[i];
-            int currentDigit = stoi(currentDigitStr);
-            string currentLettersStr = lettersMap[currentDigit - 2];
-            if (currentDigit == 7 || currentDigit == 9)
-                repeatTimes /= 4;
-            else
-                repeatTimes /= 3;
-        }
-        
-    }
-};*/
-
 class Solution_self{
 public:
     vector<string> letterCombinations(string digits) {
@@ -84,7 +54,7 @@ int main()
         cout << x << " ";
 }
 
-// backtrace
+// backtrack
 class Solution {
 public:
     vector<string> letterMap{"abc", "def", "ghi", "jkl", "mno", "pqrs", "tuv", "wxyz"};
@@ -99,7 +69,7 @@ public:
         return res;
     }
 
-    void backtrace(string& digits, string& curStr, vector<string>& res, int idx) {
+    void backtrack(string& digits, string& curStr, vector<string>& res, int idx) {
         if (idx == digits.size()) {
             res.push_back(curStr);
             return;
@@ -109,8 +79,43 @@ public:
         string buttonStr = letterMap[digit];
         for (int i = 0; i < buttonStr.size(); i++) {
             curStr += buttonStr[i];
-            backtrace(digits, curStr, res, idx + 1);
+            backtrack(digits, curStr, res, idx + 1);
             curStr.pop_back();
         }
+    }
+};
+
+
+class Solution {
+public:
+    vector<string> buttonStr{"", "", "abc", "def", "ghi", "jkl", "mno", "pqrs", "tuv", "wxyz"};
+
+    vector<string> letterCombinations(string digits) {
+        vector<string> res;
+
+        if (digits.size() == 0)
+            return {};
+        if (digits.size() == 1) {
+            int curDigit = stoi(digits);
+            string curStr = buttonStr[curDigit];
+            for (int i = 0; i < curStr.size(); i++) {
+                string tempStr = "";
+                tempStr.push_back(curStr[i]);
+                res.push_back(tempStr);
+            }
+            return res;
+        }
+
+        vector<string> preRes = letterCombinations(digits.substr(0, digits.size() - 1));
+        int endDigit = digits.back() - '0';
+        string endStr = buttonStr[endDigit];
+        for (int i = 0; i < endStr.size(); i++) 
+            for (int j = 0; j < preRes.size(); j++) {
+                string tempStr = preRes[j];
+                tempStr.push_back(endStr[i]);
+                res.push_back(tempStr);
+            }
+        
+        return res;
     }
 };
