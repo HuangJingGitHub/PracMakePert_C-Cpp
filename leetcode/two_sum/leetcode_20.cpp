@@ -110,3 +110,23 @@ public:
         return stk.empty();
     }
 };
+
+class Solution {
+public:
+    bool isValid(string s) {
+        stack<char> charStk;
+        charStk.push(s[0]);
+
+        for (int i = 1; i < s.size(); i++) {
+            if (s[i] == ')' && charStk.empty() == false && charStk.top() == '(')
+                charStk.pop();
+            else if (s[i] == ']' && charStk.empty() == false && charStk.top() == '[')
+                charStk.pop();
+            else if (s[i] == '}' && charStk.empty() == false && charStk.top() == '{')
+                charStk.pop();    
+            else
+                charStk.push(s[i]);
+        }
+        return charStk.empty();
+    }
+};
