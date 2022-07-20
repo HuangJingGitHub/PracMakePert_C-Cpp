@@ -3,7 +3,6 @@ public:
     int oddCells(int m, int n, vector<vector<int>>& indices) {
         int res = 0;
         vector<int> addTimesRow(m, 0), addTimesCol(n, 0);
-
         for (auto& indixPair : indices) {
             addTimesRow[indixPair[0]]++;
             addTimesCol[indixPair[1]]++;
