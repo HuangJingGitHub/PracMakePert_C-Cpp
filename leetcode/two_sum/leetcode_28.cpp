@@ -26,7 +26,6 @@ public:
             return 0;
         
         vector<int> next(needle.size(), 0);
-
         for (int left = 0, right = 1; right < needle.size(); right++) {
             while (left > 0 && needle[left] != needle[right])
                 left = next[left - 1];
@@ -57,7 +56,6 @@ public:
             return 0;
         
         vector<int> next(needle.size(), 0);
-
         for (int i = 1, len = 0; i < next.size(); ) {
             if (needle[len] == needle[i]) {
                 len++;
