@@ -18,7 +18,7 @@ public:
         if (pStart == pEnd)
             return NULL;
         
-        TreeNode* root = new TreeNode(postorder[pEnd-1]);
+        TreeNode* root = new TreeNode(postorder[pEnd - 1]);
 
         int inorderRootIdx = 0;
         for (int i = iStart; i < iEnd; i++) {
