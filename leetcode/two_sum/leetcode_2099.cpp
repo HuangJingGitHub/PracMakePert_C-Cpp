@@ -18,7 +18,6 @@ public:
 
         for (int i = 0; i < idxVec.size(); i++)
             res[i] = (nums[idxVec[i]]);
-
         return res;
     }
 };
