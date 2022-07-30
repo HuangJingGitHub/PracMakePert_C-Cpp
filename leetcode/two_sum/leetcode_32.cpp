@@ -49,7 +49,7 @@ public:
     }
 };
 
-// The solution refers to the offical solution. But the speed is not that fast.
+// The solution refers to the offical solution.
 class Solution {
 public:
     int longestValidParentheses(string s) {
