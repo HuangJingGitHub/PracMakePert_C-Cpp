@@ -5,7 +5,7 @@ public:
         long long N = n;
         if (n < 0){
             x = 1 / x;
-            return fastPow(x, -N);
+            return fastPow(x, -N);  // or return 1 / fastPow(x, -N);
         }
         return fastPow(x, N);
     }
