@@ -21,3 +21,29 @@ public:
             return half * half * x;
     }
 };
+
+class Solution {
+public:
+    double myPow(double x, int n) {
+        long N = n;
+        if (N < 0)
+            return 1 / myPowLong(x, -N);
+        return myPowLong(x, N);
+    }
+
+    double myPowLong(double x, long N) {
+        if (N == 0)
+            return 1;
+        
+        double res = 1;
+        if (N % 2 == 0) {
+            double halfRes = myPow(x, N / 2);
+            res = halfRes * halfRes;
+        }
+        else if (N % 2 == 1) {
+            double halfRes = myPow(x, N / 2);
+            res = halfRes * halfRes * x;
+        }
+        return res;
+    }
+};
