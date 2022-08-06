@@ -49,7 +49,6 @@ public:
             else
                 break;
         }
-
         return left >= right;
     }
 };
