@@ -66,8 +66,7 @@ public:
         for (int i = startRow + 1; i <= endRow; i++)
             res.push_back(matrix[i][endCol]);
         if (startCol == endCol)
-            return;
-            
+            return;          
         for (int i = endCol - 1; i >= startCol; i--)
             res.push_back(matrix[endRow][i]);
         for (int i = endRow - 1; i > startRow; i--)
