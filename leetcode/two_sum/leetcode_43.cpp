@@ -1,6 +1,6 @@
 // This is the personal solution which misunderstands the problem as the problem wants to solve the very important problem
 // of multiplicaiton of very large numbers that cannot be performed by int muplicaiton in computer. That is to implement the
-// vertical multiplication which can computate multiplication of really large numbers, like hundreds, thousands of digits as humans do.
+// vertical multiplication to perform multiplication of really large numbers, like hundreds, thousands of digits as humans do.
 class Solution {
 public:
     string multiply(string num1, string num2) {
