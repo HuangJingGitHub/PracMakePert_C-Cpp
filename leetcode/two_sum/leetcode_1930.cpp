@@ -5,7 +5,7 @@ public:
         map<int, vector<int>> charToindex;
 
         for (int i = 0; i < s.size(); i++) 
-            charToindex[s[i]].push_back[i];
+            charToindex[s[i]].push_back(i);
         
         for (auto it = charToindex.begin(); it != charToindex.end(); it++) {
             if (it->second.size() < 2)
