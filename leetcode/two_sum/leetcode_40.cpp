@@ -10,7 +10,7 @@ public:
             res.push_back(path);
             return;
         }
-        for (int i = start; i < candidates.size() && target - candidates[i] >= 0; i++){
+        for (int i = start; i < candidates.size() && target - candidates[i] >= 0; i++) {
             if (i > start && candidates[i] == candidates[i - 1])
                 continue;
             path.push_back(candidates[i]);
