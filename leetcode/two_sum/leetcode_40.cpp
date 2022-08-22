@@ -23,7 +23,6 @@ public:
         sort(candidates.begin(), candidates.end());
         this->candidates = candidates;
         backtrack(0, target);
-
         return res;
     }
 };
