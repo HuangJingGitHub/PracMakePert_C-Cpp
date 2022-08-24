@@ -1,4 +1,4 @@
-// Interesting problem, refer to the solutions and discussions on leetcode.
+// An interesting problem, refer to the solutions and discussions on leetcode.
 class Solution {
 public:
     int firstMissingPositive(vector<int>& nums) {
