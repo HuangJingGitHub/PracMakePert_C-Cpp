@@ -39,8 +39,7 @@ public:
         return res;
     }
 
-    int factorial(int n)
-    {
+    int factorial(int n) {
         int res = 1;
         if (n <= 0)
             return res;
