@@ -9,8 +9,8 @@ public:
         for (currentPos = 0; currentPos + nums[currentPos] < nums.size() - 1; currentPos = nextPos){
             maxJump = nums[currentPos];
             nextPos = currentPos + 1;
-            for (int i = 2; i <= maxJump; i++){
-                nextPos = (i + nums[currentPos + i]) > (nextPos - currentPos + nums[nextPos]) ? (currentPos + i) : nextPos;
+            for (int i = 2; i <= maxJump; i++) {
+                nextPos = (currentPos + i + nums[currentPos + i]) > (nextPos + nums[nextPos]) ? (currentPos + i) : nextPos;
                 if ((nextPos + nums[nextPos]) >= nums.size() - 1)
                     return ++jumpSum;
             }
