@@ -17,7 +17,7 @@ public:
 };
 
 
-// or an more efficient way
+// or a more efficient way
 class Solution {
 public:
     bool uniqueOccurrences(vector<int>& arr) {
