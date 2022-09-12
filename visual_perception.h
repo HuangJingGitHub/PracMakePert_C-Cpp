@@ -367,7 +367,7 @@ public:
 
     vector<vector<int>> twoMeansClustering(vector<Point2f>& S_0) {
         if (S_0.size() < 2) {
-            cerr << "Input size error in clustering!\n";
+            cerr << "Input size error in feedback vector clustering!\n";
             return {};
         }
         
@@ -375,7 +375,7 @@ public:
         
         Point2f centroid_1 = S_0[0], centroid_2 = S_0[1], 
                 previous_centroid_1 = Point2f(0, 0), previous_centroid_2 = Point2f(0, 0);
-        double threshold = 1e-3;
+        double threshold = 1e-1;
         while (cv::norm(centroid_1 - previous_centroid_1) > threshold 
             || cv::norm(centroid_2 - previous_centroid_2) > threshold) {
                 vector<int> cluster_indices_1, cluster_indices_2;            
