@@ -22,7 +22,6 @@ public:
             else
                 return edge;
         }
-
         return {};
     }
 };
