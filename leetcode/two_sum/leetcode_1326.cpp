@@ -20,7 +20,6 @@ public:
             max_right = next_max_right;
             res++;
         }
-
         return res;
     }
 };
