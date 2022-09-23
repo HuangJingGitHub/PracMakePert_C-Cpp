@@ -14,6 +14,7 @@ public:
     TreeNode* first = NULL;
     TreeNode* second = NULL;
     TreeNode* pre = NULL;
+    
     void recoverTree(TreeNode* root) {
         inorderTraversal(root);
         int tmp = first->val;
@@ -21,14 +22,13 @@ public:
         second->val = tmp;
     }
 
-    void inorderTraversal(TreeNode* root)
-    {
+    void inorderTraversal(TreeNode* root) {
         if (root == NULL)
             return;
 
         inorderTraversal(root->left);
-        if (pre != NULL && pre->val > root->val){
-            if (first == NULL){     // The swap can occur between two adjacent values or not adjacent values.
+        if (pre != NULL && pre->val > root->val) {
+            if (first == NULL) {     // The swap can occur between two adjacent values or not adjacent values.
                 first = pre;
                 second = root;
             }
@@ -37,6 +37,5 @@ public:
         }
         pre = root;
         inorderTraversal(root->right);
-
     }
 };
