@@ -39,3 +39,33 @@ public:
         inorderTraversal(root->right);
     }
 };
+
+
+class Solution {
+public:
+    void recoverTree(TreeNode* root) {
+        vector<TreeNode*>  nodeVec;
+
+        inorder(root, nodeVec);  // 1,2,3,4,5 --> 1,4,3,2,5
+        TreeNode *greaterNode = nullptr, *smallerNode = nullptr;
+        for (int i = 0; i < nodeVec.size() - 1; i++) {
+            if (nodeVec[i]->val > nodeVec[i + 1]->val && greaterNode == nullptr)
+                greaterNode = nodeVec[i];
+            if (nodeVec[i + 1]->val < nodeVec[i]->val)
+                smallerNode = nodeVec[i + 1];
+        }
+        
+        int temp = greaterNode->val;
+        greaterNode->val = smallerNode->val;
+        smallerNode->val = temp;
+    }
+
+    void inorder(TreeNode* root, vector<TreeNode*>& nodeVec) {
+        if (root == nullptr)
+            return;
+        
+        inorder(root->left, nodeVec);
+        nodeVec.push_back(root);
+        inorder(root->right, nodeVec);
+    }
+};
