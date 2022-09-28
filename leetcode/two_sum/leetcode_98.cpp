@@ -16,9 +16,9 @@ public:
         if (root == nullptr)
             return true;
         
-        if (isValidBST(root->left) == false)
+        if (isValidBST(root->left) == false) 
             return false;
-        if (root->val <= preNodeVal)
+        if (root->val <= preNodeVal)   // inorder check
             return false;
         preNodeVal = root->val;
 
