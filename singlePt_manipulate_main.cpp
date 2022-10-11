@@ -98,8 +98,9 @@ int main(int argc, char** argv) {
         }
 
         if (total_error_pt.norm() < error_threshold) {
-            if (data_save_os.is_open())
+            if (data_save_os.is_open()) {
                 data_save_os.close();
+            }
             std::cout << "Manipulation completed. Exiting\n";
             break;
         }
