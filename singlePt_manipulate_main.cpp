@@ -13,6 +13,7 @@ const float motion_magnitude = 0.001; // in meter
 const float error_threshold = 5; // in pixel
 bool relax_flag = false;
 
+
 int main(int argc, char** argv) {
     std::ifstream camera_extrinsic_file("./src/visual_module/src/data/camera_extrinsic_matrix.txt");
     if (camera_extrinsic_file.is_open()) {
