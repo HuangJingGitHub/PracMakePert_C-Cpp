@@ -1,4 +1,4 @@
-// There is good article for the discussion of the solution. Refer to that.
+// There is a good article discussing the solution. Refer to it.
 class Solution {
 public:
     int trap(vector<int>& height) {
