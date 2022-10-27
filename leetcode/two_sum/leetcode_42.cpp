@@ -1,4 +1,4 @@
-// There is a good article discussing the solution. Refer to it.
+// There is a good article discussing the solution on the leetcode web. Refer to it.
 class Solution {
 public:
     int trap(vector<int>& height) {
