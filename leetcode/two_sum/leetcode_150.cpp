@@ -2,7 +2,7 @@ class Solution {
 public:
     int evalRPN(vector<string>& tokens) {
         stack<int> numStack;
-
+        
         for (int i = 0; i < tokens.size(); i++) {
             if (tokens[i] == "+" || tokens[i] == "-" || tokens[i] == "*" || tokens[i] == "/" ) {
                 int operand1, operand2;
@@ -23,6 +23,7 @@ public:
             else 
                 numStack.push(stoi(tokens[i]));
         }
+        
         return numStack.top();
     }
 };
