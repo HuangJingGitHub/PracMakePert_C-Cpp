@@ -47,3 +47,17 @@ public:
         return -1;
     }    
 };
+
+
+// built-in find method
+class Solution {
+public:
+    string removeOccurrences(string s, string part) {
+        size_t startIdx = s.find(part);
+        while (startIdx != std::string::npos) {
+            s.erase(startIdx, part.size());
+            startIdx = s.find(part);
+        }
+        return s;
+    } 
+};
