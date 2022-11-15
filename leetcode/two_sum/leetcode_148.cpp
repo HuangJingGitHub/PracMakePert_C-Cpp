@@ -62,7 +62,6 @@ public:
             head->next = sortedHead;
             head = unSortedHead;
         }
-
         return dummy->next;
     }
 };
