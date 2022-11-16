@@ -11,8 +11,9 @@
 class Solution {
 public:
     ListNode* sortList(ListNode* head) {
-        if (!head || !head->next)  // base case
+        if (head == nullptr || !head->next == nullptr)  // base case
             return head;
+        
         ListNode *slowPt = head, *fastPt = head->next, *rightHead;
         while (fastPt && fastPt->next) {
             slowPt = slowPt->next;
@@ -28,14 +29,14 @@ public:
             return head2;
         if (!head2)
             return head1;
+        
         if (head1->val < head2->val) {
             head1->next = mergeList(head1->next, head2);
             return head1;
         }
-        else {
-            head2->next = mergeList(head1, head2->next);
-            return head2;
-        }
+        
+        head2->next = mergeList(head1, head2->next);
+        return head2;
     }
 };
 
