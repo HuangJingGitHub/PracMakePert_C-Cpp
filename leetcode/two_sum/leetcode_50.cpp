@@ -3,7 +3,7 @@ class Solution {
 public:
     double myPow(double x, int n) {
         long long N = n;
-        if (n < 0){
+        if (n < 0) {
             x = 1 / x;
             return fastPow(x, -N);  // or return 1 / fastPow(x, -N);
         }
@@ -21,6 +21,7 @@ public:
             return half * half * x;
     }
 };
+
 
 class Solution {
 public:
