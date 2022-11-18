@@ -18,14 +18,14 @@ public:
         dummy->next->next = NULL;
 
         while (head) {
-            ListNode *sortedPt = dummy->next, *sortedPtPre = dummy, *temp = head->next;
+            ListNode *sortedPt = dummy->next, *sortedPtPre = dummy;
             while (sortedPt && head->val > sortedPt->val) {
                 sortedPt = sortedPt->next;
                 sortedPtPre = sortedPtPre->next;
             }
             sortedPtPre->next = head;
-            head->next = sortedPt;
-            head = temp;
+            head = head->next;
+            sortedPtPre->next->next = sortedPt;
         }
         return dummy->next;
     }
