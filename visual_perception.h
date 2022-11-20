@@ -49,9 +49,9 @@ class LK_Tracker {
 public: 
     string window_to_track_;
     TermCriteria termiantion_criteria_;
-    static const int points_num_ = 1;  // Determination of Jd size needs a constexpr argument.
+    static const int points_num_ = 2;  // Determination of Jd size needs a constexpr argument.
     vector<Point2f> points_[2];
-    vector<Point2f> target_pts_[2];
+    vector<Point2f> target_pts_;
     vector<Point2f> ee_point_[2];
     Scalar points_color_;
     Scalar ee_point_color_;
@@ -62,6 +62,7 @@ public:
     Eigen::MatrixXf cur_Jd_;
     bool Jd_initialized_ = false;
     float Jd_update_rate_ = 0.1;
+    bool is_grasped_ = false;
 
 
     LK_Tracker() {}
@@ -69,7 +70,7 @@ public:
         window_to_track_ = win_name;
         termiantion_criteria_ = TermCriteria(TermCriteria::COUNT | TermCriteria::EPS, 30, 0.03);
         points_color_ = Scalar(255, 0, 0);
-        ee_point_color_ = Scalar(0, 255, 0);
+        ee_point_color_ = Scalar(0, 0, 255);
     }
 
 
@@ -90,8 +91,16 @@ public:
             }
         }
 
-        if (add_remove_target_pt && target_pts_[0].size() < points_[0].size()) {
-            target_pts_[0].push_back(feedback_target_pt_picked);
+        if (add_remove_target_pt && target_pts_.size() < points_[0].size()) {
+            //target_pts_.push_back(feedback_target_pt_picked);
+            if (target_pts_.size() == 0)
+                target_pts_.push_back(points_[0][0] + Point2f(10.61, 10.61));
+            else if (target_pts_.size() == 1)
+                target_pts_.push_back(points_[0][1] + Point2f(17.68, 17.68));
+            else if (target_pts_.size() == 2)
+                target_pts_.push_back(points_[0][2] + Point2f(0, 15));
+            /*else if (target_pts_.size() == 3)
+                target_pts_.push_back(points_[0][3] + Point2f(7.07, -7.07));*/
             add_remove_target_pt = false;
         }
 
@@ -107,8 +116,9 @@ public:
             clear_all_feedback_pt = false;
             points_[0].clear();
             points_[1].clear();
-            target_pts_[0].clear();
-            target_pts_[1].clear();
+            target_pts_.clear();
+            ee_point_[0].clear();
+            ee_point_[1].clear();
         }
 
         if (!points_[0].empty()) {
@@ -118,9 +128,13 @@ public:
             InvokeLK(ee_point_[0], ee_point_[1], image, ee_point_color_);
         }
         next_gray_img_.copyTo(pre_gray_img_);
-        UpdateJd();        
+        UpdateJd();
+        is_grasped_ = (ee_point_[0].size() > 0);
+
         for (size_t i = 0; i < points_[0].size(); i++)
             circle(image, points_[0][i], 3, points_color_, -1, 8);
+        for (size_t i = 0; i < target_pts_.size(); i++)
+            circle(image, target_pts_[i], 5, Scalar(0, 255, 0), 1, 8);
     } 
 
 
@@ -155,7 +169,7 @@ public:
     }   
 
     bool ValidFeedbackAndTargetPts() {
-        return points_[0].size() == target_pts_[0].size() && points_[0].size() > 0;
+        return points_[0].size() == target_pts_.size() && points_[0].size() > 0;
     }
 
     void UpdateJd() {
@@ -184,6 +198,7 @@ public:
         delta_ee(0, 0) = ee_point_[0][0].x - ee_point_[1][0].x;
         delta_ee(1, 0) = ee_point_[0][0].y - ee_point_[1][0].y;
 
+        cout << "Current J_d:\n" << cur_Jd_ << "\n";
         if (delta_ee.norm() < 0.5) {
             cur_Jd_ = pre_Jd_;
             return;
@@ -250,11 +265,13 @@ public:
 
 
 class GraspPositionSelector {
-    double gamma_ = 0.25;
-    double k_ = 0.01;
+    double gamma_ = 0.3;
+    double k_ = 0.0075;
     double r_ = 10;
     double delta_r_ = 10;
     double delta_ = 0.1;
+    double delta_p = 0.1;
+    double delta_d = 0.2;
     double alpha_0_ = M_PI / 6;
     double alpha_1_ = M_PI / 6 * 5;
     size_t integration_step_num_ = 100;
@@ -310,7 +327,7 @@ public:
                     double M =  exp(-k_ * d_i_norm) * (1 - gamma_ * sin(alpha_i)) * lambda;
                     q_i += M * step_len;
                 }
-                Q *= q_i;
+                Q += q_i;
             }
             Q_value[contour_idx] = Q;
         }
@@ -329,7 +346,45 @@ public:
         return DO_contour[res_idx];
     }
 
-    
+    Point2f SelectSingleGraspPositionbyDistance(vector<Point>& DO_contour, vector<Point2f>& S_0) {   
+        int min_distance_index = 0;
+        float min_distance_sum = FLT_MAX;
+
+        for (int i = 0; i < DO_contour.size(); i++) {
+            float cur_distance_sum = 0;
+            for (int j = 0; j < S_0.size(); j++) {
+                Eigen::Vector2d d_j(S_0[j].x - DO_contour[i].x, S_0[j].y - DO_contour[i].y);
+                cur_distance_sum += d_j.norm();
+            }
+            if (cur_distance_sum <= min_distance_sum) {
+                min_distance_index = i;
+                min_distance_sum = cur_distance_sum;
+            }
+        }
+
+        return DO_contour[min_distance_index];
+    }
+
+    Point2f SelectSingleGraspPositionbyCentroid(vector<Point>& DO_contour, vector<Point2f>& S_0, vector<Point2f>& S_d) {   
+        vector<double> e_i_norm_vec(S_0.size(), 0);
+        
+        for (int i = 0; i < S_0.size(); i++) {
+            Eigen::Vector2d e_i(S_d[i].x - S_0[i].x, S_d[i].y - S_0[i].y);
+            e_i_norm_vec[i] = e_i.norm();
+        }
+
+        double e_i_norm_sum = 0;
+        for (int i = 0; i < e_i_norm_vec.size(); i++)
+            e_i_norm_sum += e_i_norm_vec[i];
+        
+        Point2f S_0_centroid(0, 0);
+        for (int i = 0; i < S_0.size(); i++)
+            S_0_centroid = S_0_centroid + e_i_norm_vec[i] / e_i_norm_sum * S_0[i];
+        
+        vector<Point2f> S_0_centroid_vec{S_0_centroid};
+        return SelectSingleGraspPositionbyDistance(DO_contour, S_0_centroid_vec);
+    }    
+
     vector<Point2f> SelectDualGraspPositions(vector<Point>& DO_contour, vector<double>& Q_value,
                                              vector<Point2f>& S_0, vector<Point2f>& S_d) {
         if (DO_contour.empty() || S_0.empty() || S_d.empty()) {
