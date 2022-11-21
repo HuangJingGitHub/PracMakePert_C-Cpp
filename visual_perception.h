@@ -327,7 +327,7 @@ public:
                     double M =  exp(-k_ * d_i_norm) * (1 - gamma_ * sin(alpha_i)) * lambda;
                     q_i += M * step_len;
                 }
-                Q += q_i;
+                Q += q_i;  // Sum form of the task-oriented metric
             }
             Q_value[contour_idx] = Q;
         }
