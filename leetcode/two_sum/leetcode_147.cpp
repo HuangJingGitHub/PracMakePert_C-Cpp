@@ -9,7 +9,7 @@
 class Solution {
 public:
     ListNode* insertionSortList(ListNode* head) {
-        if (!head)
+        if (head == nullptr)
             return NULL;
 
         ListNode dummyNode = ListNode(), *dummy = &dummyNode;  // To avoid potential memory leak, do not new a node.
