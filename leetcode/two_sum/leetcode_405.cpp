@@ -18,8 +18,7 @@ public:
             if (long_num == 0)
                 break;
         }
-        reverse(res.begin(), res.end());
-        
+        reverse(res.begin(), res.end());       
         return res;
     }
 };
