@@ -3,7 +3,9 @@ public:
     int trapRainWater(vector<vector<int>>& heightMap) {
         int m = heightMap.size(), n = heightMap[0].size(), res = 0;
         vector<vector<int>> rowLeftMax(m, vector<int>(n, 0)), rowRightMax = rowLeftMax,
-                            colUpMax = rowLeftMax, colDownMax = rowLeftMax;
+                            colUpMax = rowLeftMax, colDownMax = rowLeftMax, trapMax = rowLeftMax;
+        vector<vector<bool>> visited(m, vector<bool>(n, false));
+
         for (int i = 0; i < m; i++) {
             rowLeftMax[i][0] = heightMap[i][0];
             rowRightMax[i].back() = heightMap[i].back();
@@ -14,15 +16,15 @@ public:
         }
 
         for (int row = 1; row <= m - 2; row++) {
-            for (int col = 1; col <= n - 2; col++)
+            for (int col = 1; col <= n - 1; col++)
                 rowLeftMax[row][col] = max(rowLeftMax[row][col - 1], heightMap[row][col - 1]);
-            for (int col = n - 2; n >= 0; col--)
+            for (int col = n - 2; col >= 0; col--)
                 rowRightMax[row][col] = max(rowRightMax[row][col + 1], heightMap[row][col + 1]);
         }
         for (int col = 1; col <= n - 2; col++) {
-            for (int row = 1; row <= m - 2; row++)
+            for (int row = 1; row <= m - 1; row++)
                 colUpMax[row][col] = max(colUpMax[row - 1][col], heightMap[row - 1][col]);
-            for (int row = m - 2; row >= 1; row--)
+            for (int row = m - 2; row >= 0; row--)
                 colDownMax[row][col] = max(colDownMax[row + 1][col], heightMap[row + 1][col]);
         }
         
@@ -32,9 +34,36 @@ public:
                 rowHeight = min(rowLeftMax[row][col], rowRightMax[row][col]);
                 colHeight = min(colUpMax[row][col], colDownMax[row][col]);
                 boundaryHeight = min(rowHeight, colHeight);
-                if (boundaryHeight > heightMap[row][col]);
-                    res += boundaryHeight - heightMap[row][col];
+                if (boundaryHeight > heightMap[row][col])
+                    trapMax[row][col] = boundaryHeight;
             }
+/*
+        for (int row = 1; row <= m - 2; row++)
+            for (int col = 1; col <= n - 2; col++) 
+                if (trapMax[row][col] != 0 && visited[row][col] == false) 
+                    dfs(trapMax, visited, row, col);
+
+
+        for (int row = 1; row <= m - 2; row++)
+            for (int col = 1; col <= n - 2; col++) 
+                if (trapMax[row][col] != 0) 
+                    res += trapMax[row][col] - heightMap[row][col];
+*/                
+            
         return res;
     }
+
+        int dfs(vector<vector<int>>& trapMax, vector<vector<bool>>& visited, int row, int col) {
+            if (row == 0 || row == trapMax.size() - 1 || col == 0 || col == trapMax[0].size() - 1)
+                return 1e6;
+            
+            if (visited[row][col] == true)
+                return trapMax[row][col];
+            
+            int rowMin = min(dfs(trapMax, visited, row, col - 1), dfs(trapMax, visited, row, col + 1));
+            int colMin = min(dfs(trapMax, visited, row - 1, col), dfs(trapMax, visited, row + 1, col));
+            trapMax[row][col] = min(rowMin, colMin);
+            visited[row][col] = true;
+            return trapMax[row][col];
+        }
 };
