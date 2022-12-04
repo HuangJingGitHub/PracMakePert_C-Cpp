@@ -37,33 +37,48 @@ public:
                 if (boundaryHeight > heightMap[row][col])
                     trapMax[row][col] = boundaryHeight;
             }
-/*
+
+        for (auto& row : trapMax) {
+            for (int& water : row)
+                cout << water << " ";
+            cout << '\n';
+        }
+
         for (int row = 1; row <= m - 2; row++)
             for (int col = 1; col <= n - 2; col++) 
-                if (trapMax[row][col] != 0 && visited[row][col] == false) 
+                if (trapMax[row][col] != 0) {
+                    visited[row][col] = false;
                     dfs(trapMax, visited, row, col);
+                }
 
+        for (auto& row : trapMax) {
+            for (int& water : row)
+                cout << water << " ";
+            cout << '\n';
+        }
 
         for (int row = 1; row <= m - 2; row++)
             for (int col = 1; col <= n - 2; col++) 
-                if (trapMax[row][col] != 0) 
-                    res += trapMax[row][col] - heightMap[row][col];
-*/                
-            
+                if (trapMax[row][col] != 0) {
+                    int rowMinHeight = min(heightMap[row][col - 1], heightMap[row][col + 1]);
+                    int colMinHeight = min(heightMap[row - 1][col], heightMap[row + 1][col]);
+                    trapMax[row][col] = min(trapMax[row][col], min(rowMinHeight, colMinHeight));
+                    res += trapMax[row][col] - heightMap[row][col];               
+                }
         return res;
     }
 
-        int dfs(vector<vector<int>>& trapMax, vector<vector<bool>>& visited, int row, int col) {
-            if (row == 0 || row == trapMax.size() - 1 || col == 0 || col == trapMax[0].size() - 1)
-                return 1e6;
-            
-            if (visited[row][col] == true)
-                return trapMax[row][col];
-            
-            int rowMin = min(dfs(trapMax, visited, row, col - 1), dfs(trapMax, visited, row, col + 1));
-            int colMin = min(dfs(trapMax, visited, row - 1, col), dfs(trapMax, visited, row + 1, col));
-            trapMax[row][col] = min(rowMin, colMin);
-            visited[row][col] = true;
+    int dfs(vector<vector<int>>& trapMax, vector<vector<bool>>& visited, int row, int col) {
+        if (trapMax[row][col] == 0)
+            return 1e6;
+        
+        if (visited[row][col] == true)
             return trapMax[row][col];
-        }
+        
+        visited[row][col] = true;
+        int rowMin = min(dfs(trapMax, visited, row, col - 1), dfs(trapMax, visited, row, col + 1));
+        int colMin = min(dfs(trapMax, visited, row - 1, col), dfs(trapMax, visited, row + 1, col));
+        trapMax[row][col] = min(trapMax[row][col], min(rowMin, colMin));
+        return trapMax[row][col];
+    }
 };
