@@ -1,3 +1,4 @@
+// Extension of the 1D case to the 2D case with additional DFS will not work here.
 class Solution {
 public:
     int trapRainWater(vector<vector<int>>& heightMap) {
@@ -80,5 +81,54 @@ public:
         int colMin = min(dfs(trapMax, visited, row - 1, col), dfs(trapMax, visited, row + 1, col));
         trapMax[row][col] = min(trapMax[row][col], min(rowMin, colMin));
         return trapMax[row][col];
+    }
+};
+
+
+
+// BFS
+typedef pair<int, int> waterIdxPair;
+
+class Solution {
+public:
+    int trapRainWater(vector<vector<int>>& heightMap) {
+        int m = heightMap.size(), n = heightMap[0].size(), res = 0;
+        if (m <= 2 || n <= 2)
+            return 0;
+
+        vector<vector<bool>> visited(m, vector<bool>(n, false));
+        priority_queue<waterIdxPair, vector<waterIdxPair>, greater<waterIdxPair>> waterQueue;
+        for (int col = 0; col < n; col++) {
+            waterQueue.push(make_pair(heightMap[0][col], col));
+            waterQueue.push(make_pair(heightMap.back()[col], n * (m - 1) + col));
+            visited[0][col] = visited.back()[col] = true;
+        }
+        for (int row = 1; row <= m - 2; row++) {
+            waterQueue.push(make_pair(heightMap[row][0], n * row));
+            waterQueue.push(make_pair(heightMap[row].back(), n * (row + 1) - 1));
+            visited[row][0] = visited[row].back() = true;
+        }
+
+        int direction_x[] = {-1, 1, 0, 0},
+            direction_y[] = {0, 0, -1, 1};
+        while (waterQueue.empty() == false) {
+            waterIdxPair cur_min = waterQueue.top();
+            waterQueue.pop();
+
+            for (int i = 0; i < 4; i++) {
+                int new_x = cur_min.second / n + direction_x[i],
+                    new_y = cur_min.second % n + direction_y[i];
+                
+                if (new_x >= 0 && new_x < m && new_y >= 0 && new_y < n && visited[new_x][new_y] == false) {
+                    if (heightMap[new_x][new_y] < cur_min.first)
+                        res += cur_min.first - heightMap[new_x][new_y];
+
+                    visited[new_x][new_y] = true;
+                    waterQueue.push(make_pair(max(heightMap[new_x][new_y], cur_min.first), n * new_x + new_y));
+                }
+            }
+        }
+
+        return res;
     }
 };
