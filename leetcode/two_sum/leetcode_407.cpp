@@ -128,7 +128,6 @@ public:
                 }
             }
         }
-
         return res;
     }
 };
