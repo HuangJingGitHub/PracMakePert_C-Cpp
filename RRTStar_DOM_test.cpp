@@ -11,7 +11,6 @@ int main(int argc, char** argv) {
 
     RRTStarPlanner RRTStar_planer(start, end, obstacles, 20, 20, 10, Size2f(640, 480));
     bool planned = RRTStar_planer.Plan(backImg);
-
     vector<RRTStarNode*> path = RRTStar_planer.GetPath(), sparse_path;
     vector<Point2f> smooth_path;
 
