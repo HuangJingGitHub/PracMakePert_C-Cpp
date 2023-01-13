@@ -17,8 +17,10 @@ int main(int argc, char** argv) {
     if (planned) {
         for (int i = 0; i < path.size(); i += 2)
             sparse_path.push_back(path[i]);
+        
         if (sparse_path.back() != path.back())
             sparse_path.push_back(path.back());
+        
         smooth_path = QuadraticBSplineSmoothing(sparse_path);
     }
 
