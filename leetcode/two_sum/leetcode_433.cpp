@@ -37,6 +37,7 @@ public:
             for (auto it = edge[index].begin(); it != edge[index].end(); it++) {
                 if (*it == goal)
                     return cost + 1;
+                
                 if (visited[*it] == false) {
                     que.push(make_pair(*it, cost + 1));
                     visited[*it] = true;
