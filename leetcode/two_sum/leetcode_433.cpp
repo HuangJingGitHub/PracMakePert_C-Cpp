@@ -5,7 +5,6 @@ public:
         for (int i = 0; i < 8; i++)
             if (a[i] != b[i])
                 differentNum += 1;
-        
         return differentNum == 1;
     }
 
