@@ -23,6 +23,7 @@ public:
             else 
                 numStack.push(stoi(tokens[i]));
         }
+        
         return numStack.top();
     }
 };
