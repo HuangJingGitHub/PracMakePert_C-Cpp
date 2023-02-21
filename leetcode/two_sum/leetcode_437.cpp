@@ -11,7 +11,20 @@
  */
 class Solution {
 public:
+    int target;
+    unordered_map<int, int> um;
+
     int pathSum(TreeNode* root, int targetSum) {
-        int res = 0;
+        target = targetSum;
+        um[0] = 1;
+        return dfs(root, 0);
+    }
+
+
+    int dfs(int TreeNode* node, int curSum) {
+        if (node = nullptr)
+            return 0;
+        int ans = 0;
+        curSum += node->val;
     }
 };
