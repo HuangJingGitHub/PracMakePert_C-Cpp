@@ -35,7 +35,6 @@ public:
                     char curChar = it->first;
                     if (curChar == s[i])
                         continue;
-
                     if (occurenceLog[endIdx][curChar] - occurenceLog[i][curChar] != charFrequency[curChar])
                         break;
                 }
