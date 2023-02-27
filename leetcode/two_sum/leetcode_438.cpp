@@ -44,3 +44,46 @@ public:
             return res;
     }
 };
+
+
+
+class Solution {   
+public:
+    vector<int> findAnagrams(string s, string p) {
+        if (s.size() < p.size())
+            return {};
+
+        vector<int> res;
+        vector<int> charFrequency(26, 0), window(26, 0);
+        for (char& ch : p)
+            charFrequency[ch - 'a']++;
+        
+        int left = 0, right = 0, len = p.size();
+        for (; right < len; right++)
+            window[s[right] - 'a']++;
+        
+        while (right < s.size()) {
+            int i = 0;
+            while (i < 26) {
+                if (window[i] != charFrequency[i])
+                    break;
+                i++;
+            }
+            if (i == 26)
+                res.push_back(left);
+            
+            window[s[left] - 'a']--;
+            left++;
+            right++;
+            if (right == s.size())
+                break;
+            window[s[right] - 'a']++;
+            
+            cout << left << ": ";
+            for (auto i : window)
+                cout << i << ", ";
+            cout << "\n";
+        }
+        return res;
+    }
+};
