@@ -71,7 +71,6 @@ public:
             }
             if (i == 26)
                 res.push_back(left);
-            
             window[s[left] - 'a']--;
             left++;
             right++;
