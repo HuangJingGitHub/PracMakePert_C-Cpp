@@ -62,6 +62,7 @@ public:
         for (; right < len; right++)
             window[s[right] - 'a']++;
         
+        right = len - 1;
         while (right < s.size()) {
             int i = 0;
             while (i < 26) {
@@ -71,17 +72,13 @@ public:
             }
             if (i == 26)
                 res.push_back(left);
+            
             window[s[left] - 'a']--;
             left++;
             right++;
             if (right == s.size())
                 break;
             window[s[right] - 'a']++;
-            
-            cout << left << ": ";
-            for (auto i : window)
-                cout << i << ", ";
-            cout << "\n";
         }
         return res;
     }
