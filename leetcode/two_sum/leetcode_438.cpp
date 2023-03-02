@@ -62,7 +62,7 @@ public:
         for (; right < len; right++)
             window[s[right] - 'a']++;
         
-        right = len - 1;
+        right = len - 1;  // Remerber to return right to right - 1
         while (right < s.size()) {
             int i = 0;
             while (i < 26) {
