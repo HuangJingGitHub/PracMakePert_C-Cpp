@@ -30,7 +30,6 @@ public:
             else 
                 right = mid;
         }
-
         return left - 1;
     }
 };
