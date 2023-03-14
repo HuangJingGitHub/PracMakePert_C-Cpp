@@ -18,7 +18,6 @@ public:
                     chars[slowPt++] = numChar;
             }
         }
-
         return slowPt;
     }
 };
