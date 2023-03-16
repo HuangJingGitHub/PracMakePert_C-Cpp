@@ -1,0 +1,6 @@
+/TEST_Robot/grasper_name: TEST_grasper
+/TEST_Robot/num_joints: 3
+/TEST_Robot/home_pos: [[0.0], [0.0], [0.0]]
+/TEST_Robot/home_jpos: [1.0, 1.0, 1.0]
+/TEST_Robot/home_quat: [1.0, 0.0, 0.0, 0.0]
+
