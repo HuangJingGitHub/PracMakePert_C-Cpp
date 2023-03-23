@@ -2,6 +2,17 @@
 #include <eigen3/Eigen/Dense>
 #include "robot_config.hpp"
 
+void printQueryResult(const std::vector<double>& value) {
+    if (value.size() == 0)
+        return;
+
+    std::cout << "[";
+    for (int i = 0; i < value.size() - 1; i++)
+        std::cout << value[i] << ", ";
+    std::cout << value.back() << "]\n";
+}
+
+
 int main(int argc, char** argv) {
     flexiv::Log log;
     try {
@@ -36,11 +47,19 @@ int main(int argc, char** argv) {
         log.info("Robot is now operational");
 
         std::cout << "Calling robot.measured_jp()...\n";
-        std::vector<double> curJointPosition = robot.measured_jp();
-        std::cout << "[";
-        for (double singleJointPosition : curJointPosition)
-            std::cout << singleJointPosition << " ";
-        std::cout << "]";
+        printQueryResult(robot.measured_jp());
+
+       std::cout << "Calling robot.measured_cp()...\n";
+        printQueryResult(robot.measured_cp());
+
+       std::cout << "Calling robot.measured_cv()...\n";
+        printQueryResult(robot.measured_cv());
+
+       std::cout << "Calling robot.measured_cf()...\n";
+        printQueryResult(robot.measured_cf());
+
+       std::cout << "Calling robot.goal_cp()...\n";
+        printQueryResult(robot.goal_cp());
     } catch (const flexiv::Exception& e) {
         log.error(e.what());
         return 1;
