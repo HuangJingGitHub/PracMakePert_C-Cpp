@@ -196,7 +196,6 @@ public:
         for (auto near_node : near_set) {
             float new_near_node_cost = UpdatePassageEncodingCost(new_node, near_node);
             if (new_near_node_cost < near_node->cost && PathObstacleFree(near_node, new_node)) {
-                near_node->min_passage_width = GetNewNodeMinPassageWidth(new_node, near_node);
                 RRTStarNode* near_node_parent = near_node->parent;
                 for (int i = 0; i < near_node_parent->adjacency_list.size(); i++)
                     if (near_node_parent->adjacency_list[i] == near_node) {
@@ -205,6 +204,7 @@ public:
                     }
                 near_node->parent = new_node;
                 near_node->cost = new_near_node_cost;
+                near_node->min_passage_width = GetNewNodeMinPassageWidth(new_node, near_node);
                 new_node->adjacency_list.push_back(near_node);
             }
         }
