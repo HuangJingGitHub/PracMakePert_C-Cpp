@@ -326,6 +326,7 @@ vector<vector<int>> GetPassagesPathPasses(const vector<PolygonObstacle>& obstacl
             for (int k = j + 1; k < obs_centroids.size(); k++) 
                 if (SegmentIntersection(path[i]->pos, path[i + 1]->pos, obs_centroids[j], obs_centroids[k]) == true) 
                     res.push_back({j, k});
+    return res;
 }
 
 vector<vector<Point2f>> GetPassageIntersectionsOfPathSet(const vector<PolygonObstacle>& obstacles, const vector<vector<int>>& passage_pairs,
@@ -400,7 +401,7 @@ void DeformPath(vector<RRTStarNode*>& path, const vector<Point2f>& reposition_in
             }
         }
     }
-    
+
 }
 
 
