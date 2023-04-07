@@ -315,7 +315,8 @@ vector<float>  GetLocalPathWidth2D( const vector<Point2f>& path,
     return local_path_width;
 }
 
-vector<vector<int>> FilterRawPassagePairsByVisibility(const vector<PolygonObstacle>& obstacles, const vector<vector<int>>& raw_passage_pairs) {
+vector<vector<int>> FilterRawPassagePairsByVisibility(const vector<PolygonObstacle>& obstacles, 
+                                                    const vector<vector<int>>& raw_passage_pairs) {
     vector<vector<int>> res;
     vector<set<int>> valid_passage_pair_set(obstacles.size());
     for (const vector<int>& cur_passage_pair : raw_passage_pairs)
@@ -337,7 +338,8 @@ vector<vector<int>> FilterRawPassagePairsByVisibility(const vector<PolygonObstac
     return res;
 }
 
-vector<vector<int>> GetPassagesPathPasses(const vector<PolygonObstacle>& obstacles, const vector<RRTStarNode*>& path) {
+vector<vector<int>> GetPassagesPathPasses(const vector<PolygonObstacle>& obstacles, 
+                                        const vector<RRTStarNode*>& path) {
     // Raw, non-smoothed path is preferred for efficiency.
     vector<vector<int>> raw_passage_pairs;
     vector<Point2f> obs_centroids = GetObstaclesCentroids(obstacles);
@@ -351,8 +353,9 @@ vector<vector<int>> GetPassagesPathPasses(const vector<PolygonObstacle>& obstacl
     return FilterRawPassagePairsByVisibility(obstacles, raw_passage_pairs);
 }
 
-vector<vector<Point2f>> GetPassageIntersectionsOfPathSet(const vector<PolygonObstacle>& obstacles, const vector<vector<int>>& passage_pairs,
-                                                        const vector<RRTStarNode*>& pivot_path, 
+vector<vector<Point2f>> GetPassageIntersectionsOfPathSet(const vector<PolygonObstacle>& obstacles, 
+                                                        const vector<vector<int>>& passage_pairs,
+                                                        const vector<Point2f>& smooth_pivot_path, 
                                                         vector<vector<int>>& path_node_intersection_idx_log,
                                                         const vector<Point2f>& initial_feedback_pts, int pivot_idx) {
     int pts_num = initial_feedback_pts.size();
@@ -364,11 +367,16 @@ vector<vector<Point2f>> GetPassageIntersectionsOfPathSet(const vector<PolygonObs
         int path_node_idx = 0;
         Point2f pts_dif = initial_feedback_pts[i] - initial_feedback_pts[pivot_idx];
         for (int j = 0; j < passage_pairs.size(); j++) {
+            // cout << "Testing passage: " << passage_pairs[j][0] << "---" << passage_pairs[j][1] << "\n";
             Point2f obs_centroid_1 = obs_centroids[passage_pairs[j][0]],
-                    obs_centroid_2 = obs_centroids[passage_pairs[j][1]];
-            for (int k = path_node_idx; k < pivot_path.size() - 1; k++) {
-                if (SegmentIntersection(obs_centroid_1, obs_centroid_2, pivot_path[k]->pos + pts_dif, pivot_path[k + 1]->pos + pts_dif)) {
-                    res[i][j] = GetSegmentsIntersectionPt(obs_centroid_1, obs_centroid_2, pivot_path[k]->pos + pts_dif, pivot_path[k + 1]->pos + pts_dif);
+                    obs_centroid_2 = obs_centroids[passage_pairs[j][1]],
+                    direction_obs_1_2 = (obs_centroid_2 - obs_centroid_1) / cv::norm(obs_centroid_2 - obs_centroid_1),
+                    extended_obs_centroid_1 = obs_centroid_1 - 100 * direction_obs_1_2,
+                    extended_obs_centroid_2 = obs_centroid_2 + 100 * direction_obs_1_2;
+            for (int k = path_node_idx; k < smooth_pivot_path.size() - 1; k++) {
+                if (SegmentIntersection(extended_obs_centroid_1, extended_obs_centroid_2, smooth_pivot_path[k] + pts_dif, smooth_pivot_path[k + 1] + pts_dif)) {
+                    res[i][j] = GetSegmentsIntersectionPt(extended_obs_centroid_1, extended_obs_centroid_2, smooth_pivot_path[k] + pts_dif, smooth_pivot_path[k + 1] + pts_dif);
+                    // cout << "Intersection detected with point\n" << res[i][j] << '\n';
                     path_node_intersection_idx_log[i][j] = k;
                     path_node_idx = k + 1;
                     break;
@@ -379,8 +387,10 @@ vector<vector<Point2f>> GetPassageIntersectionsOfPathSet(const vector<PolygonObs
     return res;
 }
 
-vector<Point2f> GetPivotPathRepositionPts(const vector<PolygonObstacle>& obstacles, const vector<vector<int>>& passage_pairs, 
-                                        const vector<vector<Point2f>>& intersection_points, int pivot_idx) {
+vector<Point2f> GetPivotPathRepositionPts(const vector<PolygonObstacle>& obstacles, 
+                                        const vector<vector<int>>& passage_pairs, 
+                                        const vector<vector<Point2f>>& intersection_points, 
+                                        int pivot_idx) {
     vector<Point2f> chord_ends, passage_inner_ends, res(passage_pairs.size());
     vector<Point2f> obs_centroids = GetObstaclesCentroids(obstacles);
 
@@ -388,11 +398,10 @@ vector<Point2f> GetPivotPathRepositionPts(const vector<PolygonObstacle>& obstacl
     for (int i = 0; i < passage_pairs.size(); i++) {
         vector<Point2f> cur_passage_intersection_pts(pts_num);
         for (int j = 0; j < pts_num; j++)
-            cur_passage_intersection_pts[j] = intersection_points[i][j];
+            cur_passage_intersection_pts[j] = intersection_points[j][i];
         chord_ends = GetEndsOfColinearPts(cur_passage_intersection_pts);
         passage_inner_ends = GetPassageInnerEnds(obstacles[passage_pairs[i][0]], obstacles[passage_pairs[i][1]]);
         Point2f reposition_intersection_pt;
-
         if (normSqr(chord_ends[1] - chord_ends[0]) < normSqr(passage_inner_ends[1] - passage_inner_ends[0])
             && OnSegment(passage_inner_ends[0], passage_inner_ends[1], chord_ends[0])
             && OnSegment(passage_inner_ends[0], passage_inner_ends[1], chord_ends[1])) {
@@ -402,20 +411,20 @@ vector<Point2f> GetPivotPathRepositionPts(const vector<PolygonObstacle>& obstacl
         else if (normSqr(chord_ends[1] - chord_ends[0]) < normSqr(passage_inner_ends[1] - passage_inner_ends[0])) {
             if (OnSegment(passage_inner_ends[0], passage_inner_ends[1], chord_ends[0])) {
                 if (normSqr(passage_inner_ends[0] - chord_ends[1]) <= normSqr(passage_inner_ends[1] - chord_ends[1]))
-                    reposition_intersection_pt = cur_passage_intersection_pts[pivot_idx] + 1.1 * (passage_inner_ends[0] - chord_ends[1]);
+                    reposition_intersection_pt = cur_passage_intersection_pts[pivot_idx] - 1.1 * (passage_inner_ends[0] - chord_ends[1]);
                 else 
-                    reposition_intersection_pt = cur_passage_intersection_pts[pivot_idx] + 1.1 * (passage_inner_ends[1] - chord_ends[1]);
+                    reposition_intersection_pt = cur_passage_intersection_pts[pivot_idx] - 1.1 * (passage_inner_ends[1] - chord_ends[1]);
             }
             else {
                 if (normSqr(passage_inner_ends[0] - chord_ends[0]) <= normSqr(passage_inner_ends[1] - chord_ends[0]))
-                    reposition_intersection_pt = cur_passage_intersection_pts[pivot_idx] + 1.1 * (passage_inner_ends[0] - chord_ends[0]);
+                    reposition_intersection_pt = cur_passage_intersection_pts[pivot_idx] - 1.1 * (passage_inner_ends[0] - chord_ends[0]);
                 else 
-                    reposition_intersection_pt = cur_passage_intersection_pts[pivot_idx] + 1.1 * (passage_inner_ends[1] - chord_ends[0]);                
+                    reposition_intersection_pt = cur_passage_intersection_pts[pivot_idx] - 1.1 * (passage_inner_ends[1] - chord_ends[0]);                
             }
             res[i] = reposition_intersection_pt;
             continue;
         }
-
+        
         Point2f chord_center = (chord_ends[0] + chord_ends[1]) / 2,
                 passage_inner_center = (passage_inner_ends[0] + passage_inner_ends[1]) / 2,
                 chord_to_passage_center_dif = passage_inner_center - chord_center,
@@ -432,34 +441,50 @@ vector<Point2f> GetPivotPathRepositionPts(const vector<PolygonObstacle>& obstacl
     return res;
 }
 
-void DeformPath(vector<RRTStarNode*>& path, const vector<Point2f>& reposition_intersection_pts, const vector<Point2f>& intersection_pts, 
+void DeformPath(vector<Point2f>& path, 
+                const vector<Point2f>& intersection_pts, 
+                const vector<Point2f>& reposition_intersection_pts, 
                 vector<int> path_intersection_idx) {
+    
+    for (int i = 0; i < intersection_pts.size(); i++)
+        cout << intersection_pts[i] << " vs " << reposition_intersection_pts[i] << '\n';
+    
+    vector<float> accumulated_path_length(path.size(), 0);
+    for (int i = 1; i < accumulated_path_length.size(); i++) {
+        accumulated_path_length[i] = accumulated_path_length[i - 1] + cv::norm(path[i] - path[i - 1]);
+    }
+        
     vector<int> reposition_idx(path_intersection_idx.size() + 2, 0);
     reposition_idx.back() = path.size() - 1;
     for (int i = 0; i < path_intersection_idx.size(); i++)
         reposition_idx[i + 1] = path_intersection_idx[i];
     
-    float total_path_length = path.back()->cost * path.back()->min_passage_width;
+    cout << "Reposition idx: ";
+    for (int idx : reposition_idx)
+        cout << idx << " ";
+    cout << '\n';
+
+    float total_path_length = accumulated_path_length.back();
     for (int i = 0; i < reposition_idx.size() - 1; i++) {
         int cur_path_idx = reposition_idx[i], next_path_idx = reposition_idx[i + 1];
-        float cur_path_length_parameter = path[cur_path_idx]->cost * path[cur_path_idx]->min_passage_width / total_path_length,
-              next_path_length_parameter = path[next_path_idx]->cost * path[next_path_idx]->min_passage_width / total_path_length,
+        float cur_path_length_parameter = accumulated_path_length[cur_path_idx] / total_path_length,
+              next_path_length_parameter = accumulated_path_length[next_path_idx] / total_path_length,
               path_segment_length_parameter = next_path_length_parameter - cur_path_length_parameter;
         Point2f cur_shift, next_shift;
-        if (cur_path_idx == 0)
+        if (cur_path_idx == 0) 
             cur_shift = Point2f(0, 0);
         else
-            cur_shift = reposition_intersection_pts[cur_path_idx] - intersection_pts[cur_path_idx];
+            cur_shift = reposition_intersection_pts[i - 1] - intersection_pts[i - 1];
         if (next_path_idx == path.size() - 1)
             next_shift = Point2f(0, 0);
         else
-            next_shift = reposition_intersection_pts[next_path_idx] - intersection_pts[next_path_idx];
-
+            next_shift = reposition_intersection_pts[i] - intersection_pts[i];
+        
         for (int j = cur_path_idx; j < next_path_idx; j++) {
-            // Only pos of a path node is adjusted.
-            float path_length_parameter = path[j]->cost * path[j]->min_passage_width / total_path_length,
+            float path_length_parameter = accumulated_path_length[j] / total_path_length,
                   ratio = (path_length_parameter - cur_path_length_parameter) / path_segment_length_parameter;
-            path[j]->pos = path[j]->pos + ratio * next_shift + (1 - ratio) * cur_shift;
+            path[j] = path[j] + ratio * next_shift + (1 - ratio) * cur_shift;
+            cout << path_length_parameter << ", " << ratio << ", " << next_shift << ", " << cur_shift << '\n';
         }
     }
 }
