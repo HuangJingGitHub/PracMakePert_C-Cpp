@@ -19,7 +19,8 @@ class Robot_CRTK : public Robot
 {
 public:
     Robot_CRTK(const std::string& serverIP, const std::string& localIP): Robot(serverIP, localIP) {}
-    virtual ~Robot_CRTK();
+    virtual ~Robot_CRTK() {}
+
     //<<<<<<<<<<---------->>>>>>>>>>
     /**
      * @brief CRTK tests
@@ -53,12 +54,12 @@ public:
         this->getRobotStates(curRobotState);
         return curRobotState.tcpPoseDes;
     }
-private:
-    class Impl;
-    std::unique_ptr<Impl> m_pimpl;
 
-    friend class Model;
-    friend class Gripper;
+    void servo_jp(const std::vector<double>& positions, 
+                const std::vector<double>& velocities,
+                const std::vector<double>& accelerations) {
+        streamJointPosition(positions, velocities, accelerations);
+    }
 };
 
 } /* namespace flexiv */
