@@ -16,7 +16,7 @@ void printQueryResult(const std::vector<double>& value) {
 int main(int argc, char** argv) {
     flexiv::Log log;
     try {
-        flexiv::Robot robot(robotIP, localIP);
+        flexiv::Robot_CRTK robot(robotIP, localIP);
 
         if (robot.isFault()) {
             log.warn("Fault occurred on robot server, trying to clear ...");
@@ -49,17 +49,29 @@ int main(int argc, char** argv) {
         std::cout << "Calling robot.measured_jp()...\n";
         printQueryResult(robot.measured_jp());
 
-       std::cout << "Calling robot.measured_cp()...\n";
+        std::cout << "Calling robot.measured_cp()...\n";
         printQueryResult(robot.measured_cp());
 
-       std::cout << "Calling robot.measured_cv()...\n";
+        std::cout << "Calling robot.measured_cv()...\n";
         printQueryResult(robot.measured_cv());
 
-       std::cout << "Calling robot.measured_cf()...\n";
+        std::cout << "Calling robot.measured_cf()...\n";
         printQueryResult(robot.measured_cf());
 
-       std::cout << "Calling robot.goal_cp()...\n";
+        std::cout << "Calling robot.goal_cp()...\n";
         printQueryResult(robot.goal_cp());
+       
+       int cnt = 0, time_step_millisecond = 1;
+       double amplitude = 0.05, frequency = 0.5;
+       std::vector<double> init_pose = robot.measured_cp();
+       while (true) {
+            double y_variance = amplitude * sin(2 * M_PI * frequency * cnt * time_step_millisecond * 0.001);
+            auto target_pose = init_pose;
+            target_pose[1] += y_variance;
+            robot.interpolate_cp(target_pose);
+            cnt++;
+            std::this_thread::sleep_for(std::chrono::milliseconds(time_step_millisecond));
+       }
     } catch (const flexiv::Exception& e) {
         log.error(e.what());
         return 1;
