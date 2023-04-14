@@ -76,5 +76,6 @@ int main(int argc, char** argv) {
         log.error(e.what());
         return 1;
     }
+    
     return 0;
 }
