@@ -75,7 +75,6 @@ int main(int argc, char** argv) {
     } catch (const flexiv::Exception& e) {
         log.error(e.what());
         return 1;
-    }
-    
+    } 
     return 0;
 }
