@@ -94,7 +94,6 @@ public:
         sendTcpPose(pose, maxWrench);
     }
 };
-
 } /* namespace flexiv */
 
 #endif /* FLEXIVRDK_ROBOT_CRTK_HPP_ */
