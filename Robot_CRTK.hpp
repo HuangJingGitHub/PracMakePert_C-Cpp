@@ -10,7 +10,6 @@
 #include <thread>
 
 namespace flexiv {
-
 /**
  * @class Robot
  * @brief Main interface with the robot, including system, control, motion, and
