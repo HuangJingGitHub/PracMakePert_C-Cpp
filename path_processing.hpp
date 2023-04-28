@@ -594,5 +594,4 @@ void DeformPath(vector<Point2f>& path,
     }
 }
 
-
 #endif
