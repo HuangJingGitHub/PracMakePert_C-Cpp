@@ -62,7 +62,6 @@ vector<Point2f> QuadraticBSplineSmoothing(const vector<RRTStarNode*>& node_path)
     return res;
 }
 
-
 int SearchByDistance(vector<Point2f>& search_path, Point2f desired_pos) {
     int res_idx = 0;
     if (search_path.empty()) {
@@ -81,7 +80,6 @@ int SearchByDistance(vector<Point2f>& search_path, Point2f desired_pos) {
     }
     return res_idx;
 }
-
 
 vector<vector<Point2f>> GeneratePathSet(const vector<Point2f>& initial_feedback_pts, 
                                         const vector<Point2f>& target_feedback_pts, 
@@ -137,7 +135,6 @@ vector<vector<Point2f>> GeneratePathSet(const vector<Point2f>& initial_feedback_
     }
     return res_path_set; 
 }
-
 
 vector<Point2f> ProcessCollisionPath(const vector<Point2f>& pivot_path, 
                                     Point2f pivot_pt, Point2f cur_pt, 
@@ -593,5 +590,4 @@ void DeformPath(vector<Point2f>& path,
         }
     }
 }
-
 #endif
