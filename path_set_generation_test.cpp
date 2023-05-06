@@ -28,7 +28,6 @@ void GetRotatedVertices(vector<Point2f>& vertices) {
     vertices = vector<Point2f>(vertices7_array, vertices7_array + 4);
 }
 
-
 int main(int argc, char** argv) {
     srand(time(NULL));
     Mat backImg(Size(640, 480), CV_64FC3, Scalar(255, 255, 255));
