@@ -31,6 +31,9 @@ public:
 
     kdTree(): kd_tree_root_(nullptr) {}
     kdTree(RRTStarNode* root_node): kd_tree_root_(root_node) {};
+    ~kdTree();
+    kdTree(const kdTree&);
+    kdTree& operator=(const kdTree&);
 
     void AddWithRoot(RRTStarNode* root, RRTStarNode* new_node, int depth) {
         if (depth % kDimension_k_ == 0) {
@@ -74,6 +77,11 @@ public:
     }
 
     RRTStarNode* GetCloestInTwo(RRTStarNode* target, RRTStarNode* candidate_1, RRTStarNode* candidate_2) {
+        if (candidate_1 == nullptr)
+            return candidate_2;
+        if (candidate_2 == nullptr)
+            return candidate_1;
+
         if (normSqr(target->pos - candidate_1->pos) <= normSqr(target->pos - candidate_2->pos))
             return candidate_1;
         return candidate_2;
@@ -104,14 +112,8 @@ public:
                 other_subtree = root->left;
             }  
         }
-
         RRTStarNode *temp_res = FindNearestNodeWithRoot(next_subtree, target, depth + 1),
-                    *cur_best = nullptr;
-        if (normSqr(target->pos - temp_res->pos) <= normSqr(target->pos - root->pos))
-            cur_best = temp_res;
-        else
-            cur_best = root;
-
+                    *cur_best = GetCloestInTwo(target, temp_res, root);
         float cur_dist_square = normSqr(target->pos - cur_best->pos), dist_to_boundary_square, dist_to_boundary;
         if (depth % kDimension_k_ == 0) 
             dist_to_boundary = target->pos.x - root->pos.x;
@@ -119,11 +121,43 @@ public:
             dist_to_boundary = target->pos.y - root->pos.y;
         dist_to_boundary_square = dist_to_boundary * dist_to_boundary;
         
+        if (cur_dist_square >= dist_to_boundary_square) {
+            temp_res = FindNearestNodeWithRoot(other_subtree, target, depth + 1);
+            cur_best = GetCloestInTwo(target, temp_res, cur_best);
+        }
+        return cur_best;
     }
 
     RRTStarNode* FindNearestNode(RRTStarNode* target) {
         return FindNearestNodeWithRoot(kd_tree_root_, target, 0);
-   } 
+    } 
+   
+    RRTStarNode* FindNearestNode(const Point2f& target_pos) {
+        RRTStarNode* target_node = new RRTStarNode(target_pos);
+        RRTStarNode* res = FindNearestNodeWithRoot(kd_tree_root_, target_node, 0);
+        delete target_node;
+        return res;
+    }
+
+    void deleteTree(RRTStarNode* root) {
+        if (root == nullptr)
+            return;
+        
+        deleteTree(root->left);
+        deleteTree(root->right);
+        delete root;
+    }
 };
 
+kdTree::~kdTree() {
+    kdTree::deleteTree(kd_tree_root_);
+} 
+
+kdTree::kdTree(const kdTree& copied_tree) {
+    kd_tree_root_ = copied_tree.kd_tree_root_;
+}
+
+kdTree& kdTree::operator=(const kdTree& rhs) {
+    kd_tree_root_ = rhs.kd_tree_root_;
+}
 #endif
