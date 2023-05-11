@@ -7,7 +7,7 @@
 using namespace cv;
 using namespace std;
 
-float normSqr(Point2f pt) {
+float normSqr(const Point2f& pt) {
     return pt.x * pt.x + pt.y * pt.y;
 }
 
@@ -136,6 +136,40 @@ public:
         RRTStarNode* target_node = new RRTStarNode(target_pos);
         RRTStarNode* res = FindNearestNodeWithRoot(kd_tree_root_, target_node, 0);
         delete target_node;
+        return res;
+    }
+
+    void RangeSearchWithRoot(RRTStarNode* root, RRTStarNode* parent, vector<Point2f>& res_pt_vec, const float& x_min, const float& x_max, 
+                            const float& y_min, const float& y_max, int depth) {
+        if (root == nullptr)
+            return;
+        
+        if (depth % kDimension_k_ == 0 && parent != nullptr) {
+            if (root->pos.y <= parent->pos.y && parent->pos.y < y_min)
+                return;
+            if (root->pos.y > parent->pos.y && parent->pos.y > y_max)
+                return;
+        }
+        else if (parent != nullptr) {
+            if (root->pos.x <= parent->pos.x && parent->pos.x < x_min)
+                return;
+            if (root->pos.x > parent->pos.x && parent->pos.x > x_max)
+                return;        
+        }
+
+        if (root->pos.x >= x_min && root->pos.x <= x_max && root->pos.y >= y_min && root->pos.y <= y_max)
+            res_pt_vec.push_back(root->pos);
+        RangeSearchWithRoot(root->left, root, res_pt_vec, x_min, x_max, y_min, y_max, depth + 1);
+        RangeSearchWithRoot(root->right, root, res_pt_vec, x_min, x_max, y_min, y_max, depth + 1);           
+    }
+
+    vector<Point2f> RanageSearch(const float& x_min, const float& x_max, const float& y_min, float& y_max) {
+        vector<Point2f> res;
+        if (x_min > x_max || y_min > y_max) {
+            cout << "Invalid range for range search.\n";
+            return res;
+        }
+        RangeSearchWithRoot(kd_tree_root_, nullptr, res, x_min, x_max, y_min, y_max, 0);
         return res;
     }
 
