@@ -79,11 +79,13 @@ public:
             RRTStarNode* new_node = AddNewNode(nearest_node, rand_pos);
             if (PathObstacleFree(nearest_node, new_node)) {
                 if (plan_in_interior)
-                    if (MinDistanceToObstaclesVec(obstacles_, new_node->pos) < interior_delta)
+                    if (MinDistanceToObstaclesVec(obstacles_, new_node->pos) < interior_delta) {
+                        delete new_node;
                         continue;
+                    }
                 
-                kd_tree_.Add(new_node);
                 Rewire(nearest_node, new_node, source_img);
+                kd_tree_.Add(new_node);
                 if (normSqr(new_node->pos - target_pos_) <= error_dis_* error_dis_) {
                     if ((new_node->cost * new_node->min_passage_width + cv::norm(target_node_->pos - new_node->pos)) / new_node->min_passage_width < min_cost) {
                         target_node_->parent = new_node;
@@ -92,7 +94,7 @@ public:
 /*                     if ((new_node->cost + cv::norm(target_node_->pos - new_node->pos)) < min_cost) {
                         target_node_->parent = new_node;
                         min_cost = new_node->cost + cv::norm(target_node_->pos - new_node->pos);
-                    }   */                  
+                    } */        
                     plan_scuess_ = true;
                 }
                 CUR_GRAPH_SIZE++;
@@ -101,12 +103,12 @@ public:
             else    
                 delete new_node;
 
-            // circle(source_img, start_pos_, 4, Scalar(255,0,0), -1);
-            // circle(source_img, target_pos_, 4, Scalar(255,0,0), -1);
-            // imshow("RRT* path planning", source_img);
-            // waitKey(1);
-            // if (CUR_GRAPH_SIZE == MAX_GRAPH_SIZE)
-            //     destroyWindow("RRT* path planning");
+/*             circle(source_img, start_pos_, 4, Scalar(255,0,0), -1);
+            circle(source_img, target_pos_, 4, Scalar(255,0,0), -1);
+            imshow("RRT* path planning", source_img);
+            waitKey(1);
+            if (CUR_GRAPH_SIZE == MAX_GRAPH_SIZE)
+                destroyWindow("RRT* path planning"); */
         }
         if (!plan_scuess_)
             cout << "MAX_GRAPH_SIZE: " << MAX_GRAPH_SIZE << " is achieved with no path founded.\n";
@@ -116,31 +118,6 @@ public:
                  << '\n';   
         return plan_scuess_;
     }
-
-/*     RRTStarNode* NearestNode(Point2f& rand_pos) {
-        RRTStarNode* res = start_node_;
-        queue<RRTStarNode*> level_pt;
-        level_pt.push(start_node_);
-        float min_dis = normSqr(rand_pos - start_node_->pos), cur_dis;
-        
-        // bfs
-        while (!level_pt.empty()) {
-            int level_size = level_pt.size();
-            for (int i = 0; i < level_size; i++) {
-                RRTStarNode* cur_node = level_pt.front();
-                level_pt.pop();
-                for (auto pt : cur_node->adjacency_list) {
-                    level_pt.push(pt);
-                }
-                cur_dis = normSqr(rand_pos - cur_node->pos);
-                if (cur_dis < min_dis) {
-                    res = cur_node;
-                    min_dis = cur_dis;
-                }
-            }
-        }
-        return res;
-    } */
 
     RRTStarNode* AddNewNode(RRTStarNode* nearest_node, Point2f& rand_pos) {
         Point2f direction = (rand_pos - nearest_node->pos) / cv::norm((rand_pos - nearest_node->pos));
@@ -177,7 +154,6 @@ public:
         for (auto near_node : near_set) {
             float new_near_node_cost = UpdatePassageEncodingCost(new_node, near_node);
             if (new_near_node_cost < near_node->cost && PathObstacleFree(near_node, new_node)) {
-                RRTStarNode* near_node_parent = near_node->parent;
                 near_node->parent = new_node;
                 near_node->cost = new_near_node_cost;
                 near_node->min_passage_width = GetNewNodeMinPassageWidth(new_node, near_node);
@@ -189,7 +165,7 @@ public:
         float gamma_star = 800,
               gamma = gamma_star * sqrt(log(CUR_GRAPH_SIZE) * 3.32 / CUR_GRAPH_SIZE),
               radius_alg = min(gamma, step_len_);
-
+        // radius_alg = 20;
         float x_min = max((float)0.0, new_node->pos.x - radius_alg), x_max = min(new_node->pos.x + radius_alg, config_size_.width),
               y_min = max((float)0.0, new_node->pos.y - radius_alg), y_max = min(new_node->pos.y + radius_alg, config_size_.height); 
 
@@ -213,7 +189,6 @@ public:
         for (auto near_node : near_set) {
             float new_near_node_cost = new_node->cost + cv::norm(near_node->pos - new_node->pos);
             if (new_near_node_cost < near_node->cost && PathObstacleFree(near_node, new_node)) {
-                RRTStarNode* near_node_parent = near_node->parent;
                 near_node->parent = new_node;
                 near_node->cost = new_near_node_cost;
             }
