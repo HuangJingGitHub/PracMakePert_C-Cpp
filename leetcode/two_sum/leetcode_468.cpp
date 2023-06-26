@@ -7,12 +7,12 @@ public:
             return "IPv6";
         return "Neither";
     }
-    bool is4(string IP){
+    bool is4(string IP) {
         vector<string> ip;
         split(IP, ip, '.');
         if(ip.size()!= 4)
             return false;
-        for(string s:ip){
+        for(string s:ip) {
             if(s.size() == 0 || (s.size() > 1 && s[0]=='0') || s.size() > 3)
                 return false;
             for(char c:s){
@@ -26,7 +26,7 @@ public:
         return true;
     }
 
-    bool is6(string IP){
+    bool is6(string IP) {
         vector<string> ip;
         split(IP, ip, ':');
         if(ip.size() != 8)
@@ -41,7 +41,7 @@ public:
         }
         return true;
     }
-    void split(string s, vector<string>& ip, char c){
+    void split(string s, vector<string>& ip, char c) {
         stringstream ss(s);
         string tmp;
         while (getline(ss, tmp, c))
