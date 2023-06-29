@@ -1,0 +1,6 @@
+<launch>
+<param name="robot_description" textfile="/home/jing/Documents/Scripts/CRTK/Flexiv_CRTK/src/visual_rviz/urdf/rizon4_joints_links.xacro" />
+<node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher" />
+<node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" />
+<node name="rviz" pkg="rviz" type="rviz"/>
+</launch>
