@@ -6,14 +6,15 @@ public:
     void backtrack(vector<int>& nums, int startIdx) {
         if (path.size() > 1)
             result.push_back(path);
+        if (startIdx > 0 && nums[startIdx] == nums[startIdx - 1])
+            return;
         
-        unordered_set<int> uniqueSet;
         for (int i = startIdx; i < nums.size(); i++) {
             if ((path.empty() == false && path.back() > nums[i]) 
                 || uniqueSet.find(nums[i]) != uniqueSet.end())
                 continue;
             
-            uniqueSet.insert(nums[i]);
+            
             path.push_back(nums[i]);
             backtrack(nums, i + 1);
             path.pop_back();
