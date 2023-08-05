@@ -7,14 +7,12 @@ public:
         if (path.size() > 1)
             result.push_back(path);
         if (startIdx > 0 && nums[startIdx] == nums[startIdx - 1])
-            return;
+            backtrack(nums, i + 1);
         
         for (int i = startIdx; i < nums.size(); i++) {
-            if ((path.empty() == false && path.back() > nums[i]) 
-                || uniqueSet.find(nums[i]) != uniqueSet.end())
+            if ((path.empty() == false && path.back() > nums[i])
                 continue;
-            
-            
+                        
             path.push_back(nums[i]);
             backtrack(nums, i + 1);
             path.pop_back();
