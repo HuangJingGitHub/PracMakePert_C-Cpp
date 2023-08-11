@@ -10,7 +10,6 @@ public:
             else 
                 res = max(res, ++cnt);
         }
-
         return res;
     }
 };
