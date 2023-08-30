@@ -47,7 +47,7 @@ public:
 };
 
 
-// More compact. Only two side lengths are possible for segments linking two vertices of a square.
+// More compact. Only two side lengths are possible for segments linking any two vertices of a square.
 class Solution {
 public:
     bool validSquare(vector<int>& p1, vector<int>& p2, vector<int>& p3, vector<int>& p4) {
