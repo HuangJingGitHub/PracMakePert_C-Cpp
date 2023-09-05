@@ -17,7 +17,6 @@ public:
             res = "-";
         for (int i = remainder.size() - 1; i >= 0; i--)
             res += to_string(remainder[i]);
-
         return res;
     }
 };
