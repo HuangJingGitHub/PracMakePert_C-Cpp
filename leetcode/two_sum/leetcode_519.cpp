@@ -1,9 +1,9 @@
 class Solution {
 public:
-unordered_map<int, int> map_;
-int size_;
-int row_num_;
-int col_num_;
+    unordered_map<int, int> map_;
+    int size_;
+    int row_num_;
+    int col_num_;
 
     Solution(int m, int n) {
         size_ = m * n;
@@ -14,11 +14,6 @@ int col_num_;
     
     vector<int> flip() {
         int random_indix = rand() % size_;
-        if (random_indix == size_ - 1) {
-            size_--;
-            return {random_indix / col_num_, random_indix % col_num_};
-        }
-
         int temp = random_indix;
         while (map_.count(temp) == 1) 
             temp = map_[temp];
