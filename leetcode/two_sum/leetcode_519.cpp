@@ -26,7 +26,6 @@ public:
         map_.clear();
         size_ = row_num_ * col_num_;
     }
-
 };
 
 /**
