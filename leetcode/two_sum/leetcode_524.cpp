@@ -9,8 +9,7 @@ public:
                     res = str;
                 else if (str.size() == res.size() && lexicographicalCom(str, res))
                     res = str;
-            }
-    
+            }    
         return res;
     }
 
