@@ -8,8 +8,22 @@ void DrawPath(Mat img, const vector<Point2f>& path,
         line(img, path[i] + shift, path[i + 1] + shift, color, thickness);
 }
 
+
+
 int main(int argc, char** argv) {
-    Mat backImg(Size(640, 480), CV_64FC3, Scalar(255, 255, 255));
+    Mat backImg(Size(1000, 600), CV_64FC3, Scalar(255, 255, 255));
+    int obs_num = 20;
+    vector<PolygonObstacle> obs_vec = GenerateRandomObstacles(obs_num, backImg.size());
+    for (int i = 0; i < obs_num; i++) {
+        PolygonObstacle cur_obs = obs_vec[i];
+        int cur_vertex_num = cur_obs.vertices.size();
+        for (int j = 0; j < cur_vertex_num; j++)
+            line(backImg, cur_obs.vertices[j], cur_obs.vertices[(j + 1) % cur_vertex_num], Scalar(0, 0, 0), 2);
+    }
+    imshow("RRT* path planning", backImg);
+    waitKey(0); 
+    return 0;    
+    
     Point2f start = Point2f(100, 110), end = Point2f(540, 110);
     vector<Point2f> initial_feedback_pts{start, Point2f(100, 40)}, target_feedback_pts{end, Point2f(540, 40)};
     int pivot_idx = 0;
