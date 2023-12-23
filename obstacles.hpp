@@ -296,8 +296,7 @@ float GetMinPassageWidthPassed(const vector<PolygonObstacle>& obstacles, Point2f
                 // Substracting obstacle dimension
                 vector<Point2f> passage_inner_ends = GetPassageInnerEnds(obstacles[i], obstacles[j]);
                 float cur_passage_width  = cv::norm(passage_inner_ends[0] - passage_inner_ends[1]);
-
-                res = (res > cur_passage_width) ? cur_passage_width : res; 
+                res = min(res, cur_passage_width); 
             }
     
     if (res == FLT_MAX)
@@ -311,17 +310,33 @@ vector<PolygonObstacle> GenerateRandomObstacles(int obstacle_num, Size2f config_
         return {};
     }
 
+    // By default, add environment 4 walls as obstacles
+    vector<PolygonObstacle> res_obs_vec(obstacle_num + 4);
+    vector<Point2f> top_obs_vertices{Point2f(0, 0), Point2f(config_size.width, 0), Point2f(10, -10)},
+                    bottom_obs_vertices{Point2f(0, config_size.height), Point2f(config_size.width, config_size.height), 
+                               Point2f(10, config_size.height + 10)},
+                    left_obs_vertices{Point2f(0, 0), Point2f(0, config_size.height), Point2f(-10, 10)},
+                    right_obs_vertices{Point2f(config_size.width, 0), Point2f(config_size.width, config_size.height), 
+                              Point2f(config_size.width + 10, 10)};
+    PolygonObstacle top_obs(top_obs_vertices), bottom_obs(bottom_obs_vertices), 
+                    left_obs(left_obs_vertices), right_obs(right_obs_vertices);
+    res_obs_vec[0] = top_obs;
+    res_obs_vec[1] = bottom_obs;
+    res_obs_vec[2] = left_obs;
+    res_obs_vec[3] = right_obs;
+    
     float size_len = 50;
     Eigen::Matrix<float, 2, 4> vertices_square, vertices_rectangle;
                                vertices_square << -size_len / 2, size_len / 2, size_len / 2, -size_len / 2,
                                                  -size_len / 2, -size_len / 2, size_len / 2, size_len / 2;
                                vertices_rectangle << -size_len / 2, size_len / 2, size_len / 2, -size_len / 2,
                                                      -size_len / 4, -size_len / 4, size_len / 4, size_len / 4;                                                   
+    
+    
     vector<Eigen::MatrixXf> vertices_vec(2);
     vertices_vec[0] = vertices_square;
     vertices_vec[1] = vertices_rectangle;
 
-    vector<PolygonObstacle> res_obs_vec(obstacle_num);
     vector<Point2f> obs_center(obstacle_num);
     random_device rd_x, rd_y, rd_rotate_angle, rd_shape;
     mt19937 rd_engine_x(rd_x()), rd_engine_y(rd_y()), rd_engine_rotate_angle(rd_rotate_angle()), rd_engine_shape(rd_shape());
@@ -330,7 +345,7 @@ vector<PolygonObstacle> GenerateRandomObstacles(int obstacle_num, Size2f config_
                                 distribution_rotate_angle(0, 2 * M_PI);
     uniform_int_distribution<> distribution_shape(0, 1);
 
-    for (int i = 0; i < obstacle_num; i++) {
+    for (int i = 4; i < obstacle_num + 4; i++) {
         float cur_x = distribution_x(rd_x), cur_y = distribution_y(rd_y), cur_angle = distribution_rotate_angle(rd_rotate_angle);
         int cur_shape_type = distribution_shape(rd_shape);
         Point2f cur_obs_center(cur_x, cur_y);
@@ -359,6 +374,7 @@ vector<PolygonObstacle> GenerateRandomObstacles(int obstacle_num, Size2f config_
         else
             res_obs_vec[i] = cur_obs;
     }
+
     return res_obs_vec;
 }
 
