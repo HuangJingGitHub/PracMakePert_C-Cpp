@@ -26,6 +26,7 @@ public:
     float step_len_;
     float error_dis_;
     float radius_;
+    float passage_width_weight_;
     Size2f config_size_;
     RRTStarNode* start_node_;
     RRTStarNode* target_node_;
@@ -36,16 +37,18 @@ public:
 
     RRTStarPlanner(): start_node_(nullptr), target_node_(nullptr) {}
     RRTStarPlanner(Point2f start, Point2f target, vector<PolygonObstacle> obs, float step_len = 18, 
-                   float radius = 10, float error_dis = 10,
-                   Size2f config_size = Size2f(640, 480)): 
+                   float radius = 10, float error_dis = 10, 
+                   Size2f config_size = Size2f(640, 480), float passage_width_weight = 100): 
         start_pos_(start), 
         target_pos_(target), 
         obstacles_(obs),
         step_len_(step_len), 
         radius_(radius),
         error_dis_(error_dis),
-        config_size_(config_size) {
+        config_size_(config_size),
+        passage_width_weight_(passage_width_weight) {
         start_node_ = new RRTStarNode(start);
+        start_node_->cost = -passage_width_weight * start_node_->min_passage_width;
         target_node_ = new RRTStarNode(target);
         kd_tree_.Add(start_node_);
         CUR_GRAPH_SIZE++;
@@ -87,14 +90,10 @@ public:
                 Rewire(nearest_node, new_node, source_img);
                 kd_tree_.Add(new_node);
                 if (normSqr(new_node->pos - target_pos_) <= error_dis_* error_dis_) {
-                    if ((new_node->cost * new_node->min_passage_width + cv::norm(target_node_->pos - new_node->pos)) / new_node->min_passage_width < min_cost) {
+                    if (new_node->cost < min_cost) {
                         target_node_->parent = new_node;
-                        min_cost = (new_node->cost * new_node->min_passage_width + cv::norm(target_node_->pos - new_node->pos)) / new_node->min_passage_width;
-                    }
-/*                     if ((new_node->cost + cv::norm(target_node_->pos - new_node->pos)) < min_cost) {
-                        target_node_->parent = new_node;
-                        min_cost = new_node->cost + cv::norm(target_node_->pos - new_node->pos);
-                    } */        
+                        min_cost = new_node->cost;
+                    }      
                     plan_scuess_ = true;
                 }
                 CUR_GRAPH_SIZE++;
@@ -161,7 +160,7 @@ public:
         }
     }
 
-    void RewireWithPathCost(RRTStarNode* nearest_node, RRTStarNode* new_node, Mat source_img) {
+    void RewireWithPathLengthCost(RRTStarNode* nearest_node, RRTStarNode* new_node, Mat source_img) {
         float gamma_star = 800,
               gamma = gamma_star * sqrt(log(CUR_GRAPH_SIZE) * 3.32 / CUR_GRAPH_SIZE),
               radius_alg = min(gamma, step_len_);
@@ -203,19 +202,30 @@ public:
     }
 
     float UpdatePassageEncodingCost(RRTStarNode* near_node, RRTStarNode* new_node) {
+        float passage_width_weight = 100;
         float passage_width_passed = GetMinPassageWidthPassed(obstacles_, near_node->pos, new_node->pos);
         float res = 0;
-        if (passage_width_passed < 0)
-            res = near_node->cost + cv::norm(new_node->pos - near_node->pos) / near_node->min_passage_width;
-        else 
-            res = (near_node->cost * near_node->min_passage_width + cv::norm(new_node->pos - near_node->pos)) 
-                        / min(near_node->min_passage_width, passage_width_passed); 
+        if (passage_width_passed < 0) {
+            // res = near_node->cost + cv::norm(new_node->pos - near_node->pos) / near_node->min_passage_width;
+            res = near_node->cost + cv::norm(new_node->pos - near_node->pos);
+        }
+        else {
+            // res = (near_node->cost * near_node->min_passage_width + cv::norm(new_node->pos - near_node->pos)) 
+            //            / min(near_node->min_passage_width, passage_width_passed); 
+            if (passage_width_passed >= near_node->min_passage_width)
+                res = near_node->cost + cv::norm(new_node->pos - near_node->pos);
+            else
+                res = near_node->cost + cv::norm(new_node->pos - near_node->pos) + passage_width_weight * 
+                      (near_node->min_passage_width - passage_width_passed); 
+        }
+
         return res;      
     }
 
     float GetNewNodeMinPassageWidth(RRTStarNode* parent_node, RRTStarNode* new_node) {
         float res = parent_node->min_passage_width;
         float min_passage_width_new_edge_passes = GetMinPassageWidthPassed(obstacles_, parent_node->pos, new_node->pos);
+        // cout << "Mininum passage distance: " << min_passage_width_new_edge_passes << '\n';
         if (min_passage_width_new_edge_passes < 0) 
             return res;
         else 
@@ -240,8 +250,8 @@ public:
 
 
 RRTStarPlanner::~RRTStarPlanner() {
-    delete start_node_;
-    delete target_node_;
+    // delete start_node_;
+    // delete target_node_;
 }
 
 RRTStarPlanner::RRTStarPlanner(const RRTStarPlanner& planner) {

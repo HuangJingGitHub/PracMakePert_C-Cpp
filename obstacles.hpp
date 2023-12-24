@@ -79,6 +79,23 @@ bool SegmentIntersection(const Point2f& p1, const Point2f& p2, const Point2f& q1
         return false;
 }
 
+Point2f ClosestPtOnSegmentToPt(const Point2f& p1, const Point2f& p2, const Point2f& test_pt) {
+    // Return the point on segment p1-p2 closest to test_pt
+    Point2f p_1_to_test_pt_vec = test_pt - p1,
+            segment_vec = p2 - p1,
+            res_pt;
+    float inner_product = p_1_to_test_pt_vec.x * segment_vec.x + p_1_to_test_pt_vec.y * segment_vec.y;
+    float segment_len_square = segment_vec.x * segment_vec.x + segment_vec.y * segment_vec.y;
+    float projection_segment_len_ratio = inner_product / segment_len_square;
+    if (projection_segment_len_ratio < 0)
+        res_pt = p1;
+    else if (projection_segment_len_ratio > 1)
+        res_pt = p2;
+    else 
+        res_pt = p1 + projection_segment_len_ratio * segment_vec;
+    return res_pt;
+}
+
 Point2f GetSegmentsIntersectionPt(const Point2f& p1, const Point2f& p2, const Point2f& q1, const Point2f& q2) {
  // Segment p1-p2, q1-q2 intersect, otherwise will return intersection point of two lines.
     if (abs(p1.x - p2.x) < 1e-4 && abs(q1.x - q2.x) > 1e-4)
@@ -220,6 +237,33 @@ vector<Point2f> GetPassageInnerEnds(PolygonObstacle obs1, PolygonObstacle obs2) 
     return {inner_end_1, inner_end_2};
 }
 
+vector<Point2f> GetPassageSegment(const PolygonObstacle& obs1, const PolygonObstacle& obs2) {
+    int vertices_num_1 = obs1.vertices.size(), vertices_num_2 = obs2.vertices.size();
+    float min_dist = FLT_MAX;
+    Point2f res_pt_1, res_pt_2;
+    for (int i = 0; i < vertices_num_1; i++)
+        for (int j = 0; j < vertices_num_2; j++) {
+            Point2f cur_pt_2 = ClosestPtOnSegmentToPt(obs2.vertices[j], obs2.vertices[(j + 1) % vertices_num_2], obs1.vertices[i]);
+            float cur_dist = cv::norm(obs1.vertices[i] - cur_pt_2); 
+            if (cur_dist < min_dist) {
+                min_dist = cur_dist;
+                res_pt_1 = obs1.vertices[i];
+                res_pt_2 = cur_pt_2;
+            }
+        }
+    for (int i = 0; i < vertices_num_2; i++)
+        for (int j = 0; j < vertices_num_1; j++) {
+            Point2f cur_pt_1 = ClosestPtOnSegmentToPt(obs1.vertices[j], obs1.vertices[(j + 1) % vertices_num_1], obs2.vertices[i]);
+             float cur_dist = cv::norm(obs2.vertices[i] - cur_pt_1); 
+            if (cur_dist < min_dist) {
+                min_dist = cur_dist;
+                res_pt_1 = cur_pt_1;
+                res_pt_2 = obs2.vertices[i];
+            }           
+        }
+    return {res_pt_1, res_pt_2};
+}
+
 Point2f GetClosestIntersectionPt(PolygonObstacle& obs, Point2f p1, Point2f p2, Point2f testPt) {
     Point2f res = Point2f(0, 0);
     if (obs.vertices.size() <= 1) {
@@ -287,17 +331,16 @@ float GetMinPassageWidthPassed(const vector<PolygonObstacle>& obstacles, Point2f
     float res = FLT_MAX;
     vector<Point2f> obs_centroids = GetObstaclesCentroids(obstacles);
 
-    for (int i = 0; i < obs_centroids.size() - 1; i++)
-        for (int j = i + 1; j < obs_centroids.size(); j++)
+    for (int i = 0; i < obs_centroids.size() - 1; i++) {
+        int j = (i < 4) ? 4 : i + 1;
+        for (; j < obs_centroids.size(); j++)
             if (SegmentIntersection(obs_centroids[i], obs_centroids[j], pt1, pt2)) {
-                // Without subtracting obstacle dimension
-                // float cur_passage_width = cv::norm(obs_centroids[i] - obs_centroids[j]);
-                
-                // Substracting obstacle dimension
-                vector<Point2f> passage_inner_ends = GetPassageInnerEnds(obstacles[i], obstacles[j]);
+                // vector<Point2f> passage_inner_ends = GetPassageInnerEnds(obstacles[i], obstacles[j]);
+                vector<Point2f> passage_inner_ends = GetPassageSegment(obstacles[i], obstacles[j]);
                 float cur_passage_width  = cv::norm(passage_inner_ends[0] - passage_inner_ends[1]);
                 res = min(res, cur_passage_width); 
             }
+    }
     
     if (res == FLT_MAX)
         return -1.0;
@@ -377,5 +420,7 @@ vector<PolygonObstacle> GenerateRandomObstacles(int obstacle_num, Size2f config_
 
     return res_obs_vec;
 }
+
+
 
 #endif
