@@ -34,16 +34,16 @@ int main(int argc, char** argv) {
     for (int i = 0; i < extended_visibility_check_res.first.size(); i++)
         line(back_img, extended_visibility_check_res.second[i][0], extended_visibility_check_res.second[i][1], Scalar(0, 0, 0), 2);
     cout << "Visibility check passage res: " << visibility_check_res.first.size() 
-         << "\n Extended visibility check passage res: " << extended_visibility_check_res.first.size() << '\n';
-/*     Point2f start = Point2f(1, 1), end = Point2f(back_img.size().width - 1, back_img.size().height - 1);
+         << "\nExtended visibility check passage res: " << extended_visibility_check_res.first.size() << '\n';
+    Point2f start = Point2f(1, 1), end = Point2f(back_img.size().width - 1, back_img.size().height - 1);
     RRTStarPlanner planner(start, end, obs_vec, 15, 20, 10, back_img.size());
     bool planned = planner.Plan(back_img);
     vector<RRTStarNode*> planned_path;
     if (planned) {
         planned_path = planner.GetPath();
-        auto smooth_path = QuadraticBSplineSmoothing(planned_path);
-        DrawPath(back_img, smooth_path, Scalar(255, 0, 0));
-    } */
+        // auto smooth_path = QuadraticBSplineSmoothing(planned_path);
+        DrawPath(back_img, planned_path, Scalar(255, 0, 0));
+    }
 
     imshow("RRT* path planning", back_img);
     waitKey(0); 

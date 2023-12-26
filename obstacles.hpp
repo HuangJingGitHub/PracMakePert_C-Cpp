@@ -293,32 +293,6 @@ Point2f GetClosestIntersectionPt(PolygonObstacle& obs, Point2f p1, Point2f p2, P
     return res;
 } 
 
-/* float MinDistanceToObstacle(PolygonObstacle& obs, Point2f testPt) {
-    float res = FLT_MAX, cur_distance;
-    int step_num = 50;
-    Point2f start_vertex, end_vertex, cur_interpolation_pos, side_vec;
-    
-    if (obs.closed)
-        obs.vertices.push_back(obs.vertices.front());
-    for (int i = 0; i < obs.vertices.size() - 1; i++) {
-        start_vertex = obs.vertices[i];
-        end_vertex = obs.vertices[i + 1];
-        side_vec = end_vertex - start_vertex;
-        for (int i = 0; i <= step_num; i++) {
-            cur_interpolation_pos = start_vertex + side_vec * i / step_num;
-            cur_distance = normSqr(testPt - cur_interpolation_pos);
-            if (cur_distance < res) {
-                res = cur_distance;
-                obs.min_distance_pt = cur_interpolation_pos;
-            }
-        }
-    }
-  
-    if (obs.closed) 
-        obs.vertices.pop_back();
-    return sqrt(res);
-} */
-
 float MinDistanceToObstacle(const PolygonObstacle& obs, Point2f testPt) {
     float res = FLT_MAX;
     int obs_vertices_num = obs.vertices.size();
@@ -342,11 +316,12 @@ float MinDistanceToObstaclesVec(const vector<PolygonObstacle>& obstacles, Point2
 
 float GetMinPassageWidthPassed(const vector<PolygonObstacle>& obstacles, Point2f pt1, Point2f pt2) {
     // Return the min width of passages the segment pt1-pt2 passes. Return -1 if no passage is passed
+    // Full search version
     float res = FLT_MAX;
     vector<Point2f> obs_centroids = GetObstaclesCentroids(obstacles);
 
     for (int i = 0; i < obs_centroids.size() - 1; i++) {
-        int j = (i < 4) ? 4 : i + 1;
+        int j = (i < 4) ? 4 : i + 1; // The first four are wall obstacles.
         for (; j < obs_centroids.size(); j++)
             if (SegmentIntersection(obs_centroids[i], obs_centroids[j], pt1, pt2)) {
                 // vector<Point2f> passage_inner_ends = GetPassageInnerEnds(obstacles[i], obstacles[j]);
@@ -354,6 +329,19 @@ float GetMinPassageWidthPassed(const vector<PolygonObstacle>& obstacles, Point2f
                 float cur_passage_width  = cv::norm(passage_inner_ends[0] - passage_inner_ends[1]);
                 res = min(res, cur_passage_width); 
             }
+    }
+    
+    if (res == FLT_MAX)
+        return -1.0;
+    return res;
+}
+
+float GetMinPassageWidthPassed(const vector<vector<Point2f>>& passage_pts, Point2f pt1, Point2f pt2) {
+    float res = FLT_MAX;
+
+    for (int i = 0; i < passage_pts.size(); i++) {
+        if (SegmentIntersection(passage_pts[i][0], passage_pts[i][1], pt1, pt2));
+            res = min(res, (float)cv::norm(passage_pts[i][0] - passage_pts[i][1]));
     }
     
     if (res == FLT_MAX)
@@ -382,17 +370,20 @@ vector<PolygonObstacle> GenerateRandomObstacles(int obstacle_num, Size2f config_
     res_obs_vec[2] = left_obs;
     res_obs_vec[3] = right_obs;
     
-    float size_len = 10;
-    Eigen::Matrix<float, 2, 4> vertices_square, vertices_rectangle;
+    float size_len = 30;
+    Eigen::Matrix<float, 2, 4> vertices_square, vertices_rectangle; 
                                vertices_square << -size_len / 2, size_len / 2, size_len / 2, -size_len / 2,
                                                  -size_len / 2, -size_len / 2, size_len / 2, size_len / 2;
                                vertices_rectangle << -size_len / 2, size_len / 2, size_len / 2, -size_len / 2,
-                                                     -size_len / 4, -size_len / 4, size_len / 4, size_len / 4;                                                   
+                                                     -size_len / 4, -size_len / 4, size_len / 4, size_len / 4;
+    Eigen::Matrix<float, 2, 3> vertices_triangle;                                                     
+                               vertices_triangle << -size_len / 2, size_len / 2, 0,
+                                                    -size_len * sqrt(3) / 6, -size_len * sqrt(3) / 6, size_len * sqrt(3) / 3;                                                
     
-    
-    vector<Eigen::MatrixXf> vertices_vec(2);
+    vector<Eigen::MatrixXf> vertices_vec(3);
     vertices_vec[0] = vertices_square;
     vertices_vec[1] = vertices_rectangle;
+    vertices_vec[2] = vertices_triangle;
 
     vector<Point2f> obs_center(obstacle_num);
     random_device rd_x, rd_y, rd_rotate_angle, rd_shape;
@@ -400,7 +391,7 @@ vector<PolygonObstacle> GenerateRandomObstacles(int obstacle_num, Size2f config_
     uniform_real_distribution<> distribution_x(0, config_size.width),
                                 distribution_y(0, config_size.height),
                                 distribution_rotate_angle(0, 2 * M_PI);
-    uniform_int_distribution<> distribution_shape(0, 1);
+    uniform_int_distribution<> distribution_shape(0, 2);
 
     for (int i = 4; i < obstacle_num + 4; i++) {
         float cur_x = distribution_x(rd_x), cur_y = distribution_y(rd_y), cur_angle = distribution_rotate_angle(rd_rotate_angle);
@@ -418,12 +409,10 @@ vector<PolygonObstacle> GenerateRandomObstacles(int obstacle_num, Size2f config_
         }
 
         bool is_cur_obs_valid = true;
-        if (i > 1) {
-            for (int j = 0; j < i; j++) {
-                if (AreObstaclesOverlapped(cur_obs, res_obs_vec[j]) == true) {
-                    is_cur_obs_valid = false;
-                    break;
-                }
+        for (int j = 0; j < i; j++) {
+            if (AreObstaclesOverlapped(cur_obs, res_obs_vec[j]) == true) {
+                is_cur_obs_valid = false;
+                break;
             }
         }
         if (is_cur_obs_valid == false)
@@ -439,7 +428,7 @@ pair<vector<vector<int>>, vector<vector<Point2f>>> PureVisibilityPassageCheck(co
     vector<vector<int>> res_passage_pair;
     vector<vector<Point2f>> res_passage_pts;
     
-    int start_idx = 4; // First four obstacles are walls.
+    int start_idx = 0; // 4 if the first four wall obstacles are not considered.
     for (int i = start_idx; i < obstacles.size() - 1; i++)
         for (int j = i + 1; j < obstacles.size(); j++) {
             vector<Point2f> cur_passage_segment_pts = GetPassageSegmentPts(obstacles[i], obstacles[j]);
@@ -465,7 +454,7 @@ pair<vector<vector<int>>, vector<vector<Point2f>>> ExtendedVisibilityPassageChec
     vector<vector<int>> res_passage_pair;
     vector<vector<Point2f>> res_passage_pts;
     
-    int start_idx = 4;
+    int start_idx = 0; // 4 if the first four wall obstacles are not considered.
     for (int i = start_idx; i < obstacles.size() - 1; i++)
         for (int j = i + 1; j < obstacles.size(); j++) {
             vector<Point2f> cur_passage_segment_pts = GetPassageSegmentPts(obstacles[i], obstacles[j]);

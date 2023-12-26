@@ -23,6 +23,10 @@ public:
     Point2f start_pos_;
     Point2f target_pos_;
     vector<PolygonObstacle> obstacles_;
+    vector<vector<int>> pure_visibility_passage_pair_;
+    vector<vector<Point2f>> pure_visibility_passage_pts_;
+    vector<vector<int>> extended_visibility_passage_pair_;
+    vector<vector<Point2f>> extended_visibility_passage_pts_;
     float step_len_;
     float error_dis_;
     float radius_;
@@ -38,7 +42,7 @@ public:
     RRTStarPlanner(): start_node_(nullptr), target_node_(nullptr) {}
     RRTStarPlanner(Point2f start, Point2f target, vector<PolygonObstacle> obs, float step_len = 18, 
                    float radius = 10, float error_dis = 10, 
-                   Size2f config_size = Size2f(640, 480), float passage_width_weight = 100): 
+                   Size2f config_size = Size2f(640, 480), float passage_width_weight = 1000): 
         start_pos_(start), 
         target_pos_(target), 
         obstacles_(obs),
@@ -48,10 +52,18 @@ public:
         config_size_(config_size),
         passage_width_weight_(passage_width_weight) {
         start_node_ = new RRTStarNode(start);
-        start_node_->cost = -passage_width_weight * start_node_->min_passage_width;
+        start_node_->cost = -passage_width_weight * start_node_->min_passage_width * 0;
         target_node_ = new RRTStarNode(target);
         kd_tree_.Add(start_node_);
         CUR_GRAPH_SIZE++;
+
+        auto pure_visibility_check_res = PureVisibilityPassageCheck(obstacles_);
+        pure_visibility_passage_pair_ = pure_visibility_check_res.first;
+        pure_visibility_passage_pts_ = pure_visibility_check_res.second;
+
+        auto extended_visibility_check_res = ExtendedVisibilityPassageCheck(obstacles_);
+        extended_visibility_passage_pair_ = extended_visibility_check_res.first;
+        extended_visibility_passage_pts_ = extended_visibility_check_res.second;        
     }
     ~RRTStarPlanner();
     RRTStarPlanner(const RRTStarPlanner&);
@@ -64,8 +76,8 @@ public:
         float div_width = RAND_MAX / config_size_.width,
               div_height = RAND_MAX / config_size_.height,
               min_cost = FLT_MAX;
+
         Point2f rand_pos = Point2f(0, 0);
-        
         while (CUR_GRAPH_SIZE < MAX_GRAPH_SIZE) {
             rand_pos.x = rand() / div_width;
             rand_pos.y = rand() / div_height;
@@ -202,21 +214,21 @@ public:
     }
 
     float UpdatePassageEncodingCost(RRTStarNode* near_node, RRTStarNode* new_node) {
-        float passage_width_weight = 100;
-        float passage_width_passed = GetMinPassageWidthPassed(obstacles_, near_node->pos, new_node->pos);
+        //float passage_width_passed = GetMinPassageWidthPassed(obstacles_, near_node->pos, new_node->pos);
+        float passage_width_passed = GetMinPassageWidthPassed(extended_visibility_passage_pts_, near_node->pos, new_node->pos);
         float res = 0;
         if (passage_width_passed < 0) {
-            // res = near_node->cost + cv::norm(new_node->pos - near_node->pos) / near_node->min_passage_width;
-            res = near_node->cost + cv::norm(new_node->pos - near_node->pos);
+            res = near_node->cost + cv::norm(new_node->pos - near_node->pos) / near_node->min_passage_width;
+            // res = near_node->cost + cv::norm(new_node->pos - near_node->pos);
         }
         else {
-            // res = (near_node->cost * near_node->min_passage_width + cv::norm(new_node->pos - near_node->pos)) 
-            //            / min(near_node->min_passage_width, passage_width_passed); 
-            if (passage_width_passed >= near_node->min_passage_width)
+            res = (near_node->cost * near_node->min_passage_width + cv::norm(new_node->pos - near_node->pos)) 
+                    / min(near_node->min_passage_width, passage_width_passed); 
+/*             if (passage_width_passed >= near_node->min_passage_width)
                 res = near_node->cost + cv::norm(new_node->pos - near_node->pos);
             else
-                res = near_node->cost + cv::norm(new_node->pos - near_node->pos) + passage_width_weight * 
-                      (near_node->min_passage_width - passage_width_passed); 
+                res = near_node->cost + cv::norm(new_node->pos - near_node->pos) + passage_width_weight_ * 
+                      (near_node->min_passage_width - passage_width_passed);  */
         }
 
         return res;      
@@ -224,8 +236,8 @@ public:
 
     float GetNewNodeMinPassageWidth(RRTStarNode* parent_node, RRTStarNode* new_node) {
         float res = parent_node->min_passage_width;
-        float min_passage_width_new_edge_passes = GetMinPassageWidthPassed(obstacles_, parent_node->pos, new_node->pos);
-        // cout << "Mininum passage distance: " << min_passage_width_new_edge_passes << '\n';
+        // float min_passage_width_new_edge_passes = GetMinPassageWidthPassed(obstacles_, parent_node->pos, new_node->pos);
+        float min_passage_width_new_edge_passes = GetMinPassageWidthPassed(extended_visibility_passage_pts_, parent_node->pos, new_node->pos);
         if (min_passage_width_new_edge_passes < 0) 
             return res;
         else 
