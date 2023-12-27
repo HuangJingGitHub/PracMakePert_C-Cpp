@@ -52,8 +52,8 @@ int Orientation(const Point2f& p1, const Point2f& p2, const Point2f& p3) {
         return 0;  
 }
 
-// check if point q is on the segment p1-p2 when the three points are colinear
 bool OnSegment(const Point2f& p1, const Point2f& p2, const Point2f& q) {  
+// check if point q is on the segment p1-p2 when the three points are colinear
     if (q.x <= max(p1.x, p2.x) && q.x >= min(p1.x, p2.x)
         && q.y <= max(p1.y, p2.y) && q.y >= min(p1.y, p2.y))
             return true;
@@ -76,8 +76,7 @@ bool SegmentIntersection(const Point2f& p1, const Point2f& p2, const Point2f& q1
         return true;
     else if (ori4 == 0 && OnSegment(q1, q2, p2))
         return true;
-    else
-        return false;
+    return false;
 }
 
 Point2f ClosestPtOnSegmentToPt(const Point2f& p1, const Point2f& p2, const Point2f& test_pt) {
@@ -321,7 +320,7 @@ float GetMinPassageWidthPassed(const vector<PolygonObstacle>& obstacles, Point2f
     vector<Point2f> obs_centroids = GetObstaclesCentroids(obstacles);
 
     for (int i = 0; i < obs_centroids.size() - 1; i++) {
-        int j = (i < 4) ? 4 : i + 1; // The first four are wall obstacles.
+        int j = i < 4 ? 4 : i + 1; // The first four are wall obstacles.
         for (; j < obs_centroids.size(); j++)
             if (SegmentIntersection(obs_centroids[i], obs_centroids[j], pt1, pt2)) {
                 // vector<Point2f> passage_inner_ends = GetPassageInnerEnds(obstacles[i], obstacles[j]);
@@ -340,7 +339,7 @@ float GetMinPassageWidthPassed(const vector<vector<Point2f>>& passage_pts, Point
     float res = FLT_MAX;
 
     for (int i = 0; i < passage_pts.size(); i++) {
-        if (SegmentIntersection(passage_pts[i][0], passage_pts[i][1], pt1, pt2));
+        if (SegmentIntersection(passage_pts[i][0], passage_pts[i][1], pt1, pt2))
             res = min(res, (float)cv::norm(passage_pts[i][0] - passage_pts[i][1]));
     }
     
@@ -429,8 +428,9 @@ pair<vector<vector<int>>, vector<vector<Point2f>>> PureVisibilityPassageCheck(co
     vector<vector<Point2f>> res_passage_pts;
     
     int start_idx = 0; // 4 if the first four wall obstacles are not considered.
-    for (int i = start_idx; i < obstacles.size() - 1; i++)
-        for (int j = i + 1; j < obstacles.size(); j++) {
+    for (int i = start_idx; i < obstacles.size() - 1; i++) {
+        int j = i < 4 ? 4 : i + 1;
+        for (; j < obstacles.size(); j++) {
             vector<Point2f> cur_passage_segment_pts = GetPassageSegmentPts(obstacles[i], obstacles[j]);
             
             bool is_passage_segment_obstacle_free = true;
@@ -447,6 +447,7 @@ pair<vector<vector<int>>, vector<vector<Point2f>>> PureVisibilityPassageCheck(co
                 res_passage_pts.push_back(cur_passage_segment_pts);
             }
         }
+    }
     return make_pair(res_passage_pair, res_passage_pts);
 }
 
@@ -455,8 +456,9 @@ pair<vector<vector<int>>, vector<vector<Point2f>>> ExtendedVisibilityPassageChec
     vector<vector<Point2f>> res_passage_pts;
     
     int start_idx = 0; // 4 if the first four wall obstacles are not considered.
-    for (int i = start_idx; i < obstacles.size() - 1; i++)
-        for (int j = i + 1; j < obstacles.size(); j++) {
+    for (int i = start_idx; i < obstacles.size() - 1; i++) {
+        int j = i < 4 ? 4 : i + 1;
+        for (; j < obstacles.size(); j++) {
             vector<Point2f> cur_passage_segment_pts = GetPassageSegmentPts(obstacles[i], obstacles[j]);
             float cur_passage_length = cv::norm(cur_passage_segment_pts[0] - cur_passage_segment_pts[1]);
 
@@ -480,6 +482,7 @@ pair<vector<vector<int>>, vector<vector<Point2f>>> ExtendedVisibilityPassageChec
                 res_passage_pts.push_back(cur_passage_segment_pts);
             }
         }
+    }
     return make_pair(res_passage_pair, res_passage_pts);
 }
 #endif

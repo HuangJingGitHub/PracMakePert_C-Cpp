@@ -30,6 +30,7 @@ public:
     float step_len_;
     float error_dis_;
     float radius_;
+    int cost_function_type_;
     float passage_width_weight_;
     Size2f config_size_;
     RRTStarNode* start_node_;
@@ -42,7 +43,9 @@ public:
     RRTStarPlanner(): start_node_(nullptr), target_node_(nullptr) {}
     RRTStarPlanner(Point2f start, Point2f target, vector<PolygonObstacle> obs, float step_len = 18, 
                    float radius = 10, float error_dis = 10, 
-                   Size2f config_size = Size2f(640, 480), float passage_width_weight = 1000): 
+                   Size2f config_size = Size2f(640, 480), 
+                   int cost_function_type = 0,
+                   float passage_width_weight = 1000): 
         start_pos_(start), 
         target_pos_(target), 
         obstacles_(obs),
@@ -50,9 +53,9 @@ public:
         radius_(radius),
         error_dis_(error_dis),
         config_size_(config_size),
+        cost_function_type_(cost_function_type),
         passage_width_weight_(passage_width_weight) {
         start_node_ = new RRTStarNode(start);
-        start_node_->cost = -passage_width_weight * start_node_->min_passage_width * 0;
         target_node_ = new RRTStarNode(target);
         kd_tree_.Add(start_node_);
         CUR_GRAPH_SIZE++;
@@ -63,7 +66,15 @@ public:
 
         auto extended_visibility_check_res = ExtendedVisibilityPassageCheck(obstacles_);
         extended_visibility_passage_pair_ = extended_visibility_check_res.first;
-        extended_visibility_passage_pts_ = extended_visibility_check_res.second;        
+        extended_visibility_passage_pts_ = extended_visibility_check_res.second; 
+
+        cout << "RRT* path planner instanced with cost functio type: " << cost_function_type_ 
+            << "\n(Any value not equal to 1: Default cost function: len - weight * passed_min_passage_width"
+            << "\n1: Ratio cost function: len / passed_min_passage_width)\n";
+        if (cost_function_type_ != 1) {
+            cout << "with a passage width weight of " << passage_width_weight_ << "\n\n";       
+            start_node_->cost = -passage_width_weight * start_node_->min_passage_width;
+        }
     }
     ~RRTStarPlanner();
     RRTStarPlanner(const RRTStarPlanner&);
@@ -125,7 +136,7 @@ public:
             cout << "MAX_GRAPH_SIZE: " << MAX_GRAPH_SIZE << " is achieved with no path founded.\n";
         else
             cout << "Path found with cost: " << min_cost
-                 << "\nOptimal cost: " << norm(target_node_->pos - start_node_->pos)
+                 << "\nThe shorest distance: " << norm(target_node_->pos - start_node_->pos)
                  << '\n';   
         return plan_scuess_;
     }
@@ -214,23 +225,28 @@ public:
     }
 
     float UpdatePassageEncodingCost(RRTStarNode* near_node, RRTStarNode* new_node) {
-        //float passage_width_passed = GetMinPassageWidthPassed(obstacles_, near_node->pos, new_node->pos);
-        float passage_width_passed = GetMinPassageWidthPassed(extended_visibility_passage_pts_, near_node->pos, new_node->pos);
+        float passed_passage_width = GetMinPassageWidthPassed(extended_visibility_passage_pts_, near_node->pos, new_node->pos);
         float res = 0;
-        if (passage_width_passed < 0) {
-            res = near_node->cost + cv::norm(new_node->pos - near_node->pos) / near_node->min_passage_width;
-            // res = near_node->cost + cv::norm(new_node->pos - near_node->pos);
-        }
-        else {
-            res = (near_node->cost * near_node->min_passage_width + cv::norm(new_node->pos - near_node->pos)) 
-                    / min(near_node->min_passage_width, passage_width_passed); 
-/*             if (passage_width_passed >= near_node->min_passage_width)
+        if (passed_passage_width < 0) {
+            if (cost_function_type_ != 1)
                 res = near_node->cost + cv::norm(new_node->pos - near_node->pos);
             else
-                res = near_node->cost + cv::norm(new_node->pos - near_node->pos) + passage_width_weight_ * 
-                      (near_node->min_passage_width - passage_width_passed);  */
+                res = near_node->cost + cv::norm(new_node->pos - near_node->pos) / near_node->min_passage_width;
         }
-
+        else {
+            if (cost_function_type_ != 1) {
+                if (passed_passage_width >= near_node->min_passage_width)
+                    res = near_node->cost + cv::norm(new_node->pos - near_node->pos);
+                else
+                    res = near_node->cost + cv::norm(new_node->pos - near_node->pos) + passage_width_weight_ * 
+                        (near_node->min_passage_width - passed_passage_width); 
+            }
+            else {
+                res = (near_node->cost * near_node->min_passage_width + cv::norm(new_node->pos - near_node->pos)) 
+                        / min(near_node->min_passage_width, passed_passage_width); 
+            }
+        }
+        // cout << "current cost: " << res << '\n';
         return res;      
     }
 
@@ -241,7 +257,7 @@ public:
         if (min_passage_width_new_edge_passes < 0) 
             return res;
         else 
-            return min(parent_node->min_passage_width, min_passage_width_new_edge_passes);
+            return min(res, min_passage_width_new_edge_passes);
     }
 
     vector<RRTStarNode*> GetPath() {
