@@ -20,7 +20,7 @@ void DrawPath(Mat img, const vector<RRTStarNode*>& path,
 
 int main(int argc, char** argv) {
     Mat back_img(Size(500, 300), CV_64FC3, Scalar(255, 255, 255));
-    int obs_num = 60;
+    int obs_num = 50;
     vector<PolygonObstacle> obs_vec = GenerateRandomObstacles(obs_num, back_img.size());
     for (int i = 4; i < obs_num + 4; i++) {
         PolygonObstacle cur_obs = obs_vec[i];
