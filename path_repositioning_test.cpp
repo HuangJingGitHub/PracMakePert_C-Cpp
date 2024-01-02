@@ -17,6 +17,19 @@ void DrawPath(Mat img, const vector<RRTStarNode*>& path,
         line(img, path[i]->pos + shift, path[i + 1]->pos + shift, color, thickness);
 }
 
+void DrawDshedLine(Mat img, const Point2f& initial_pt, const Point2f& end_pt, Scalar color = Scalar(0, 0, 0), int thickness = 2, float dash_len = 5) {
+    float line_len = cv::norm(end_pt - initial_pt);
+    Point2f line_direction = (end_pt -initial_pt) / line_len;
+    int dash_num = line_len / dash_len;
+    if (line_len < 2 * dash_len) 
+        line(img, initial_pt, initial_pt + dash_len * line_direction, color, thickness);
+    for (int i = 0; i <= dash_num; i += 2) 
+        if (i == dash_num)
+            line(img, initial_pt + i * dash_len * line_direction, end_pt, color, thickness);
+        else
+            line(img, initial_pt + i * dash_len * line_direction, initial_pt + (i + 1) * dash_len * line_direction, color, thickness);
+}
+
 
 int main(int argc, char** argv) {
     Mat back_img(Size(500, 300), CV_64FC3, Scalar(255, 255, 255));
@@ -31,9 +44,9 @@ int main(int argc, char** argv) {
     auto visibility_check_res = PureVisibilityPassageCheck(obs_vec);
     auto extended_visibility_check_res = ExtendedVisibilityPassageCheck(obs_vec);
     for (int i = 0; i < visibility_check_res.first.size(); i++) 
-        line(back_img, visibility_check_res.second[i][0], visibility_check_res.second[i][1], Scalar(0, 255, 0), 2);
+        DrawDshedLine(back_img, visibility_check_res.second[i][0], visibility_check_res.second[i][1], Scalar(0, 255, 0), 2);
     for (int i = 0; i < extended_visibility_check_res.first.size(); i++)
-        line(back_img, extended_visibility_check_res.second[i][0], extended_visibility_check_res.second[i][1], Scalar(0, 0, 0), 2);
+        DrawDshedLine(back_img, extended_visibility_check_res.second[i][0], extended_visibility_check_res.second[i][1], Scalar(0, 0, 0), 2);
     cout << "Visibility check passage res: " << visibility_check_res.first.size() 
          << "\nExtended visibility check passage res: " << extended_visibility_check_res.first.size() << '\n';
     
@@ -46,21 +59,23 @@ int main(int argc, char** argv) {
     if (path_planned) {
         planned_path_node = planner_weight_cost.GetPath();
         planned_path_pts = planner_weight_cost.GetPathInPts();
-        auto smooth_path_weight_2 = QuadraticBSplineSmoothing(planned_path_node);
+        auto smooth_path = QuadraticBSplineSmoothing(planned_path_node);
         // cout << "path node num: " << planned_path_ratio_cost.size() << " smooth node num: " << smooth_path_ratio_cost.size() << "\n";
         vector<int> passage_indices = RetrievePassedPassages(planned_path_node, planner_weight_cost.extended_visibility_passage_pts_);
         for (int passage_idx : passage_indices) {
             cout << planner_weight_cost.extended_visibility_passage_pair_[passage_idx][0] << "---" << planner_weight_cost.extended_visibility_passage_pair_[passage_idx][1] << '\n';
             auto intersection_pt = GetPathSetIntersectionsOnPassageLine(planned_path_pts, {start}, {end}, 0,  
-                                                                        planner_weight_cost.extended_visibility_passage_pts_[passage_idx]);
+                                                                        planner_weight_cost.extended_visibility_passage_pts_[passage_idx]).first;
             circle(back_img, intersection_pt[0], 4, Scalar(0, 0, 255), -1);
         }
 
-        vector<Point2f> reposition_pts = RepositionPivotPath(planned_path_pts, init_pts, target_pts, 0, planner_weight_cost.extended_visibility_passage_pts_);
+/*         vector<Point2f> reposition_pts = RepositionPivotPath(planned_path_pts, init_pts, target_pts, 0, planner_weight_cost.extended_visibility_passage_pts_);
         for (Point2f& pt : reposition_pts)
             if (pt.x > 0)
-                circle(back_img, pt, 4, Scalar(0, 0, 255), -1);
-        DrawPath(back_img, smooth_path_weight_2, cv::viz::Color::blue());
+                circle(back_img, pt, 4, Scalar(0, 0, 255), -1); */
+        vector<Point2f> reposition_path = RepositionPivotPath(planned_path_pts, init_pts, target_pts, 0, planner_weight_cost.extended_visibility_passage_pts_);
+        DrawPath(back_img, reposition_path, cv::viz::Color::red());
+        DrawPath(back_img, smooth_path, cv::viz::Color::blue());
     }
 
     imshow("RRT* path planning", back_img);
