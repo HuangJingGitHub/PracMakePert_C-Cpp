@@ -33,7 +33,7 @@ void DrawDshedLine(Mat img, const Point2f& initial_pt, const Point2f& end_pt, Sc
 
 int main(int argc, char** argv) {
     Mat back_img(Size(500, 300), CV_64FC3, Scalar(255, 255, 255));
-    int obs_num = 30;
+    int obs_num = 10;
     vector<PolygonObstacle> obs_vec = GenerateRandomObstacles(obs_num, back_img.size());
     for (int i = 4; i < obs_num + 4; i++) {
         PolygonObstacle cur_obs = obs_vec[i];
@@ -75,7 +75,7 @@ int main(int argc, char** argv) {
                 circle(back_img, pt, 4, Scalar(0, 0, 255), -1); */
         // vector<Point2f> reposition_path = RepositionPivotPath(smooth_path, init_pts, target_pts, 0, planner_weight_cost.extended_visibility_passage_pts_);
         // DrawPath(back_img, reposition_path, cv::viz::Color::red());
-        auto  temp_res = RepositionPivotPath(smooth_path, init_pts, target_pts, 0, planner_weight_cost.extended_visibility_passage_pts_, back_img);
+        auto  temp_res = RepositionPivotPath(smooth_path, init_pts, target_pts, 0, planner_weight_cost.extended_visibility_passage_pts_, planner_weight_cost.obstacles_, back_img);
         DrawPath(back_img, temp_res.second, cv::viz::Color::red());
         auto path_set = GetTransferPathSet(planned_path_pts, init_pts, target_pts, 0);
         for (auto& cur_path : path_set)

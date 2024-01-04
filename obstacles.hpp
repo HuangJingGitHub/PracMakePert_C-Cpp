@@ -54,10 +54,13 @@ int Orientation(const Point2f& p1, const Point2f& p2, const Point2f& p3) {
 
 bool OnSegment(const Point2f& p1, const Point2f& p2, const Point2f& q) {  
 // check if point q is on the segment p1-p2 when the three points are colinear
-    if (q.x <= max(p1.x, p2.x) && q.x >= min(p1.x, p2.x)
+/*     if (q.x <= max(p1.x, p2.x) && q.x >= min(p1.x, p2.x)
         && q.y <= max(p1.y, p2.y) && q.y >= min(p1.y, p2.y))
             return true;
-    return false;
+    return false; */
+    Point2f vec_1 = p1 - q, vec_2 = p2 - q;
+    float inner_product = vec_1.x * vec_2.x + vec_1.y * vec_2.y;
+    return inner_product < 0;
 }
 
 bool SegmentIntersection(const Point2f& p1, const Point2f& p2, const Point2f& q1, const Point2f& q2) {
