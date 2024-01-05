@@ -793,7 +793,6 @@ pair<vector<Point2f>, vector<int>> GetPathSetIntersectionsOnPassageLine(const ve
                 res_indices[pt_idx] = candidate_idx[i];
                 res_pts[pt_idx] = candidate_pt[i];
             }
-
     }
     return make_pair(res_pts, res_indices);
 }

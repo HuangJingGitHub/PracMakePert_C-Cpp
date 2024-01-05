@@ -33,7 +33,7 @@ void DrawDshedLine(Mat img, const Point2f& initial_pt, const Point2f& end_pt, Sc
 
 int main(int argc, char** argv) {
     Mat back_img(Size(500, 300), CV_64FC3, Scalar(255, 255, 255));
-    int obs_num = 10;
+    int obs_num = 20;
     vector<PolygonObstacle> obs_vec = GenerateRandomObstacles(obs_num, back_img.size());
     for (int i = 4; i < obs_num + 4; i++) {
         PolygonObstacle cur_obs = obs_vec[i];

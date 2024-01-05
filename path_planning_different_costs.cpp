@@ -20,7 +20,7 @@ void DrawPath(Mat img, const vector<RRTStarNode*>& path,
 
 int main(int argc, char** argv) {
     Mat back_img(Size(500, 300), CV_64FC3, Scalar(255, 255, 255));
-    int obs_num = 50;
+    int obs_num = 10;
     vector<PolygonObstacle> obs_vec = GenerateRandomObstacles(obs_num, back_img.size());
     for (int i = 4; i < obs_num + 4; i++) {
         PolygonObstacle cur_obs = obs_vec[i];
@@ -30,10 +30,10 @@ int main(int argc, char** argv) {
     }
     auto visibility_check_res = PureVisibilityPassageCheck(obs_vec);
     auto extended_visibility_check_res = ExtendedVisibilityPassageCheck(obs_vec);
-/*     for (int i = 0; i < visibility_check_res.first.size(); i++) 
+    for (int i = 0; i < visibility_check_res.first.size(); i++) 
         line(back_img, visibility_check_res.second[i][0], visibility_check_res.second[i][1], Scalar(0, 255, 0), 2);
     for (int i = 0; i < extended_visibility_check_res.first.size(); i++)
-        line(back_img, extended_visibility_check_res.second[i][0], extended_visibility_check_res.second[i][1], Scalar(0, 0, 0), 2); */
+        line(back_img, extended_visibility_check_res.second[i][0], extended_visibility_check_res.second[i][1], Scalar(0, 0, 0), 2);
     cout << "Visibility check passage res: " << visibility_check_res.first.size() 
          << "\nExtended visibility check passage res: " << extended_visibility_check_res.first.size() << '\n';
     
@@ -56,9 +56,14 @@ int main(int argc, char** argv) {
              smooth_path_weight_1 = QuadraticBSplineSmoothing(planned_path_weight_1),
              smooth_path_weight_2 = QuadraticBSplineSmoothing(planned_path_weight_2),
              smooth_path_weight_3 = QuadraticBSplineSmoothing(planned_path_weight_3);
+        // cout << "path node num: " << planned_path_ratio_cost.size() << " smooth node num: " << smooth_path_ratio_cost.size() << "\n";
+        vector<int> passage_indices = RetrievePassedPassages(planned_path_ratio_cost, planner_ratio_cost.extended_visibility_passage_pts_);
+        for (int passage_idx : passage_indices)
+            cout << planner_ratio_cost.extended_visibility_passage_pair_[passage_idx][0] << "---" << planner_ratio_cost.extended_visibility_passage_pair_[passage_idx][1] << '\n';
+
         DrawPath(back_img, smooth_path_ratio_cost, cv::viz::Color::blue());
-        DrawPath(back_img, smooth_path_weight_1, cv::viz::Color::cyan());
-        DrawPath(back_img, smooth_path_weight_2, cv::viz::Color::gold());
+        DrawPath(back_img, smooth_path_weight_1, cv::viz::Color::green());
+        DrawPath(back_img, smooth_path_weight_2, cv::viz::Color::cyan());
         DrawPath(back_img, smooth_path_weight_3, cv::viz::Color::red());
     }
 
