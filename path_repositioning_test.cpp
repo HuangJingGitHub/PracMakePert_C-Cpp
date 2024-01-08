@@ -30,7 +30,6 @@ void DrawDshedLine(Mat img, const Point2f& initial_pt, const Point2f& end_pt, Sc
             line(img, initial_pt + i * dash_len * line_direction, initial_pt + (i + 1) * dash_len * line_direction, color, thickness);
 }
 
-
 int main(int argc, char** argv) {
     Mat back_img(Size(500, 300), CV_64FC3, Scalar(255, 255, 255));
     int obs_num = 20;
@@ -44,7 +43,7 @@ int main(int argc, char** argv) {
     auto visibility_check_res = PureVisibilityPassageCheck(obs_vec);
     auto extended_visibility_check_res = ExtendedVisibilityPassageCheck(obs_vec);
     for (int i = 0; i < visibility_check_res.first.size(); i++) 
-        DrawDshedLine(back_img, visibility_check_res.second[i][0], visibility_check_res.second[i][1], Scalar(0, 255, 0), 2);
+        DrawDshedLine(back_img, visibility_check_res.second[i][0], visibility_check_res.second[i][1], Scalar(0.741, 0.447, 0), 1);
     for (int i = 0; i < extended_visibility_check_res.first.size(); i++)
         DrawDshedLine(back_img, extended_visibility_check_res.second[i][0], extended_visibility_check_res.second[i][1], Scalar(0, 0, 0), 2);
     cout << "Visibility check passage res: " << visibility_check_res.first.size() 
@@ -64,8 +63,8 @@ int main(int argc, char** argv) {
         vector<int> passage_indices = RetrievePassedPassages(planned_path_node, planner_weight_cost.extended_visibility_passage_pts_);
         for (int passage_idx : passage_indices) {
             cout << planner_weight_cost.extended_visibility_passage_pair_[passage_idx][0] << "---" << planner_weight_cost.extended_visibility_passage_pair_[passage_idx][1] << '\n';
-            auto intersection_pt = GetPathSetIntersectionsOnPassageLine(planned_path_pts, {start}, {end}, 0,  
-                                                                        planner_weight_cost.extended_visibility_passage_pts_[passage_idx]).first;
+            // auto intersection_pt = GetPathSetIntersectionsOnPassageLine(planned_path_pts, {start}, {end}, 0,  
+            //                                                             planner_weight_cost.extended_visibility_passage_pts_[passage_idx]).first;
             // circle(back_img, intersection_pt[0], 4, Scalar(0, 0, 255), -1);
         }
 
@@ -75,8 +74,9 @@ int main(int argc, char** argv) {
                 circle(back_img, pt, 4, Scalar(0, 0, 255), -1); */
         // vector<Point2f> reposition_path = RepositionPivotPath(smooth_path, init_pts, target_pts, 0, planner_weight_cost.extended_visibility_passage_pts_);
         // DrawPath(back_img, reposition_path, cv::viz::Color::red());
+
         auto  temp_res = RepositionPivotPath(smooth_path, init_pts, target_pts, 0, planner_weight_cost.extended_visibility_passage_pts_, planner_weight_cost.obstacles_, back_img);
-        DrawPath(back_img, temp_res.second, cv::viz::Color::red());
+        DrawPath(back_img, temp_res, cv::viz::Color::red());
         auto path_set = GetTransferPathSet(planned_path_pts, init_pts, target_pts, 0);
         for (auto& cur_path : path_set)
             DrawPath(back_img, cur_path, cv::viz::Color::blue());
