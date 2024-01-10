@@ -815,7 +815,7 @@ pair<vector<int>, vector<Point2f>> GetIntersectionIdxPtsWithPivotRef(const vecto
                                                         Point2f pivot_intersection_pt, 
                                                         int pivot_intersection_path_idx) {
     int pt_num = initial_pts.size();
-    vector<int> res_idx(pt_num);
+    vector<int> res_idx(pt_num, 0);
     vector<Point2f> res_intersection_pts(pt_num);
     res_idx[pivot_idx] = pivot_intersection_path_idx;
     res_intersection_pts[pivot_idx] = pivot_intersection_pt;
@@ -1110,11 +1110,11 @@ vector<vector<Point2f>> GeneratePathSetUpdated(const vector<Point2f>& pivot_path
     for (int i = 1; i < accumulated_path_length.size(); i++) 
         accumulated_path_length[i] = accumulated_path_length[i - 1] + cv::norm(reposition_pivot_path[i] - reposition_pivot_path[i - 1]);     
     
-    vector<int> passed_passage_indices = RetrievePassedPassages(pivot_path, passage_pts);
+    vector<int> passed_passage_indices = RetrievePassedPassages(reposition_pivot_path, passage_pts);
     int passed_passage_num = passed_passage_indices.size();
     vector<vector<Point2f>> adjust_reference_pts(passed_passage_num, vector<Point2f>(pt_num)), 
                             adjust_intersection_pts(passed_passage_num, vector<Point2f>(pt_num));
-    vector<vector<int>> adjust_path_indices(passed_passage_num, vector<int>(pt_num, -1));
+    vector<vector<int>> adjust_path_indices(passed_passage_num, vector<int>(pt_num, 0));
     vector<int> adjust_types(passed_passage_num, 0);
     float adjust_clearance_small = 2, adjust_clearance_large = 5;
 
@@ -1133,6 +1133,11 @@ vector<vector<Point2f>> GeneratePathSetUpdated(const vector<Point2f>& pivot_path
                                                                             initial_pts, target_pts, pivot_idx, 
                                                                             cur_passage_pts, pivot_intersection_pt,
                                                                             pivot_intersection_idx);
+                cout << "intersection idx: ";
+                for (auto& idx : intersection_info_res.first) 
+                        cout << idx << " ";
+                cout << '\n';
+                
                 adjust_path_indices[passage_idx] = intersection_info_res.first;
                 adjust_intersection_pts[passage_idx] = intersection_info_res.second;
                 break;
@@ -1184,7 +1189,6 @@ vector<vector<Point2f>> GeneratePathSetUpdated(const vector<Point2f>& pivot_path
                                                             + reference_distance * reference_direction;
             }
         }
-        
     }
 
     // Augmenting vectors
@@ -1203,7 +1207,7 @@ vector<vector<Point2f>> GeneratePathSetUpdated(const vector<Point2f>& pivot_path
         augment_adjust_intersection_pts[i + 1] = adjust_intersection_pts[i];
         augment_adjust_reference_pts[i + 1] = adjust_reference_pts[i];
     }
-    
+
     vector<vector<Point2f>> res_path_set(pt_num, reposition_pivot_path);
     for (int pt_idx = 0; pt_idx < pt_num; pt_idx++) {
         if (pt_idx == pivot_idx) 
@@ -1221,10 +1225,10 @@ vector<vector<Point2f>> GeneratePathSetUpdated(const vector<Point2f>& pivot_path
         for (int i = 1; i < cur_accumulated_path_length.size(); i++)
             cur_accumulated_path_length[i] = cur_accumulated_path_length[i - 1] + cv::norm(res_path_set[pt_idx][i] - res_path_set[pt_idx][i - 1]);
 
-        int reposition_path_idx = 1;
         for (int i = 0; i < augment_adjust_path_indices.size() - 1; i++) {
             int start_pivot_path_idx = augment_adjust_path_indices[i][pt_idx] + 1,
-                end_pivot_path_idx = augment_adjust_path_indices[i + 1][pt_idx];  // pivot path point index before the reference pt
+                end_pivot_path_idx = augment_adjust_path_indices[i + 1][pt_idx];  // path point index before the reference pt
+            cout << "start idx: " << start_pivot_path_idx << " end idx: " << end_pivot_path_idx << '\n';
 
             Point2f prev_reference_pt = augment_adjust_reference_pts[i][pt_idx], 
                     next_reference_pt = augment_adjust_reference_pts[i + 1][pt_idx], 
@@ -1241,12 +1245,11 @@ vector<vector<Point2f>> GeneratePathSetUpdated(const vector<Point2f>& pivot_path
                 float cur_path_len_parameter = cur_accumulated_path_length[j], 
                     cur_ratio = (cur_path_len_parameter - prev_path_len_parameter) / path_len_diff;
                 Point2f reposition_pt = res_path_set[pt_idx][j] + cur_ratio *  next_shift + (1 - cur_ratio) * prev_shift;
-                res_path_set[pt_idx][reposition_path_idx++] = reposition_pt;
+                res_path_set[pt_idx][j] = reposition_pt;
             }
         }
-        cout << "ok1\n";
-    }    
-
+        // cout << "path node num: " << res_path_set[pt_idx].size() << '\n';
+    }
     return res_path_set;
 }
 

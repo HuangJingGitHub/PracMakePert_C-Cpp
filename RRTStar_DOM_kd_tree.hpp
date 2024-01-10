@@ -225,7 +225,7 @@ public:
     }
 
     float UpdatePassageEncodingCost(RRTStarNode* near_node, RRTStarNode* new_node) {
-        float passed_passage_width = GetMinPassageWidthPassed(extended_visibility_passage_pts_, near_node->pos, new_node->pos);
+        float passed_passage_width = GetMinPassageWidthPassed(pure_visibility_passage_pts_, near_node->pos, new_node->pos);
         float res = 0;
         if (passed_passage_width < 0) {
             if (cost_function_type_ != 1)
@@ -253,7 +253,7 @@ public:
     float GetNewNodeMinPassageWidth(RRTStarNode* parent_node, RRTStarNode* new_node) {
         float res = parent_node->min_passage_width;
         // float min_passage_width_new_edge_passes = GetMinPassageWidthPassed(obstacles_, parent_node->pos, new_node->pos);
-        float min_passage_width_new_edge_passes = GetMinPassageWidthPassed(extended_visibility_passage_pts_, parent_node->pos, new_node->pos);
+        float min_passage_width_new_edge_passes = GetMinPassageWidthPassed(pure_visibility_passage_pts_, parent_node->pos, new_node->pos);
         if (min_passage_width_new_edge_passes < 0) 
             return res;
         else 
@@ -273,7 +273,16 @@ public:
         }
         reverse(res.begin(), res.end());
         return res;   
-    }    
+    }  
+
+    vector<Point2f> GetPathInPts() {
+        vector<RRTStarNode*> node_path = GetPath();
+        vector<Point2f> res(node_path.size());
+
+        for (int i = 0; i < node_path.size(); i++)
+            res[i] = node_path[i]->pos;
+        return res;
+    }  
 };
 
 

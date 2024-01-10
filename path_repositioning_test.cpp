@@ -75,14 +75,14 @@ int main(int argc, char** argv) {
         // vector<Point2f> reposition_path = RepositionPivotPath(smooth_path, init_pts, target_pts, 0, planner_weight_cost.extended_visibility_passage_pts_);
         // DrawPath(back_img, reposition_path, cv::viz::Color::red());
 
-        auto  temp_res = RepositionPivotPath(smooth_path, init_pts, target_pts, 0, planner_weight_cost.extended_visibility_passage_pts_, planner_weight_cost.obstacles_, back_img);
+        auto temp_res = RepositionPivotPath(smooth_path, init_pts, target_pts, 0, planner_weight_cost.extended_visibility_passage_pts_, planner_weight_cost.obstacles_, back_img);
         auto temp_path_set = GeneratePathSetUpdated(smooth_path, init_pts, target_pts, 0, planner_weight_cost.extended_visibility_passage_pts_, planner_weight_cost.obstacles_, back_img);
         DrawPath(back_img, temp_res, cv::viz::Color::red());
         auto path_set = GetTransferPathSet(planned_path_pts, init_pts, target_pts, 0);
         for (auto& cur_path : path_set)
             DrawPath(back_img, cur_path, cv::viz::Color::blue());
         for (auto& cur_path : temp_path_set)
-            DrawPath(back_img, cur_path, cv::viz::Color::gold());            
+            DrawPath(back_img, cur_path, cv::viz::Color::green());            
     }
 
     imshow("RRT* path planning", back_img);
