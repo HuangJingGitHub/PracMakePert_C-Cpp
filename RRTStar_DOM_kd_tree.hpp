@@ -31,6 +31,7 @@ public:
     float error_dis_;
     float radius_;
     int cost_function_type_;
+    bool use_extended_vis_check_;
     float passage_width_weight_;
     Size2f config_size_;
     RRTStarNode* start_node_;
@@ -45,7 +46,8 @@ public:
                    float radius = 10, float error_dis = 10, 
                    Size2f config_size = Size2f(640, 480), 
                    int cost_function_type = 0,
-                   float passage_width_weight = 1000): 
+                   float passage_width_weight = 100,
+                   bool use_extended_vis_check = true): 
         start_pos_(start), 
         target_pos_(target), 
         obstacles_(obs),
@@ -54,7 +56,8 @@ public:
         error_dis_(error_dis),
         config_size_(config_size),
         cost_function_type_(cost_function_type),
-        passage_width_weight_(passage_width_weight) {
+        passage_width_weight_(passage_width_weight),
+        use_extended_vis_check_(use_extended_vis_check) {
         start_node_ = new RRTStarNode(start);
         target_node_ = new RRTStarNode(target);
         kd_tree_.Add(start_node_);
@@ -225,7 +228,12 @@ public:
     }
 
     float UpdatePassageEncodingCost(RRTStarNode* near_node, RRTStarNode* new_node) {
-        float passed_passage_width = GetMinPassageWidthPassed(pure_visibility_passage_pts_, near_node->pos, new_node->pos);
+        float passed_passage_width;
+        if (use_extended_vis_check_ == true)
+            passed_passage_width = GetMinPassageWidthPassed(extended_visibility_passage_pts_, near_node->pos, new_node->pos);
+        else
+            passed_passage_width = GetMinPassageWidthPassed(pure_visibility_passage_pts_, near_node->pos, new_node->pos);
+
         float res = 0;
         if (passed_passage_width < 0) {
             if (cost_function_type_ != 1)
@@ -253,7 +261,12 @@ public:
     float GetNewNodeMinPassageWidth(RRTStarNode* parent_node, RRTStarNode* new_node) {
         float res = parent_node->min_passage_width;
         // float min_passage_width_new_edge_passes = GetMinPassageWidthPassed(obstacles_, parent_node->pos, new_node->pos);
-        float min_passage_width_new_edge_passes = GetMinPassageWidthPassed(pure_visibility_passage_pts_, parent_node->pos, new_node->pos);
+        float min_passage_width_new_edge_passes;
+        if (use_extended_vis_check_ == true)
+            min_passage_width_new_edge_passes = GetMinPassageWidthPassed(extended_visibility_passage_pts_, parent_node->pos, new_node->pos);
+        else
+            min_passage_width_new_edge_passes = GetMinPassageWidthPassed(pure_visibility_passage_pts_, parent_node->pos, new_node->pos);
+
         if (min_passage_width_new_edge_passes < 0) 
             return res;
         else 

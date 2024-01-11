@@ -351,7 +351,8 @@ float GetMinPassageWidthPassed(const vector<vector<Point2f>>& passage_pts, Point
     return res;
 }
 
-vector<PolygonObstacle> GenerateRandomObstacles(int obstacle_num, Size2f config_size = Size2f(640, 480)) {
+vector<PolygonObstacle> GenerateRandomObstacles(int obstacle_num, Size2f config_size = Size2f(640, 480), 
+                                                float size_len = 30) {
     if (obstacle_num <= 0) {
         cout << "The number of obstacles to be geenrated should be positive.\n";
         return {};
@@ -372,7 +373,7 @@ vector<PolygonObstacle> GenerateRandomObstacles(int obstacle_num, Size2f config_
     res_obs_vec[2] = left_obs;
     res_obs_vec[3] = right_obs;
     
-    float size_len = 30;
+    //float size_len = 30;
     Eigen::Matrix<float, 2, 4> vertices_square, vertices_rectangle; 
                                vertices_square << -size_len / 2, size_len / 2, size_len / 2, -size_len / 2,
                                                  -size_len / 2, -size_len / 2, size_len / 2, size_len / 2;
