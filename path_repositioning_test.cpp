@@ -31,8 +31,8 @@ void DrawDshedLine(Mat img, const Point2f& initial_pt, const Point2f& end_pt, Sc
 }
 
 int main(int argc, char** argv) {
-    Mat back_img(Size(500, 300), CV_64FC3, Scalar(255, 255, 255));
-    int obs_num = 20;
+    Mat back_img(Size(500, 300), CV_64FC3, Scalar(255, 255, 255)), back_img_2;
+    int obs_num = 30;
     vector<PolygonObstacle> obs_vec = GenerateRandomObstacles(obs_num, back_img.size());
     for (int i = 4; i < obs_num + 4; i++) {
         PolygonObstacle cur_obs = obs_vec[i];
@@ -48,10 +48,12 @@ int main(int argc, char** argv) {
         DrawDshedLine(back_img, extended_visibility_check_res.second[i][0], extended_visibility_check_res.second[i][1], Scalar(0, 0, 0), 2);
     cout << "Visibility check passage res: " << visibility_check_res.first.size() 
          << "\nExtended visibility check passage res: " << extended_visibility_check_res.first.size() << '\n';
+    back_img_2 = back_img.clone();
     
     Point2f start = Point2f(1, 1), end = Point2f(back_img.size().width - 1, back_img.size().height - 51);
-    vector<Point2f> init_pts{start, Point2f(1, 50)}, target_pts{end, end + Point2f(0, 50)};
-    RRTStarPlanner planner_weight_cost(start, end, obs_vec, 15, 20, 10, back_img.size(), 0, 10);
+    vector<Point2f> init_pts{start, Point(1, 25), Point2f(1, 50)}, target_pts{end, end + Point2f(0, 25), end + Point2f(0, 50)};
+    int pivot_idx = 1;
+    RRTStarPlanner planner_weight_cost(init_pts[pivot_idx], target_pts[pivot_idx], obs_vec, 15, 20, 10, back_img.size(), 0, 10);
     bool path_planned = planner_weight_cost.Plan(back_img);
     vector<RRTStarNode*> planned_path_node;
     vector<Point2f> planned_path_pts;
@@ -59,7 +61,6 @@ int main(int argc, char** argv) {
         planned_path_node = planner_weight_cost.GetPath();
         planned_path_pts = planner_weight_cost.GetPathInPts();
         auto smooth_path = QuadraticBSplineSmoothing(planned_path_node);
-        // cout << "path node num: " << planned_path_ratio_cost.size() << " smooth node num: " << smooth_path_ratio_cost.size() << "\n";
         vector<int> passage_indices = RetrievePassedPassages(planned_path_node, planner_weight_cost.extended_visibility_passage_pts_);
         for (int passage_idx : passage_indices) {
             cout << planner_weight_cost.extended_visibility_passage_pair_[passage_idx][0] << "---" << planner_weight_cost.extended_visibility_passage_pair_[passage_idx][1] << '\n';
@@ -68,24 +69,22 @@ int main(int argc, char** argv) {
             // circle(back_img, intersection_pt[0], 4, Scalar(0, 0, 255), -1);
         }
 
-/*         vector<Point2f> reposition_pts = RepositionPivotPath(planned_path_pts, init_pts, target_pts, 0, planner_weight_cost.extended_visibility_passage_pts_);
-        for (Point2f& pt : reposition_pts)
-            if (pt.x > 0)
-                circle(back_img, pt, 4, Scalar(0, 0, 255), -1); */
-        // vector<Point2f> reposition_path = RepositionPivotPath(smooth_path, init_pts, target_pts, 0, planner_weight_cost.extended_visibility_passage_pts_);
-        // DrawPath(back_img, reposition_path, cv::viz::Color::red());
+        auto reposition_path = RepositionPivotPath(planned_path_pts, init_pts, target_pts, pivot_idx, planner_weight_cost.extended_visibility_passage_pts_, planner_weight_cost.obstacles_, back_img);
+        DrawPath(back_img, reposition_path, cv::viz::Color::green());
+        auto direct_path_set = GetTransferPathSet(planned_path_pts, init_pts, target_pts, pivot_idx);
+        for (auto& cur_path : direct_path_set)
+            DrawPath(back_img, cur_path, cv::viz::Color::blue());  
 
-        auto temp_res = RepositionPivotPath(smooth_path, init_pts, target_pts, 0, planner_weight_cost.extended_visibility_passage_pts_, planner_weight_cost.obstacles_, back_img);
-        auto temp_path_set = GeneratePathSetUpdated(smooth_path, init_pts, target_pts, 0, planner_weight_cost.extended_visibility_passage_pts_, planner_weight_cost.obstacles_, back_img);
-        DrawPath(back_img, temp_res, cv::viz::Color::red());
-        auto path_set = GetTransferPathSet(planned_path_pts, init_pts, target_pts, 0);
+        auto path_set = GeneratePathSetUpdated(planned_path_pts, init_pts, target_pts, pivot_idx, planner_weight_cost.extended_visibility_passage_pts_, planner_weight_cost.obstacles_, back_img_2);
+        auto direct_path_set_reposition = GetTransferPathSet(reposition_path, init_pts, target_pts, pivot_idx);
+        // for (auto cur_path : direct_path_set_reposition)
+        //     DrawPath(back_img_2, cur_path, cv::viz::Color::blue());
         for (auto& cur_path : path_set)
-            DrawPath(back_img, cur_path, cv::viz::Color::blue());
-        for (auto& cur_path : temp_path_set)
-            DrawPath(back_img, cur_path, cv::viz::Color::green());            
+            DrawPath(back_img_2, cur_path, cv::viz::Color::green());           
     }
 
-    imshow("RRT* path planning", back_img);
+    imshow("Repositioning path", back_img);
+    imshow("Path set generation", back_img_2);
     waitKey(0); 
-    return 0;    
+    return 0;
 }

@@ -353,8 +353,8 @@ float GetMinPassageWidthPassed(const vector<vector<Point2f>>& passage_pts, Point
 
 vector<PolygonObstacle> GenerateRandomObstacles(int obstacle_num, Size2f config_size = Size2f(640, 480), 
                                                 float size_len = 30) {
-    if (obstacle_num <= 0) {
-        cout << "The number of obstacles to be geenrated should be positive.\n";
+    if (obstacle_num < 0) {
+        cout << "The number of obstacles to be geenrated should be nonnegative.\n";
         return {};
     }
 

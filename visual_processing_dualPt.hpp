@@ -46,7 +46,7 @@ class LK_Tracker {
 public: 
     string window_to_track_;
     TermCriteria termiantion_criteria_;
-    static const int points_num_ = 2;  // Determination of Jd size needs a constexpr argument.
+    static const int points_num_ = 5;  // Determination of Jd size needs a constexpr argument.
     vector<Point2f> points_[2];
     vector<Point2f> target_points_;
     vector<Point2f> ee_points_[2];
@@ -98,13 +98,12 @@ public:
             add_remove_target_pt = false;
         }
 
-        if (!points_[0].empty())
+/*         if (!points_[0].empty())
             InvokeLK(points_[0], points_[1], image, points_color_);      
         if (!ee_points_[0].empty())
             InvokeLK(ee_points_[0], ee_points_[1], image, ee_points_color_);
 
-        // cv::swap(pre_gray_img_, next_gray_img_); // Will just change the data area img points to.
-        next_gray_img_.copyTo(pre_gray_img_);
+        next_gray_img_.copyTo(pre_gray_img_); */
     } 
 
     void InvokeLK(vector<Point2f>& pre_pts, vector<Point2f>& next_pts, Mat& display_img, Scalar& pt_color) {

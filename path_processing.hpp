@@ -807,13 +807,13 @@ pair<vector<Point2f>, vector<int>> GetPathSetIntersectionsOnPassageLine(const ve
 }
 
 pair<vector<int>, vector<Point2f>> GetIntersectionIdxPtsWithPivotRef(const vector<Point2f>& pivot_path, 
-                                                        const vector<float>& accumulated_path_length,
-                                                        const vector<Point2f>& initial_pts, 
-                                                        const vector<Point2f>& target_pts, 
-                                                        const int pivot_idx,
-                                                        const vector<Point2f>& passage_pts,
-                                                        Point2f pivot_intersection_pt, 
-                                                        int pivot_intersection_path_idx) {
+                                                                const vector<float>& accumulated_path_length,
+                                                                const vector<Point2f>& initial_pts, 
+                                                                const vector<Point2f>& target_pts, 
+                                                                const int pivot_idx,
+                                                                const vector<Point2f>& passage_pts,
+                                                                Point2f pivot_intersection_pt, 
+                                                                int pivot_intersection_path_idx) {
     int pt_num = initial_pts.size();
     vector<int> res_idx(pt_num, 0);
     vector<Point2f> res_intersection_pts(pt_num);
@@ -866,7 +866,7 @@ pair<vector<int>, vector<Point2f>> GetIntersectionIdxPtsWithPivotRef(const vecto
     return make_pair(res_idx, res_intersection_pts);
 }
 
-vector<Point2f> UpdateChordByTubeGeometry(const vector<Point2f>& pivot_path, 
+pair<vector<int>, vector<Point2f>> UpdateChordByTubeGeometry(const vector<Point2f>& pivot_path, 
                                         const vector<float>& accumulated_path_length,
                                         const vector<Point2f>& initial_pts, 
                                         const vector<Point2f>& target_pts, 
@@ -874,7 +874,9 @@ vector<Point2f> UpdateChordByTubeGeometry(const vector<Point2f>& pivot_path,
                                         const vector<Point2f>& passage_pts,
                                         Point2f pivot_intersection_pt, 
                                         int pivot_intersection_path_idx) {
+    vector<int> res_idx(initial_pts.size());
     vector<Point2f> res_pts(initial_pts.size());
+    res_idx[pivot_idx] = pivot_idx;
     res_pts[pivot_idx] = pivot_intersection_pt;
 
     Point2f prev_pivot_path_pt = pivot_path[pivot_intersection_path_idx],
@@ -901,6 +903,7 @@ vector<Point2f> UpdateChordByTubeGeometry(const vector<Point2f>& pivot_path,
                 if (SegmentIntersection(cur_path_pos_1, cur_path_pos_2, extended_local_width_pt[0], extended_local_width_pt[1]) == true) {
                     Point2f cur_intersection_pt = GetSegmentsIntersectionPt(cur_path_pos_1, cur_path_pos_2, 
                                                                 extended_local_width_pt[0], extended_local_width_pt[1]);
+                    res_idx[pt_idx] = left_idx;
                     res_pts[pt_idx] = cur_intersection_pt;
                     break;
                 }
@@ -914,6 +917,7 @@ vector<Point2f> UpdateChordByTubeGeometry(const vector<Point2f>& pivot_path,
                 if (SegmentIntersection(cur_path_pos_1, cur_path_pos_2, extended_local_width_pt[0], extended_local_width_pt[1]) == true) {
                     Point2f cur_intersection_pt = GetSegmentsIntersectionPt(cur_path_pos_1, cur_path_pos_2, 
                                                                 extended_local_width_pt[0], extended_local_width_pt[1]);
+                    res_idx[pt_idx] = right_idx;
                     res_pts[pt_idx] = cur_intersection_pt;
                     break;
                 }
@@ -952,7 +956,7 @@ vector<Point2f> UpdateChordByTubeGeometry(const vector<Point2f>& pivot_path,
         }
         tube_pt += pivot_intersection_pt;
     }
-    return res_pts;
+    return make_pair(res_idx, res_pts);
 }
 
 vector<Point2f> RepositionPivotPath(const vector<Point2f>& pivot_path, 
@@ -976,7 +980,7 @@ vector<Point2f> RepositionPivotPath(const vector<Point2f>& pivot_path,
     for (int i = 0; i < passed_passage_indices.size(); i++) {
         vector<Point2f> cur_passage_pts = passage_pts[passed_passage_indices[i]];
         pair<vector<Point2f>, vector<int>> cur_intersection_pts_indices = GetPathSetIntersectionsOnPassageLine(pivot_path, initial_pts, 
-                                                                                                        target_pts, pivot_idx, cur_passage_pts);
+                                                                                                            target_pts, pivot_idx, cur_passage_pts);
         vector<Point2f> cur_intersection_pts = cur_intersection_pts_indices.first;
         vector<Point2f> chord_ends = GetEndsOfColinearPts(cur_intersection_pts);
  
@@ -992,21 +996,23 @@ vector<Point2f> RepositionPivotPath(const vector<Point2f>& pivot_path,
         if (true || some_intersection_pt_not_found == true) {
             Point2f pivot_intersection_pt = cur_intersection_pts[pivot_idx];
             int pivot_intersection_idx = cur_intersection_pts_indices.second[pivot_idx];
-            cur_intersection_pts = UpdateChordByTubeGeometry(pivot_path, accumulated_path_length, 
+            pair<vector<int>, vector<Point2f>> tube_check_res = UpdateChordByTubeGeometry(pivot_path, accumulated_path_length, 
                                                             initial_pts, target_pts, pivot_idx, 
                                                             cur_passage_pts, 
                                                             pivot_intersection_pt, pivot_intersection_idx);
+            cur_intersection_pts = tube_check_res.second;
+            // cur_intersection_pts_indices.second = tube_check_res.first;
             chord_ends = GetEndsOfColinearPts(cur_intersection_pts);
         }
-
+        line(back_img, chord_ends[0], chord_ends[1], Scalar(0, 0, 255), 2);
         if (OnSegment(cur_passage_pts[0], cur_passage_pts[1], chord_ends[0]) && OnSegment(cur_passage_pts[0], cur_passage_pts[1], chord_ends[1])) {
             cout << "No change\n";
             adjust_path_indices[i] = cur_intersection_pts_indices.second[pivot_idx];
             adjust_intersection_pts[i] = cur_intersection_pts[pivot_idx];
             adjust_reference_pts[i] = cur_intersection_pts[pivot_idx];
-            circle(back_img, chord_ends[0], 4, Scalar(0, 0, 0), -1);
+/*             circle(back_img, chord_ends[0], 4, Scalar(0, 0, 0), -1);
             circle(back_img, chord_ends[1], 4, Scalar(0, 0, 0), -1);    
-            line(back_img, chord_ends[0], chord_ends[1], Scalar(0, 0, 0), 2);        
+            line(back_img, chord_ends[0], chord_ends[1], Scalar(0, 0, 0), 2);   */      
             continue;
         }
 
@@ -1043,10 +1049,10 @@ vector<Point2f> RepositionPivotPath(const vector<Point2f>& pivot_path,
         adjust_reference_pts[i] = cur_reference_pt;
         adjust_types[i] = 1;
 
-        circle(back_img, chord_ends[0], 4, Scalar(0, 0, 0), -1);
+/*         circle(back_img, chord_ends[0], 4, Scalar(0, 0, 0), -1);
         circle(back_img, chord_ends[1], 4, Scalar(0, 0, 0), -1);
         line(back_img, chord_ends[0], chord_ends[1], Scalar(0, 0, 0), 2);
-        circle(back_img, cur_reference_pt, 4, Scalar(0, 0, 255), -1);
+        circle(back_img, cur_reference_pt, 4, Scalar(0, 0, 255), -1); */
     }
     // return adjust_reference_pts;
 
@@ -1065,9 +1071,7 @@ vector<Point2f> RepositionPivotPath(const vector<Point2f>& pivot_path,
     }
     augment_adjust_path_indices.push_back(pivot_path.size() - 1);
     augment_adjust_reference_pts.push_back(pivot_path.back());
-    augment_adjust_intersection_pts.push_back(pivot_path.back());
-    // return augment_adjust_reference_pts;
-    // return make_pair(augment_adjust_intersection_pts, augment_adjust_reference_pts);   
+    augment_adjust_intersection_pts.push_back(pivot_path.back()); 
     
     vector<Point2f> reposition_pivot_path(pivot_path.size());
     reposition_pivot_path[0] = pivot_path[0];
@@ -1118,6 +1122,7 @@ vector<vector<Point2f>> GeneratePathSetUpdated(const vector<Point2f>& pivot_path
     vector<int> adjust_types(passed_passage_num, 0);
     float adjust_clearance_small = 2, adjust_clearance_large = 5;
 
+    cout << "\n\nTotal passed passage number: " << passed_passage_num << "\n";
     int pivot_path_idx = 0;
     for (int passage_idx = 0; passage_idx < passed_passage_num; passage_idx++) {
         vector<Point2f> cur_passage_pts = passage_pts[passed_passage_indices[passage_idx]];
@@ -1133,40 +1138,48 @@ vector<vector<Point2f>> GeneratePathSetUpdated(const vector<Point2f>& pivot_path
                                                                             initial_pts, target_pts, pivot_idx, 
                                                                             cur_passage_pts, pivot_intersection_pt,
                                                                             pivot_intersection_idx);
-                cout << "intersection idx: ";
-                for (auto& idx : intersection_info_res.first) 
-                        cout << idx << " ";
-                cout << '\n';
-                
                 adjust_path_indices[passage_idx] = intersection_info_res.first;
                 adjust_intersection_pts[passage_idx] = intersection_info_res.second;
                 break;
             }
 
         vector<Point2f> cur_tube_intersection_pts = UpdateChordByTubeGeometry(reposition_pivot_path, accumulated_path_length, 
-                                                                        initial_pts, target_pts, pivot_idx, 
-                                                                        cur_passage_pts, 
-                                                                        pivot_intersection_pt, pivot_intersection_idx);
-        vector<Point2f> chord_ends = GetEndsOfColinearPts(cur_tube_intersection_pts);  
+                                                                            initial_pts, target_pts, pivot_idx, 
+                                                                            cur_passage_pts, 
+                                                                            pivot_intersection_pt, 
+                                                                            pivot_intersection_idx).second;
+        vector<Point2f> tube_chord_ends = GetEndsOfColinearPts(cur_tube_intersection_pts);  
+        vector<Point2f> pure_chord_ends = GetEndsOfColinearPts(adjust_intersection_pts[passage_idx]);
+        line(back_img, tube_chord_ends[0], tube_chord_ends[1], Scalar(0, 0, 255), 2);
+        circle(back_img, tube_chord_ends[0], 4, Scalar(0, 0, 255), -1);   
+        circle(back_img, tube_chord_ends[1], 4, Scalar(0, 0, 255), -1);   
+        // line(back_img, pure_chord_ends[0], pure_chord_ends[1], Scalar(0, 255, 0), 2);
 
-        if (OnSegment(cur_passage_pts[0], cur_passage_pts[1], chord_ends[0]) && OnSegment(cur_passage_pts[0], cur_passage_pts[1], chord_ends[1])) {
-            adjust_reference_pts[passage_idx] = adjust_intersection_pts[passage_idx]; 
+        if (OnSegment(cur_passage_pts[0], cur_passage_pts[1], tube_chord_ends[0]) && OnSegment(cur_passage_pts[0], cur_passage_pts[1], tube_chord_ends[1])) {
+            if (OnSegment(cur_passage_pts[0], cur_passage_pts[1], pure_chord_ends[0]) && OnSegment(cur_passage_pts[0], cur_passage_pts[1], pure_chord_ends[1])) {
+                adjust_reference_pts[passage_idx] = adjust_intersection_pts[passage_idx];
+                cout << "No change 1\n";
+            }
+            else {
+                adjust_reference_pts[passage_idx] = cur_tube_intersection_pts; 
+                cout << "No change 2\n";
+            }
             continue;           
         }
         
         adjust_types[passage_idx] = 1;
         float passage_len = cv::norm(cur_passage_pts[1] - cur_passage_pts[0]),
-              chord_len = cv::norm(chord_ends[1] - chord_ends[0]);
+              chord_len = cv::norm(tube_chord_ends[1] - tube_chord_ends[0]);
         Point2f passage_direction_1_2 = (cur_passage_pts[1] - cur_passage_pts[0]) / passage_len,
-                chord_direction_1_2 = (chord_ends[1] - chord_ends[0]) / chord_len;
+                chord_direction_1_2 = (tube_chord_ends[1] - tube_chord_ends[0]) / chord_len;
         float direction_inner_product = passage_direction_1_2.dot(chord_direction_1_2);
         if (direction_inner_product < 0)
-            std::swap(chord_ends[0], chord_ends[1]);
+            std::swap(tube_chord_ends[0], tube_chord_ends[1]);
         
         if (passage_len <= chord_len) {
             cout << "Compression\n";
             for (int pt_idx = 0; pt_idx < pt_num; pt_idx++) {
-                Point2f dist_vec_to_chord_end_1 = cur_tube_intersection_pts[pt_idx] - chord_ends[0];
+                Point2f dist_vec_to_chord_end_1 = cur_tube_intersection_pts[pt_idx] - tube_chord_ends[0];
                 float dist_to_chord_end_1 = cv::norm(dist_vec_to_chord_end_1);
                 Point2f cur_reference_pt = cur_passage_pts[0] + adjust_clearance_small * passage_direction_1_2 + 
                                         dist_to_chord_end_1 / chord_len * (passage_len - 2 * adjust_clearance_small) * passage_direction_1_2;
@@ -1176,11 +1189,11 @@ vector<vector<Point2f>> GeneratePathSetUpdated(const vector<Point2f>& pivot_path
         else {
             cout << "Translation\n";
             Point2f reference_passage_end = cur_passage_pts[0], 
-                    reference_chord_end = chord_ends[0],
+                    reference_chord_end = tube_chord_ends[0],
                     reference_direction = passage_direction_1_2;
-            if (OnSegment(chord_ends[0], chord_ends[1], cur_passage_pts[1])) {
+            if (OnSegment(tube_chord_ends[0], tube_chord_ends[1], cur_passage_pts[1]) == true) {
                 reference_passage_end = cur_passage_pts[1];
-                reference_chord_end = chord_ends[1];
+                reference_chord_end = tube_chord_ends[1];
                 reference_direction *= -1;
             } 
             for (int pt_idx = 0; pt_idx < pt_num; pt_idx++) {
@@ -1210,6 +1223,7 @@ vector<vector<Point2f>> GeneratePathSetUpdated(const vector<Point2f>& pivot_path
 
     vector<vector<Point2f>> res_path_set(pt_num, reposition_pivot_path);
     for (int pt_idx = 0; pt_idx < pt_num; pt_idx++) {
+        cout << "\n";
         if (pt_idx == pivot_idx) 
             continue;
 
@@ -1228,8 +1242,9 @@ vector<vector<Point2f>> GeneratePathSetUpdated(const vector<Point2f>& pivot_path
         for (int i = 0; i < augment_adjust_path_indices.size() - 1; i++) {
             int start_pivot_path_idx = augment_adjust_path_indices[i][pt_idx] + 1,
                 end_pivot_path_idx = augment_adjust_path_indices[i + 1][pt_idx];  // path point index before the reference pt
-            cout << "start idx: " << start_pivot_path_idx << " end idx: " << end_pivot_path_idx << '\n';
-
+            if (start_pivot_path_idx > end_pivot_path_idx)
+                continue;
+                
             Point2f prev_reference_pt = augment_adjust_reference_pts[i][pt_idx], 
                     next_reference_pt = augment_adjust_reference_pts[i + 1][pt_idx], 
                     prev_intersection_pt = augment_adjust_intersection_pts[i][pt_idx],
@@ -1241,6 +1256,8 @@ vector<vector<Point2f>> GeneratePathSetUpdated(const vector<Point2f>& pivot_path
                 path_len_diff = next_path_len_parameter - prev_path_len_parameter;
             Point2f prev_shift = prev_reference_pt - prev_intersection_pt, 
                     next_shift = next_reference_pt - next_intersection_pt; 
+            cout << "start idx: " << start_pivot_path_idx << " end idx: " << end_pivot_path_idx << '\n'
+                 <<  "previous and next shift: " << prev_shift << " " << next_shift << "\n";                 
             for (int j = start_pivot_path_idx; j <= end_pivot_path_idx; j++) {
                 float cur_path_len_parameter = cur_accumulated_path_length[j], 
                     cur_ratio = (cur_path_len_parameter - prev_path_len_parameter) / path_len_diff;

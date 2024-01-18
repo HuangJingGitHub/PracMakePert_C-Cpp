@@ -24,6 +24,7 @@ private:
     const string kWindowName = "Main Window in service node";
     Mat cur_gray_img_;
     bool path_set_planned_ = false;
+    RRTStarPlanner* planner_ptr_;
     LK_Tracker tracker_;
     ImgExtractor extractor_;
     PathSetTracker path_set_tracker_;
@@ -73,29 +74,32 @@ public:
             // target_feedback_pts_ = initial_feedback_pts;
             // target_feedback_pts_[0] += Point2f(60, -300);
             // target_feedback_pts_[1] += Point2f(-25, -300);
-            
             target_feedback_pts_ = tracker_.target_points_;
                    
             // path_set_ = GeneratePathSetInGeneralCondition(initial_feedback_pts, target_feedback_pts_, pivot_idx, feedback_pts_radius,
             //                                            extractor_.obs_polygons_, cv_ptr->image);
-            
-            RRTStarPlanner planner_weight_cost(initial_feedback_pts[pivot_idx], target_feedback_pts_[pivot_idx], extractor_.obs_polygons_, 
-                                                15, 20, 10, cv_ptr->image.size(), 0, 100);
+            vector<PolygonObstacle> obstacle_vec = GenerateRandomObstacles(0, cv_ptr->image.size());  // Add for boundaries as obstacles
+            for (auto obs : extractor_.obs_polygons_)
+                obstacle_vec.push_back(obs);
+
+            planner_ptr_ = new RRTStarPlanner(initial_feedback_pts[pivot_idx], target_feedback_pts_[pivot_idx], obstacle_vec, 15, 20, 10, cv_ptr->image.size(), 0, 100);
             bool pivot_path_planned = false;
             while (pivot_path_planned == false) 
-                pivot_path_planned = planner_weight_cost.Plan(cv_ptr->image);
+                pivot_path_planned = planner_ptr_->Plan(cv_ptr->image);
             
-            vector<Point2f> planned_pivot_path_pts = planner_weight_cost.GetPathInPts();
-            path_set_ = GeneratePathSetUpdated(planned_pivot_path_pts, initial_feedback_pts, target_feedback_pts_, pivot_idx, 
-                                            planner_weight_cost.extended_visibility_passage_pts_, planner_weight_cost.obstacles_, cv_ptr->image);
+            vector<Point2f> planned_pivot_path_pts = planner_ptr_->GetPathInPts();
+            vector<Point2f> smooth_path = QuadraticBSplineSmoothing(planner_ptr_->GetPath());
+            path_set_ = GeneratePathSetUpdated(smooth_path, initial_feedback_pts, target_feedback_pts_, pivot_idx, 
+                                            planner_ptr_->extended_visibility_passage_pts_, planner_ptr_->obstacles_, cv_ptr->image);
+            path_set_ = GetTransferPathSet(smooth_path, initial_feedback_pts, target_feedback_pts_, pivot_idx);                                            
             path_set_planned_ = !path_set_.empty();
             
             if (path_set_planned_) {
                 path_set_tracker_ = PathSetTracker(path_set_);
-                for (vector<Point2f>& cur_path : path_set_) {
-                    vector<float> cur_path_local_width = GetLocalPathWidth2D(cur_path, extractor_.obs_polygons_);
-                    path_local_width_set_.push_back(cur_path_local_width);
-                }
+                // for (vector<Point2f>& cur_path : path_set_) {
+                //     vector<float> cur_path_local_width = GetLocalPathWidth2D(cur_path, extractor_.obs_polygons_);
+                //     path_local_width_set_.push_back(cur_path_local_width);
+                // }
                 // SavePathData();
             }
         }
@@ -118,6 +122,10 @@ public:
                 for (int i = 0; i < vertex_num; i++)
                     line(cv_ptr->image, obs.vertices[i], obs.vertices[(i + 1) % vertex_num], Scalar(0, 0, 255), 2);
             }
+            
+            for (int i = 0; i < planner_ptr_->extended_visibility_passage_pts_.size(); i++)
+                line(cv_ptr->image, planner_ptr_->extended_visibility_passage_pts_[i][0], planner_ptr_->extended_visibility_passage_pts_[i][1], Scalar(255, 0, 0), 2);
+
         }
 
         if (plan_ee_path_request_ && ee_path_singleton_planned_ == false) {
