@@ -11,7 +11,6 @@
 // #include <tuple>
 #include <opencv2/core.hpp>
 #include <opencv2/highgui.hpp>
-
 #include <eigen3/Eigen/Dense>
 
 using namespace cv;
