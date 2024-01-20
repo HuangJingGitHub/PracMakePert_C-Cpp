@@ -13,6 +13,19 @@
 using namespace std;
 using namespace cv;
 
+void DrawDshedLine(Mat img, const Point2f& initial_pt, const Point2f& end_pt, Scalar color = Scalar(0, 0, 0), int thickness = 2, float dash_len = 5) {
+    float line_len = cv::norm(end_pt - initial_pt);
+    Point2f line_direction = (end_pt -initial_pt) / line_len;
+    int dash_num = line_len / dash_len;
+    if (line_len < 2 * dash_len) 
+        line(img, initial_pt, initial_pt + dash_len * line_direction, color, thickness);
+    for (int i = 0; i <= dash_num; i += 2) 
+        if (i == dash_num)
+            line(img, initial_pt + i * dash_len * line_direction, end_pt, color, thickness);
+        else
+            line(img, initial_pt + i * dash_len * line_direction, initial_pt + (i + 1) * dash_len * line_direction, color, thickness);
+}
+
 class VisualServiceCore {
 private:
     ros::NodeHandle node_handle_;
@@ -43,7 +56,7 @@ public:
     VisualServiceCore(string ros_image_stream, 
                 vector<int> DO_HSV_thresholds = vector<int>(6, 0)): image_trans_(node_handle_) {
         tracker_ = LK_Tracker(kWindowName);
-        extractor_ = ImgExtractor(3, kWindowName, DO_HSV_thresholds);
+        extractor_ = ImgExtractor(10, kWindowName, DO_HSV_thresholds);
         image_subscriber_ = image_trans_.subscribe(ros_image_stream, 30, &VisualServiceCore::ProcessImg, this);
         namedWindow(kWindowName);
     }
@@ -66,10 +79,10 @@ public:
         extractor_.Extract(cv_ptr->image);
         
         vector<Point2f> initial_feedback_pts = tracker_.GetFeedbackPoints();
+        int pivot_idx = 2;
         if (!path_set_planned_ && (!initial_feedback_pts.empty()) 
             && extractor_.obs_extract_succeed_ 
             && tracker_.target_points_.size() == tracker_.points_num_) {
-            int pivot_idx = 0;
             float feedback_pts_radius = 30;
             // target_feedback_pts_ = initial_feedback_pts;
             // target_feedback_pts_[0] += Point2f(60, -300);
@@ -78,7 +91,7 @@ public:
                    
             // path_set_ = GeneratePathSetInGeneralCondition(initial_feedback_pts, target_feedback_pts_, pivot_idx, feedback_pts_radius,
             //                                            extractor_.obs_polygons_, cv_ptr->image);
-            vector<PolygonObstacle> obstacle_vec = GenerateRandomObstacles(0, cv_ptr->image.size());  // Add for boundaries as obstacles
+            vector<PolygonObstacle> obstacle_vec = GenerateRandomObstacles(0, cv_ptr->image.size());  // Add four boundaries as obstacles
             for (auto obs : extractor_.obs_polygons_)
                 obstacle_vec.push_back(obs);
 
@@ -91,7 +104,7 @@ public:
             vector<Point2f> smooth_path = QuadraticBSplineSmoothing(planner_ptr_->GetPath());
             path_set_ = GeneratePathSetUpdated(smooth_path, initial_feedback_pts, target_feedback_pts_, pivot_idx, 
                                             planner_ptr_->extended_visibility_passage_pts_, planner_ptr_->obstacles_, cv_ptr->image);
-            path_set_ = GetTransferPathSet(smooth_path, initial_feedback_pts, target_feedback_pts_, pivot_idx);                                            
+            // path_set_ = GetTransferPathSet(smooth_path, initial_feedback_pts, target_feedback_pts_, pivot_idx);                                            
             path_set_planned_ = !path_set_.empty();
             
             if (path_set_planned_) {
@@ -106,25 +119,22 @@ public:
         else if (path_set_planned_) {
             tracker_.UpdateJd();
             projection_pts_on_path_set_ = path_set_tracker_.ProjectPtsToPathSet(tracker_.GetFeedbackPoints());
-            for (auto& path : path_set_) {
-                for (int i = 0; i < int(path.size() - 1); i++)
-                    line(cv_ptr->image, path[i], path[i + 1], Scalar(0, 250, 250), 2);
+            for (int i = 0; i < path_set_.size(); i++) {
+                if (i == pivot_idx)
+                    continue;
+                for (int j = 0; j < path_set_[i].size() - 1; j++)
+                    line(cv_ptr->image, path_set_[i][j], path_set_[i][j + 1], Scalar(0, 250, 250), 2);
             }
-            arrowedLine(cv_ptr->image, tracker_.points_[0][0], projection_pts_on_path_set_[0],
-                        Scalar(0, 0, 255), 2, 8, 0, 0.05);
-            circle(cv_ptr->image, path_set_[0].back(), 5, Scalar(0, 255, 0), 2);
-            arrowedLine(cv_ptr->image, tracker_.points_[0][1], projection_pts_on_path_set_[1],
-                        Scalar(0, 0, 255), 2, 8, 0, 0.05);
-            circle(cv_ptr->image, path_set_[1].back(), 5, Scalar(0, 255, 0), 2);
-
-            for (auto& obs : extractor_.obs_polygons_) {
-                int vertex_num = obs.vertices.size();
-                for (int i = 0; i < vertex_num; i++)
-                    line(cv_ptr->image, obs.vertices[i], obs.vertices[(i + 1) % vertex_num], Scalar(0, 0, 255), 2);
+            for (int i = 0; i < path_set_[pivot_idx].size() - 1; i++)
+                    line(cv_ptr->image, path_set_[pivot_idx][i], path_set_[pivot_idx][i + 1], Scalar(0, 250, 0), 2);            
+            for (int i = 0; i < tracker_.points_num_; i++) {
+                arrowedLine(cv_ptr->image, tracker_.points_[0][i], projection_pts_on_path_set_[i],
+                            Scalar(0, 0, 255), 2, 8, 0, 0.05);
+                circle(cv_ptr->image, path_set_[i].back(), 5, Scalar(0, 255, 0), 2);
             }
             
             for (int i = 0; i < planner_ptr_->extended_visibility_passage_pts_.size(); i++)
-                line(cv_ptr->image, planner_ptr_->extended_visibility_passage_pts_[i][0], planner_ptr_->extended_visibility_passage_pts_[i][1], Scalar(255, 0, 0), 2);
+                DrawDshedLine(cv_ptr->image, planner_ptr_->extended_visibility_passage_pts_[i][0], planner_ptr_->extended_visibility_passage_pts_[i][1], Scalar(0, 0, 0), 2);
 
         }
 
@@ -142,14 +152,12 @@ public:
         // if (extractor_.DO_extract_succeed_)
         //     drawContours(cv_ptr->image, extractor_.DO_contours_, extractor_.largest_DO_countor_idx_, Scalar(250, 0, 150), 1);
         if (extractor_.obs_extract_succeed_) {
-            for (int obs_idx = 1000; obs_idx < extractor_.obs_num_preset_; obs_idx++) {
-                for (int i = 0; i < extractor_.obs_polygons_[obs_idx].vertices.size() - 1; i++) 
-                    line(cv_ptr->image, extractor_.obs_polygons_[obs_idx].vertices[i], extractor_.obs_polygons_[obs_idx].vertices[i + 1],
-                        Scalar(0, 0, 255), 2);
-                line(cv_ptr->image, extractor_.obs_polygons_[obs_idx].vertices.front(), extractor_.obs_polygons_[obs_idx].vertices.back(),
-                    Scalar(0, 0, 255), 2);
+            for (auto& obs : extractor_.obs_polygons_) {
+                int vertex_num = obs.vertices.size();
+                for (int i = 0; i < vertex_num; i++)
+                    line(cv_ptr->image, obs.vertices[i], obs.vertices[(i + 1) % vertex_num], Scalar(0, 0, 255), 2);
             }
-            
+
             if (tracker_.ee_points_[0].size() == 2) {
                 ee_to_obs_obs_pt_ = vector<Point2f>(2);
                 float min_ee_to_obs_distance_1 = FLT_MAX,
