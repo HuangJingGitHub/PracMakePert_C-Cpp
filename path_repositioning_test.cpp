@@ -61,7 +61,7 @@ int main(int argc, char** argv) {
         planned_path_node = planner_weight_cost.GetPath();
         planned_path_pts = planner_weight_cost.GetPathInPts();
         auto smooth_path = QuadraticBSplineSmoothing(planned_path_node);
-        vector<int> passage_indices = RetrievePassedPassages(planned_path_node, planner_weight_cost.extended_visibility_passage_pts_);
+        vector<int> passage_indices = RetrievePassedPassages(planned_path_node, planner_weight_cost.extended_visibility_passage_pts_).first;
         for (int passage_idx : passage_indices) {
             cout << planner_weight_cost.extended_visibility_passage_pair_[passage_idx][0] << "---" << planner_weight_cost.extended_visibility_passage_pair_[passage_idx][1] << '\n';
             // auto intersection_pt = GetPathSetIntersectionsOnPassageLine(planned_path_pts, {start}, {end}, 0,  
@@ -75,12 +75,21 @@ int main(int argc, char** argv) {
         for (auto& cur_path : direct_path_set)
             DrawPath(back_img, cur_path, cv::viz::Color::blue());  
 
+        auto add_general_passage_res = AddGeneralPassagesSingleSide(planner_weight_cost.extended_visibility_passage_pair_, planner_weight_cost.extended_visibility_passage_pts_, 
+                                                                    planner_weight_cost.obstacles_, planned_path_pts);
+        cout << "Passage number before vs. after: " << planner_weight_cost.extended_visibility_passage_pts_.size() << " vs. " << add_general_passage_res.second.size() << "\n";
+        
         auto path_set = GeneratePathSetUpdated(planned_path_pts, init_pts, target_pts, pivot_idx, planner_weight_cost.extended_visibility_passage_pts_, planner_weight_cost.obstacles_, back_img_2);
+        // auto path_set = GeneratePathSetUpdated(planned_path_pts, init_pts, target_pts, pivot_idx, add_general_passage_res.second, planner_weight_cost.obstacles_, back_img_2);
         auto direct_path_set_reposition = GetTransferPathSet(reposition_path, init_pts, target_pts, pivot_idx);
         // for (auto cur_path : direct_path_set_reposition)
         //     DrawPath(back_img_2, cur_path, cv::viz::Color::blue());
         for (auto& cur_path : path_set)
-            DrawPath(back_img_2, cur_path, cv::viz::Color::green());           
+            DrawPath(back_img_2, cur_path, cv::viz::Color::green());     
+        for (int i = planner_weight_cost.extended_visibility_passage_pts_.size() + 1; i < add_general_passage_res.second.size(); i++) {
+            line(back_img_2, add_general_passage_res.second[i][0], add_general_passage_res.second[i][1], Scalar(255, 0, 0), 2);                 
+            cout << add_general_passage_res.second[i][0] << "---" << add_general_passage_res.second[i][1] << "\n";
+        }
     }
 
     imshow("Repositioning path", back_img);
