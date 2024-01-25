@@ -952,12 +952,14 @@ pair<vector<vector<int>>, vector<vector<Point2f>>> AddGeneralPassagesSingleSide(
                 
                 if (passage_pt_to_vertex_dist < min_dist_to_vertex - 0.1) {
                     min_dist_to_vertex = passage_pt_to_vertex_dist;
-                    pair<int, Point2f> temp_res = FindPassageEndonObstacles(obstacles, objective_obs.vertices[j], candidate_passage_end);
+                    pair<int, Point2f> temp_res = FindPassageEndonObstacles(obstacles, candidate_passage_virtual_start, candidate_passage_end);
                     vector<int> cur_res_passage_pair{objective_obs_idx, temp_res.first};
                     vector<Point2f> cur_res_passage_pts{objective_obs.vertices[j], temp_res.second};
                     
-                    augment_passage_pair.push_back(cur_res_passage_pair);
-                    augment_passage_pts.push_back(cur_res_passage_pts);
+                    if (temp_res.second.x > 0) {
+                        augment_passage_pair.push_back(cur_res_passage_pair);
+                        augment_passage_pts.push_back(cur_res_passage_pts);
+                    }
                 }
             }
         } 
