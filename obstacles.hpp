@@ -315,6 +315,32 @@ float MinDistanceToObstaclesVec(const vector<PolygonObstacle>& obstacles, Point2
     return res;
 }
 
+pair<int, Point2f> FindPassageEndonObstacles(const vector<PolygonObstacle>& obstacles, Point2f start_pt, Point2f virtual_end) {
+    int res_obs_idx = 0;
+    Point2f res_passage_end;
+    float min_passage_len = FLT_MAX;
+    for (int obs_idx = 0; obs_idx < obstacles.size(); obs_idx++) {
+        int obs_vertices_num = obstacles[obs_idx].vertices.size();
+        for (int i = 0; i < obs_vertices_num; i++) {
+            if (SegmentIntersection(obstacles[obs_idx].vertices[i], 
+                                    obstacles[obs_idx].vertices[(i + 1) % obs_vertices_num],
+                                    start_pt, virtual_end) == true) {
+                Point2f cur_passage_end = GetSegmentsIntersectionPt(obstacles[obs_idx].vertices[i], 
+                                                                    obstacles[obs_idx].vertices[(i + 1) % obs_vertices_num],
+                                                                    start_pt, virtual_end);
+                float cur_passage_len = cv::norm(cur_passage_end - start_pt);
+                if (cur_passage_len < min_passage_len) {
+                    min_passage_len = cur_passage_len;
+                    res_obs_idx = obs_idx;
+                    res_passage_end = cur_passage_end;
+                }
+            }
+        }
+    }
+
+    return make_pair(res_obs_idx, res_passage_end);
+}
+
 float GetMinPassageWidthPassed(const vector<PolygonObstacle>& obstacles, Point2f pt1, Point2f pt2) {
     // Return the min width of passages the segment pt1-pt2 passes. Return -1 if no passage is passed
     // Full search version
@@ -488,4 +514,5 @@ pair<vector<vector<int>>, vector<vector<Point2f>>> ExtendedVisibilityPassageChec
     }
     return make_pair(res_passage_pair, res_passage_pts);
 }
+
 #endif

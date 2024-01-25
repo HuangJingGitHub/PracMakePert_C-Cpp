@@ -871,19 +871,99 @@ pair<vector<int>, vector<Point2f>> GetIntersectionIdxPtsWithPivotRef(const vecto
 }
 
 pair<vector<vector<int>>, vector<vector<Point2f>>> AddGeneralPassagesSingleSide(const vector<vector<int>>& checked_passage_pair,
-                                                                        const vector<vector<Point2f>>& checked_passage_pts,
-                                                                        const vector<PolygonObstacle>& obstacles,
-                                                                        const vector<Point2f>& pivot_path) {
+                                                                            const vector<vector<Point2f>>& checked_passage_pts,
+                                                                            const vector<PolygonObstacle>& obstacles,
+                                                                            const vector<Point2f>& pivot_path) {
+    vector<vector<int>> augment_passage_pair = checked_passage_pair;
+    vector<vector<Point2f>> augment_passage_pts = checked_passage_pts;
     auto passage_passing_res = RetrievePassedPassages(pivot_path, checked_passage_pts);
     vector<int> passed_passage_indices = passage_passing_res.first,
                 pivot_path_intersection_indices = passage_passing_res.second;
     int passed_passage_num = passed_passage_indices.size();
     for (int i = 0; i < passed_passage_num; i++) {
         int pivot_path_intersection_idx = pivot_path_intersection_indices[i];
-        Point2f path_segment = pivot_path[pivot_path_intersection_idx + 1] - pivot_path[pivot_path_intersection_idx];
+        Point2f path_segment = pivot_path[pivot_path_intersection_idx + 1] - pivot_path[pivot_path_intersection_idx],
+                path_segment_direction = path_segment / cv::norm(path_segment),
+                extended_path_segment_pt_1 = pivot_path[pivot_path_intersection_idx] - path_segment_direction * 5,
+                extended_path_segment_pt_2 = pivot_path[pivot_path_intersection_idx + 1] + path_segment_direction * 5,
+                extended_path_segment = extended_path_segment_pt_2 - extended_path_segment_pt_1;
         
+        int passage_pair_idx = passed_passage_indices[i],
+            cur_obs_idx_1 = checked_passage_pair[passage_pair_idx][0],
+            cur_obs_idx_2 = checked_passage_pair[passage_pair_idx][1];
+        PolygonObstacle cur_obs_1 = obstacles[cur_obs_idx_1],
+                        cur_obs_2 = obstacles[cur_obs_idx_2];
+        Point2f obs_reference_pt_1 = cur_obs_1.vertices[0],
+                obs_extended_pt_dist_1 = obs_reference_pt_1 - extended_path_segment_pt_1;
+        
+        float cross_product_1 = obs_extended_pt_dist_1.x * extended_path_segment.y - obs_extended_pt_dist_1.y * extended_path_segment.x;
+        PolygonObstacle objective_obs;
+        int objective_obs_idx;
+        if (cross_product_1 > 0) {
+            objective_obs = cur_obs_1;
+            objective_obs_idx = cur_obs_idx_1;
+        }
+        else {
+            objective_obs = cur_obs_2;
+            objective_obs_idx = cur_obs_idx_2;
+        }
+        
+        vector<int> containing_passage_indices;
+        vector<Point2f> passage_pts_on_cur_obs,
+                        passage_pts_on_other_obs;
+        for (int j = 0; j < passed_passage_num; j++) {
+            int cur_passed_passage_idx = passed_passage_indices[j];
+            if (checked_passage_pair[cur_passed_passage_idx][0] == objective_obs_idx) {
+                containing_passage_indices.push_back(cur_passed_passage_idx);
+                passage_pts_on_cur_obs.push_back(checked_passage_pts[cur_passed_passage_idx][0]);
+                passage_pts_on_other_obs.push_back(checked_passage_pts[cur_passed_passage_idx][1]);
+            }
+            else if (checked_passage_pair[cur_passed_passage_idx][1] == objective_obs_idx) {
+                containing_passage_indices.push_back(cur_passed_passage_idx);
+                passage_pts_on_cur_obs.push_back(checked_passage_pts[cur_passed_passage_idx][1]);
+                passage_pts_on_other_obs.push_back(checked_passage_pts[cur_passed_passage_idx][0]);                
+            }
+        }
+        
+        int cur_obs_vertex_num = objective_obs.vertices.size();
+        vector<bool> is_vertex_occupied(cur_obs_vertex_num, false);
+        for (int j = 0; j < cur_obs_vertex_num; j++) {
+            for (int k = 0; k < passage_pts_on_cur_obs.size(); k++)
+                if (cv::norm(objective_obs.vertices[j] - passage_pts_on_cur_obs[k]) < 0.1) {
+                    is_vertex_occupied[j] = true;
+                    break;
+                }
+        }
+
+        for (int j = 0; j < cur_obs_vertex_num; j++) {
+            if (is_vertex_occupied[j] == true)
+                continue;
+            
+            float min_dist_to_vertex = FLT_MAX;
+            for (int k = 0; k < passage_pts_on_cur_obs.size(); k++) {
+                Point2f candidate_passage_direction = passage_pts_on_other_obs[k] - passage_pts_on_cur_obs[k];
+                candidate_passage_direction = candidate_passage_direction / cv::norm(candidate_passage_direction);
+                float passage_pt_to_vertex_dist = cv::norm(passage_pts_on_cur_obs[k] - objective_obs.vertices[j]);
+                
+                Point2f candidate_passage_virtual_start = objective_obs.vertices[j] + 5 * candidate_passage_direction,
+                        candidate_passage_end = objective_obs.vertices[j] + 200 * candidate_passage_direction;
+                if (ObstacleFree(objective_obs, candidate_passage_virtual_start, candidate_passage_end) == false)
+                    continue;
+                
+                if (passage_pt_to_vertex_dist < min_dist_to_vertex - 0.1) {
+                    min_dist_to_vertex = passage_pt_to_vertex_dist;
+                    pair<int, Point2f> temp_res = FindPassageEndonObstacles(obstacles, objective_obs.vertices[j], candidate_passage_end);
+                    vector<int> cur_res_passage_pair{objective_obs_idx, temp_res.first};
+                    vector<Point2f> cur_res_passage_pts{objective_obs.vertices[j], temp_res.second};
+                    
+                    augment_passage_pair.push_back(cur_res_passage_pair);
+                    augment_passage_pts.push_back(cur_res_passage_pts);
+                }
+            }
+        } 
     }
     
+    return make_pair(augment_passage_pair, augment_passage_pts);
 }
 
 pair<vector<int>, vector<Point2f>> UpdateChordByTubeGeometry(const vector<Point2f>& pivot_path, 
