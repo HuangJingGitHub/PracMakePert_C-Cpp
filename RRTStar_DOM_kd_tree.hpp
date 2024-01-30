@@ -83,7 +83,6 @@ public:
     RRTStarPlanner(const RRTStarPlanner&);
     RRTStarPlanner& operator=(const RRTStarPlanner&);
 
-
     bool Plan(Mat source_img, float interior_delta = 0.01, bool plan_in_interior = false) {
         srand(time(NULL));
         plan_scuess_ = false;
