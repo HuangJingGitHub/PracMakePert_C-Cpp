@@ -83,6 +83,7 @@ public:
     RRTStarPlanner(const RRTStarPlanner&);
     RRTStarPlanner& operator=(const RRTStarPlanner&);
 
+
     bool Plan(Mat source_img, float interior_delta = 0.01, bool plan_in_interior = false) {
         srand(time(NULL));
         plan_scuess_ = false;
@@ -101,8 +102,8 @@ public:
             }
 
             RRTStarNode* nearest_node = kd_tree_.FindNearestNode(rand_pos);
-            if (normSqr(nearest_node->pos - rand_pos) < radius_ * radius_ / 100)
-                continue;
+            // if (normSqr(nearest_node->pos - rand_pos) < radius_ * radius_ / 100)
+            //    continue;
 
             RRTStarNode* new_node = AddNewNode(nearest_node, rand_pos);
             if (PathObstacleFree(nearest_node, new_node)) {
@@ -171,16 +172,17 @@ public:
         }
 
         new_node->parent = min_cost_node;
+        min_cost_node->children.push_back(new_node);
         new_node->cost = min_cost;
-        new_node->min_passage_width = GetNewNodeMinPassageWidth(min_cost_node, new_node);
+        UpdateNewNodeMinCurPassageWidth(min_cost_node, new_node);
         // line(source_img, min_cost_node->pos, new_node->pos, Scalar(0, 0, 200), 1.5);
 
         for (auto near_node : near_set) {
             float new_near_node_cost = UpdatePassageEncodingCost(new_node, near_node);
             if (new_near_node_cost < near_node->cost && PathObstacleFree(near_node, new_node)) {
-                near_node->parent = new_node;
                 near_node->cost = new_near_node_cost;
-                near_node->min_passage_width = GetNewNodeMinPassageWidth(new_node, near_node);
+                UpdateNewNodeMinCurPassageWidth(new_node, near_node);
+                ChangeParent(near_node, new_node);
             }
         }
     }
@@ -257,8 +259,8 @@ public:
         return res;      
     }
 
-    float GetNewNodeMinPassageWidth(RRTStarNode* parent_node, RRTStarNode* new_node) {
-        float res = parent_node->min_passage_width;
+    void UpdateNewNodeMinCurPassageWidth(RRTStarNode* parent_node, RRTStarNode* new_node) {
+        new_node->min_passage_width = parent_node->min_passage_width;
         // float min_passage_width_new_edge_passes = GetMinPassageWidthPassed(obstacles_, parent_node->pos, new_node->pos);
         float min_passage_width_new_edge_passes;
         if (use_extended_vis_check_ == true)
@@ -266,10 +268,41 @@ public:
         else
             min_passage_width_new_edge_passes = GetMinPassageWidthPassed(pure_visibility_passage_pts_, parent_node->pos, new_node->pos);
 
-        if (min_passage_width_new_edge_passes < 0) 
-            return res;
-        else 
-            return min(res, min_passage_width_new_edge_passes);
+        new_node->cur_passage_width = min_passage_width_new_edge_passes;
+        if (min_passage_width_new_edge_passes > 0) 
+            new_node->min_passage_width = min(new_node->min_passage_width, min_passage_width_new_edge_passes);
+    }
+
+    void ChangeParent(RRTStarNode* child_node, RRTStarNode* new_parent) {
+        RRTStarNode* old_parent = child_node->parent;
+        if (old_parent != nullptr) {
+            for (auto it = old_parent->children.begin(); it != old_parent->children.end(); it++)
+                if (*it == child_node) {
+                    old_parent->children.erase(it);
+                    break;
+                }
+        }
+
+        child_node->parent = new_parent;
+        new_parent->children.push_back(child_node);
+        
+        queue<RRTStarNode*> node_level;
+        node_level.push(child_node);
+        while (node_level.empty() == false) {
+            RRTStarNode* cur_node = node_level.front();
+            node_level.pop();          
+            
+            for (auto& cur_child : cur_node->children) {
+                cur_child->min_passage_width = min(cur_child->min_passage_width, cur_node->min_passage_width);
+                if (cur_child->cur_passage_width < 0) 
+                    cur_child->cost = cur_node->cost + cv::norm(cur_node->pos - cur_child->pos);
+                else {
+                    cur_child->cost = cur_node->cost + passage_width_weight_ * cur_node->min_passage_width + cv::norm(cur_node->pos - cur_child->pos)
+                                    - passage_width_weight_ * cur_child->min_passage_width;
+                }
+                node_level.push(cur_child);
+            }
+        }
     }
 
     vector<RRTStarNode*> GetPath() {
