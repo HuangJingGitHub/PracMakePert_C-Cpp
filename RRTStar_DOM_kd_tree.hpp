@@ -7,6 +7,7 @@
 #include <iostream>
 #include <vector>
 #include <queue>
+#include <unordered_set>
 #include <algorithm>
 #include <string>
 #include <opencv2/core.hpp>
@@ -39,6 +40,7 @@ public:
     kdTree kd_tree_;
     int MAX_GRAPH_SIZE = 10000;
     int CUR_GRAPH_SIZE = 0;
+    int update_cost_cnt_ = 0;
     bool plan_scuess_ = false;
 
     RRTStarPlanner(): start_node_(nullptr), target_node_(nullptr) {}
@@ -61,7 +63,7 @@ public:
         start_node_ = new RRTStarNode(start);
         target_node_ = new RRTStarNode(target);
         kd_tree_.Add(start_node_);
-        CUR_GRAPH_SIZE++;
+        //CUR_GRAPH_SIZE++;
 
         auto pure_visibility_check_res = PureVisibilityPassageCheck(obstacles_);
         pure_visibility_passage_pair_ = pure_visibility_check_res.first;
@@ -96,16 +98,21 @@ public:
             rand_pos.x = rand() / div_width;
             rand_pos.y = rand() / div_height;
 
-            if (CUR_GRAPH_SIZE % 50 == 0) {
-                rand_pos = target_pos_;
+            if (CUR_GRAPH_SIZE % (MAX_GRAPH_SIZE / 20) == 0) {
+                rand_pos = target_pos_ + rand_pos / cv::norm(rand_pos);
                 CUR_GRAPH_SIZE++;
             }
+            // Do not directly use rand_pos = target_pos_, but with small random shift. 
+            // Note it is important to filter out identical sample positions, especially when target biasing is used.
+            // When assigning rand_pos as target_pos_, the same node position will be generated if there is a nearest_node with a distance 
+            // smaller than step_len_ to target_pos_. This will form a loop when assigning parent and children, and finally 
+            // resulting infinite loop in descendent cost update by BFS.
 
-            RRTStarNode* nearest_node = kd_tree_.FindNearestNode(rand_pos);
-            // if (normSqr(nearest_node->pos - rand_pos) < radius_ * radius_ / 100)
+            RRTStarNode* nearest_node = kd_tree_.FindNearestNode(rand_pos);           
+            // if (normSqr(nearest_node->pos - rand_pos) < 1e-4)
             //    continue;
 
-            RRTStarNode* new_node = AddNewNode(nearest_node, rand_pos);
+            RRTStarNode* new_node = GenerateNewNode(nearest_node, rand_pos);
             if (PathObstacleFree(nearest_node, new_node)) {
                 if (plan_in_interior)
                     if (MinDistanceToObstaclesVec(obstacles_, new_node->pos) < interior_delta) {
@@ -144,9 +151,13 @@ public:
         return plan_scuess_;
     }
 
-    RRTStarNode* AddNewNode(RRTStarNode* nearest_node, Point2f& rand_pos) {
+    RRTStarNode* GenerateNewNode(RRTStarNode* nearest_node, Point2f& rand_pos) {
         Point2f direction = (rand_pos - nearest_node->pos) / cv::norm((rand_pos - nearest_node->pos));
-        Point2f new_pos = nearest_node->pos + (direction * step_len_);
+        Point2f new_pos = nearest_node->pos + step_len_ * direction;
+        new_pos.x = max((float)0.0, new_pos.x);
+        new_pos.x = min(config_size_.width, new_pos.x);
+        new_pos.y = max((float)0.0, new_pos.y);
+        new_pos.y = min(config_size_.height, new_pos.y);
         RRTStarNode* new_node = new RRTStarNode(new_pos);
         return new_node;
     }
@@ -178,6 +189,9 @@ public:
         // line(source_img, min_cost_node->pos, new_node->pos, Scalar(0, 0, 200), 1.5);
 
         for (auto near_node : near_set) {
+            if (near_node == min_cost_node)
+                continue;
+
             float new_near_node_cost = UpdatePassageEncodingCost(new_node, near_node);
             if (new_near_node_cost < near_node->cost && PathObstacleFree(near_node, new_node)) {
                 near_node->cost = new_near_node_cost;
@@ -275,31 +289,31 @@ public:
 
     void ChangeParent(RRTStarNode* child_node, RRTStarNode* new_parent) {
         RRTStarNode* old_parent = child_node->parent;
-        if (old_parent != nullptr) {
-            for (auto it = old_parent->children.begin(); it != old_parent->children.end(); it++)
-                if (*it == child_node) {
-                    old_parent->children.erase(it);
-                    break;
-                }
-        }
+        if (old_parent != nullptr) 
+            old_parent->children.remove(child_node);
 
         child_node->parent = new_parent;
         new_parent->children.push_back(child_node);
         
+        // cout << "\rupdate cost counter: " << ++update_cost_cnt_;
         queue<RRTStarNode*> node_level;
         node_level.push(child_node);
         while (node_level.empty() == false) {
             RRTStarNode* cur_node = node_level.front();
-            node_level.pop();          
+            node_level.pop();
             
             for (auto& cur_child : cur_node->children) {
-                cur_child->min_passage_width = min(cur_child->min_passage_width, cur_node->min_passage_width);
-                if (cur_child->cur_passage_width < 0) 
-                    cur_child->cost = cur_node->cost + cv::norm(cur_node->pos - cur_child->pos);
-                else {
+                if (cur_child->cur_passage_width > 0)
+                    cur_child->min_passage_width = min(cur_child->cur_passage_width, cur_node->min_passage_width);
+                else
+                    cur_child->min_passage_width = cur_node->min_passage_width;
+
+                if (cost_function_type_ != 1)
                     cur_child->cost = cur_node->cost + passage_width_weight_ * cur_node->min_passage_width + cv::norm(cur_node->pos - cur_child->pos)
                                     - passage_width_weight_ * cur_child->min_passage_width;
-                }
+                else 
+                    cur_child->cost = (cur_node->cost * cur_node->min_passage_width + cv::norm(cur_node->pos - cur_child->pos)) / cur_child->min_passage_width;
+
                 node_level.push(cur_child);
             }
         }
