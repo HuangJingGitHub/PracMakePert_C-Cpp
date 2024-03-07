@@ -107,7 +107,7 @@ public:
             // FLOAT LOSES PRECISION IN COMPUTATION. Suppose near_node and new_node have the same position. The cost updated by linking new_node and 
             // near_node should be equivalent to near_node->cost, and rewiring should not be performed. However, the computed updated cost may be 
             // a lit smaller than near_node->cost due to float precision problem. As such, parent-child relation is wrongly updated and possibly 
-            // leading to a loop in the tree. 
+            // leading to a loop in the tree though the algorithm is sound.
 
             RRTStarNode* nearest_node = kd_tree_.FindNearestNode(rand_pos);           
             // if (normSqr(nearest_node->pos - rand_pos) < 1e-4)
