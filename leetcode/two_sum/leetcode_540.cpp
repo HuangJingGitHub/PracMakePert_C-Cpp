@@ -7,8 +7,6 @@ public:
         
         while (left < right) {
             mid = left + (right - left) / 2;
-            // cout << left << "-" << right << "-" << mid << "\n";
-
             if (mid % 2 == 0) {
                 if (mid - 1 >= 0 && nums[mid] == nums[mid - 1]) 
                     right = mid - 2;
