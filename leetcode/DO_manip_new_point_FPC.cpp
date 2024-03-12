@@ -13,7 +13,6 @@ using namespace cv;
 using namespace std;
 
 const string WINDOW = "Processing Image";
-
 class ImageConverter {
     ros::NodeHandle nh_;
     ros::ServiceServer visual_info_service = nh_.advertiseService("visual_info_service", &ImageConverter::get_visual_info_srv, this);
