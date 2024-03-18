@@ -276,7 +276,6 @@ bool pubGlbObs(self_msgs_and_srvs::GlbObsRcv::Request &req, self_msgs_and_srvs::
 int main(int argc, char **argv) {
    ros::init(argc, argv, "random_map_sensing_NEW_123");
    ros::NodeHandle n("~");
-
    _all_map_pub = n.advertise<sensor_msgs::PointCloud2>("all_map", 1);
 
    n.param("init_state_x", _init_x, 0.0);
