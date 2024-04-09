@@ -143,7 +143,7 @@ public:
             if (CUR_GRAPH_SIZE == MAX_GRAPH_SIZE)
                 destroyWindow("RRT* path planning"); */
         }
-        if (!plan_scuess_)
+        if (plan_scuess_ == false)
             std::cout << "MAX_GRAPH_SIZE: " << MAX_GRAPH_SIZE << " is achieved with no path founded.\n";
         else
             std::cout << "Path found with cost: " << min_cost
