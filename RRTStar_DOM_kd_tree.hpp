@@ -73,9 +73,10 @@ public:
         extended_visibility_passage_pts_ = extended_visibility_check_res.second; 
 
         std::cout << "RRT* path planner instanced with cost functio type: " << cost_function_type_ 
-                << "\n(Any value not equal to 1: Default cost function: len - weight * passed_min_passage_width"
-                << "\n1: Ratio cost function: len / passed_min_passage_width)\n";
-        if (cost_function_type_ != 1) {
+                << "\n(Any value not equal to 1 or 2: Default cost function: len - weight * passed_min_passage_width"
+                << "\n1: Ratio cost function: len / passed_min_passage_width)"
+                << "\n2: Path length cost function with clearance limit\n";
+        if (cost_function_type_ != 1 && cost_function_type_ != 2) {
             std::cout << "with a passage width weight of " << passage_width_weight_ << "\n\n";       
             start_node_->cost = -passage_width_weight * start_node_->min_passage_width;
         }
@@ -85,17 +86,23 @@ public:
     RRTStarPlanner& operator=(const RRTStarPlanner&);
 
 
-    bool Plan(Mat source_img, float interior_delta = 0.01, bool plan_in_interior = false) {
+    bool Plan(Mat source_img, float interior_delta = 0.01, bool plan_in_interior = false) {            
         srand(time(NULL));
         plan_scuess_ = false;
         float div_width = RAND_MAX / config_size_.width,
               div_height = RAND_MAX / config_size_.height,
               min_cost = FLT_MAX;
+        
+        std::vector<PolygonObstacle> obstacles_without_boundary(obstacles_.size() - 4);
+        for (int i = 0; i < obstacles_without_boundary.size(); i++)
+            obstacles_without_boundary[i] = obstacles_[i + 4];
 
         Point2f rand_pos = Point2f(0, 0);
+        int sample_times = 0;
         while (CUR_GRAPH_SIZE < MAX_GRAPH_SIZE) {
             rand_pos.x = rand() / div_width;
             rand_pos.y = rand() / div_height;
+            sample_times++;
 
             if (CUR_GRAPH_SIZE % (MAX_GRAPH_SIZE / 20) == 0) {
                 rand_pos = target_pos_ + rand_pos / cv::norm(rand_pos);  // Instead of directly using rand_pos = target_pos_, add a small random shift to avoid resulting 
@@ -115,13 +122,16 @@ public:
 
             RRTStarNode* new_node = GenerateNewNode(nearest_node, rand_pos);
             if (PathObstacleFree(nearest_node, new_node)) {
-                if (plan_in_interior)
-                    if (MinDistanceToObstaclesVec(obstacles_, new_node->pos) < interior_delta) {
+                if (plan_in_interior && cost_function_type_ == 2)
+                    if (MinDistanceToObstaclesVec(obstacles_without_boundary, new_node->pos) < interior_delta) {
                         delete new_node;
                         continue;
                     }
+                if (cost_function_type_ == 2)
+                    RewireWithPathLengthCost(nearest_node, new_node, source_img);
+                else
+                    Rewire(nearest_node, new_node, source_img);
                 
-                Rewire(nearest_node, new_node, source_img);
                 kd_tree_.Add(new_node);
                 if (normSqr(new_node->pos - target_pos_) <= error_dis_* error_dis_) {
                     if (new_node->cost < min_cost) {
@@ -136,6 +146,9 @@ public:
             else    
                 delete new_node;
 
+            if (cost_function_type_ == 2 && sample_times >= 20000 && plan_scuess_ == false)
+                return false;
+
 /*             circle(source_img, start_pos_, 4, Scalar(255,0,0), -1);
             circle(source_img, target_pos_, 4, Scalar(255,0,0), -1);
             imshow("RRT* path planning", source_img);
@@ -147,7 +160,7 @@ public:
             std::cout << "MAX_GRAPH_SIZE: " << MAX_GRAPH_SIZE << " is achieved with no path founded.\n";
         else
             std::cout << "Path found with cost: " << min_cost
-                 << "\nThe shorest distance: " << norm(target_node_->pos - start_node_->pos)
+                 << "\nTotal sample number: " << sample_times
                  << '\n';   
         return plan_scuess_;
     }
@@ -174,9 +187,9 @@ public:
 
         // find minimal-cost path
         RRTStarNode* min_cost_node = nearest_node;
-        float min_cost = UpdatePassageEncodingCost(nearest_node, new_node);
+        float min_cost = UpdatePassageEncodeCost(nearest_node, new_node);
         for (auto near_node : near_set) {     
-            float cur_cost = UpdatePassageEncodingCost(near_node, new_node);       
+            float cur_cost = UpdatePassageEncodeCost(near_node, new_node);       
             if (cur_cost < min_cost && PathObstacleFree(near_node, new_node)) {
                 min_cost_node = near_node;
                 min_cost = cur_cost;
@@ -193,7 +206,7 @@ public:
             if (near_node == min_cost_node)
                 continue;
 
-            float new_near_node_cost = UpdatePassageEncodingCost(new_node, near_node);
+            float new_near_node_cost = UpdatePassageEncodeCost(new_node, near_node);
             if (new_near_node_cost < near_node->cost && PathObstacleFree(near_node, new_node)) {
                 near_node->cost = new_near_node_cost;
                 UpdateNewNodeMinCurPassageWidth(new_node, near_node);
@@ -244,7 +257,7 @@ public:
         return true;
     }
 
-    float UpdatePassageEncodingCost(RRTStarNode* near_node, RRTStarNode* new_node) {
+    float UpdatePassageEncodeCost(RRTStarNode* near_node, RRTStarNode* new_node) {
         float passed_passage_width;
         if (use_extended_vis_check_ == true)
             passed_passage_width = GetMinPassageWidthPassed(extended_visibility_passage_pts_, near_node->pos, new_node->pos);
