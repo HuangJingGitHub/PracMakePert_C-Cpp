@@ -30,7 +30,9 @@ int main(int argc, char** argv) {
     Point2f start = Point2f(1, 1), end = Point2f(back_img.size().width - 1, back_img.size().height - 1);
     
     int test_num = 10;
-    vector<float> planning_time_extended_vis(test_num, 0), planning_time_pure_vis(test_num, 0), planning_time_clearance(test_num, 0);
+    vector<float> planning_time_extended_vis(test_num, 0), planning_time_pure_vis(test_num, 0), 
+                  planning_time_clearance(test_num, 0),  planning_time_clearance_once(test_num, 0),
+                  passage_width_min(test_num, 0), passage_width_max(test_num, 0);
     vector<int> planning_trails_num_clearance(test_num, 1);
     float clearance_resolution = 0.5;
 /*     vector<RRTStarPlanner> planner_vec(test_num);
@@ -69,27 +71,35 @@ int main(int argc, char** argv) {
         //                path_pure = planner_pure_vis.GetPathInPts();
         // vector<int> passed_passages_extended = RetrievePassedPassages(path_extended, planner_extended_vis.pure_visibility_passage_pts_).first,
         //             passed_passages_pure = RetrievePassedPassages(path_pure, planner_pure_vis.pure_visibility_passage_pts_).first;
-        float min_valid_passage_width = FLT_MAX,
-              max_valid_passage_width = FLT_MIN;
-        for (auto cur_passage_pts : planner_extended_vis.extended_visibility_passage_pts_) {
+        float min_passage_width = FLT_MAX,
+              max_passage_width = FLT_MIN;
+        for (auto cur_passage_pts : planner_extended_vis.pure_visibility_passage_pts_) {
             float cur_passage_width = cv::norm(cur_passage_pts[0] - cur_passage_pts[1]);
-            min_valid_passage_width = std::min(min_valid_passage_width, cur_passage_width);
-            max_valid_passage_width = std::max(max_valid_passage_width, cur_passage_width);
+            min_passage_width = std::min(min_passage_width, cur_passage_width);
+            max_passage_width = std::max(max_passage_width, cur_passage_width);
         }
-        std::cout << "Min valid passage width: " << min_valid_passage_width 
-                  << "\nMax valid passage width: " << max_valid_passage_width << "\n";
+        passage_width_min[planning_test_idx] = min_passage_width;
+        passage_width_max[planning_test_idx] = max_passage_width;
+        std::cout << "Min valid passage width: " << min_passage_width 
+                  << "\nMax valid passage width: " << max_passage_width << "\n";
 
         vector<Point2f>  path_clearance;
-        float clearance_lower = min_valid_passage_width, clearance_upper = max_valid_passage_width;
+        float clearance_lower = std::max(min_passage_width / 2 - 1.0, 0.1), clearance_upper = max_passage_width / 2;
         int trail_num_clearance = 0;
+        float cur_planning_time_clearance_once = 0;
         start_time = high_resolution_clock::now();
         while (clearance_upper - clearance_lower > clearance_resolution) {
             float cur_clearance = clearance_lower + (clearance_upper - clearance_lower) / 2;
             std::cout << "Current clearance: " << cur_clearance << '\n';
+            auto start_time_clearance_once = high_resolution_clock::now();
             bool plan_success_clearance = planner_clearance.Plan(back_img, cur_clearance, true);
+            auto end_time_clearance_once = high_resolution_clock::now();
             if (plan_success_clearance == true) {
                 clearance_lower = cur_clearance;
+                auto duration_time_clearance_once = duration_cast<milliseconds>(end_time_clearance_once - start_time_clearance_once);
+                cur_planning_time_clearance_once = duration_time_clearance_once.count();
                 // path_clearance = planner_clearance.GetPathInPts();
+
             }
             else
                 clearance_upper = cur_clearance;
@@ -104,6 +114,7 @@ int main(int argc, char** argv) {
         planning_time_extended_vis[planning_test_idx] = cur_planning_time_extended;
         planning_time_pure_vis[planning_test_idx] = cur_planning_time_pure;
         planning_time_clearance[planning_test_idx] = cur_planning_time_clearance;
+        planning_time_clearance_once[planning_test_idx] = cur_planning_time_clearance_once;
         planning_trails_num_clearance[planning_test_idx] = trail_num_clearance;
 
         std::cout << "Planning time with extended---pure visibility check--clearance-based planning: " << cur_planning_time_extended 
@@ -136,7 +147,7 @@ int main(int argc, char** argv) {
                 + "Obstacle main dimension: " + to_string(obs_side_len) + "\n"
                 + "Planning test number: " + to_string(test_num) + "\n" 
                 + "Max clearance resolution: " + to_string(clearance_resolution) + "\n"
-                + "(Descendent cost update is added)" + "\n";
+                + "(Descendent cost update is added, clearance set as half passage width)" + "\n";
     std::cout << test_info << "\n";
 
     data_save_os.open(save_directory + file_name, std::ios::trunc);
@@ -154,9 +165,18 @@ int main(int argc, char** argv) {
         data_save_os << "Corresponding planning time using max clearance-based planning (ms): \n";        
         for (float time : planning_time_clearance)
             data_save_os << time << "\n";
+        data_save_os << "One-round planning time using clearance-based planning (ms): \n";        
+        for (float time : planning_time_clearance_once)
+            data_save_os << time << "\n";            
         data_save_os << "Corresponding planning trails in max clearance-based planning: \n";        
         for (int trail_num : planning_trails_num_clearance)
-            data_save_os << trail_num << "\n";                      
+            data_save_os << trail_num << "\n";     
+        data_save_os << "Min passage width (after pure visibility check) as clearance lower bound: \n";        
+        for (float width : passage_width_min)
+            data_save_os << width << "\n";          
+        data_save_os << "Max passage width (after pure visibility check) as clearance upper bound: \n";        
+        for (float width : passage_width_max)
+            data_save_os << width << "\n";                                  
     }    
     return 0;    
 }
