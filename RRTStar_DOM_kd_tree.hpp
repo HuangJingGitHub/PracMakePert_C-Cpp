@@ -165,6 +165,71 @@ public:
         return plan_scuess_;
     }
 
+    bool PlanHomotopicPath(Mat source_img, std::vector<Point2f>& reference_path, Point2f initial_pt, Point2f target_pt) {       
+        srand(time(NULL));
+        plan_scuess_ = false;
+        float div_width = RAND_MAX / config_size_.width,
+              div_height = RAND_MAX / config_size_.height,
+              min_cost = FLT_MAX;
+
+        std::vector<PolygonObstacle> obstacles_without_boundary(obstacles_.size() - 4);
+        for (int i = 0; i < obstacles_without_boundary.size(); i++)
+            obstacles_without_boundary[i] = obstacles_[i + 4];
+        obstacles_ = obstacles_without_boundary;
+
+        Point2f rand_pos = Point2f(0, 0);
+        while (CUR_GRAPH_SIZE < MAX_GRAPH_SIZE) {
+            rand_pos.x = rand() / div_width;
+            rand_pos.y = rand() / div_height;
+
+            if (CUR_GRAPH_SIZE % (MAX_GRAPH_SIZE / 20) == 0) {
+                rand_pos = target_pos_ + rand_pos / cv::norm(rand_pos);   
+                CUR_GRAPH_SIZE++;                                       
+            } 
+
+            RRTStarNode* nearest_node = kd_tree_.FindNearestNode(rand_pos);           
+            // if (normSqr(nearest_node->pos - rand_pos) < 1e-4)
+            //    continue;
+
+            RRTStarNode* new_node = GenerateNewNode(nearest_node, rand_pos);
+            if (PathObstacleFree(nearest_node, new_node)) {
+                if (PathVisibilityForPoint(new_node->pos, reference_path, 30) == false) {
+                    delete new_node;
+                    continue;
+                }
+                RewireWithPathLengthCost(nearest_node, new_node, source_img);
+
+                kd_tree_.Add(new_node);
+                if (normSqr(new_node->pos - target_pos_) <= error_dis_* error_dis_) {
+                    if (new_node->cost < min_cost) {
+                        target_node_->parent = new_node;
+                        min_cost = new_node->cost;
+                    }      
+                    plan_scuess_ = true;
+                }
+                CUR_GRAPH_SIZE++;
+                // circle(source_img, new_node->pos, 3, Scalar(0,255,0), -1);
+            }
+            else    
+                delete new_node;
+
+        }
+        if (plan_scuess_ == false)
+            std::cout << "MAX_GRAPH_SIZE: " << MAX_GRAPH_SIZE << " is achieved with no path founded.\n";
+        else
+            std::cout << "Path found with cost: " << min_cost
+                 << '\n';   
+        return plan_scuess_;
+    }
+    
+    bool PathVisibilityForPoint(const Point2f& test_pt, const std::vector<Point2f>& reference_path, float threshold = 20) {
+        float min_dist_to_path = 1e5;
+        for (auto& path_pt : reference_path) {
+            min_dist_to_path = std::min(min_dist_to_path, (float)cv::norm(test_pt - path_pt));
+        }
+        return min_dist_to_path < threshold;
+    }    
+
     RRTStarNode* GenerateNewNode(RRTStarNode* nearest_node, Point2f& rand_pos) {
         Point2f direction = (rand_pos - nearest_node->pos) / cv::norm((rand_pos - nearest_node->pos));
         Point2f new_pos = nearest_node->pos + step_len_ * direction;
@@ -252,7 +317,14 @@ public:
 
     bool PathObstacleFree(RRTStarNode* near_node, RRTStarNode* new_node) {
         for (auto& obs : obstacles_)
-            if (!ObstacleFree(obs, near_node->pos, new_node->pos))
+            if (ObstacleFree(obs, near_node->pos, new_node->pos) == false)
+                return false;
+        return true;
+    }
+
+    bool PathPtObstacleFree(const Point2f& pt_1, const Point2f& pt_2) {
+        for (auto& obs : obstacles_)
+            if (ObstacleFree(obs, pt_1, pt_2) == false)
                 return false;
         return true;
     }
