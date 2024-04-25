@@ -25,3 +25,29 @@ public:
         }
     }
 };
+
+// More concise. This problem is to get the number of components of a graph.
+class Solution {
+public:
+    int findCircleNum(vector<vector<int>>& isConnected) {
+        int n = isConnected.size();
+        vector<bool> visited(n, false);
+        int res = 0;
+
+        for (int i = 0; i < n; i++) {
+            if (visited[i] == false) {
+                res++;
+                dfs(isConnected, i, visited);
+            }
+        }
+        return res;
+    }
+
+    void dfs(vector<vector<int>>& isConnected, int i, vector<bool>& visited) {    
+        visited[i] = true;
+        for (int j = 0; j < isConnected.size(); j++) {
+            if (isConnected[i][j] == 1 && visited[j] == false)
+                dfs(isConnected, j, visited);
+        }
+    }
+};
