@@ -11,7 +11,6 @@ public:
 
         int digit_num = digits.size();
         vector<int> smaller_idx(digit_num, -1);
-        
         return -1;
     }
 };
