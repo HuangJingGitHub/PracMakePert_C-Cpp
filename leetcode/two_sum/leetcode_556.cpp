@@ -1,9 +1,6 @@
 class Solution {
 public:
     int nextGreaterElement(int n) {
-        if (n < 10)
-            return -1;
-
         vector<int> digits;
         int original_num = n;
         while (original_num != 0) {
