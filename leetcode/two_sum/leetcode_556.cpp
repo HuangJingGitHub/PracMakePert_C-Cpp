@@ -49,6 +49,7 @@ public:
     }
 };
 
+
 // More concise
 class Solution {
 public:
