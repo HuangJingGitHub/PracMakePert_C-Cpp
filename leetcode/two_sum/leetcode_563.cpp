@@ -11,17 +11,18 @@
  */
 class Solution {
 public:
+    int res = 0;
     int findTilt(TreeNode* root) {
-        int res = 0;
+        getNodeSum(root);
+        return res;
+    }
+
+    int getNodeSum(TreeNode* root) {
         if (root == nullptr)
             return 0;
-
-        int left_sum = findTilt(root->left),
-            right_sum = findTilt(root->right);
-        root->val += left_sum + right_sum;
-        int left_val = root->left == nullptr ? 0 : root->left->val;
-        int right_val = root->right == nullptr ? 0 : root->right->val;
-        res += abs(left_val - right_val);
-        return res;
+        int left_sum = getNodeSum(root->left),
+            right_sum = getNodeSum(root->right);
+        res += abs(left_sum - right_sum);
+        return left_sum + right_sum + root->val;
     }
 };
