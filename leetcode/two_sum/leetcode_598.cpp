@@ -8,8 +8,7 @@ public:
         for (auto& ops_i : ops) {
             row_num = min(row_num, ops_i[0]);
             col_num = min(col_num, ops_i[1]);
-        }
-        
+        }  
         return row_num * col_num;
     }
 };
