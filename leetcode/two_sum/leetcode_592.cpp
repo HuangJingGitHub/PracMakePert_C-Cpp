@@ -11,7 +11,6 @@ public:
                 end_idx++;
 
             string cur_str = expression.substr(start_idx, end_idx - start_idx);
-            cout << cur_str << "\n";
 
             int slash_idx = 0;
             while (cur_str[slash_idx] != '/')
@@ -19,19 +18,18 @@ public:
             int cur_numerator = stoi(cur_str.substr(0, slash_idx)),
                 cur_denominator = stoi(cur_str.substr(slash_idx + 1)),
                 gcd = GetGcd(abs(res_denominator), cur_denominator);
-            int lcm = res_denominator * cur_denominator / gcd,
-                res_denominator = lcm;
+            int lcm = res_denominator * cur_denominator / gcd;
             
-            int res_numerator = res_numerator * lcm / res_denominator + cur_numerator * lcm / cur_denominator;
-            cout << res_numerator << "*" << lcm << "/" << res_denominator << "+" << cur_numerator << "*"
-                 << lcm << "/" << cur_denominator << "=" << res_numerator << "\n"; 
-            gcd = GetGcd(abs(res_numerator), res_denominator);
-            res_numerator /= gcd;
-            res_denominator /= gcd; 
-            cout << "Res: " << res_numerator << "/" << res_denominator << '\n';   
+            res_numerator = res_numerator * lcm / res_denominator + cur_numerator * lcm / cur_denominator;
+            res_denominator = lcm; 
+   
             start_idx = end_idx;
             end_idx++;
         }
+        
+        int gcd = GetGcd(abs(res_numerator), res_denominator);
+        res_numerator /= gcd;
+        res_denominator /= gcd;
         return to_string(res_numerator) + "/" + to_string(res_denominator);
     }
 
