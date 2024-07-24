@@ -11,7 +11,6 @@ public:
                 end_idx++;
 
             string cur_str = expression.substr(start_idx, end_idx - start_idx);
-
             int slash_idx = 0;
             while (cur_str[slash_idx] != '/')
                 slash_idx++;
