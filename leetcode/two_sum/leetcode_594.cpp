@@ -2,6 +2,7 @@ class Solution {
 public:
     int findLHS(vector<int>& nums) {
         int res = 0;
+        
         unordered_map<int, int> frequency;
         for (int& num : nums)
             frequency[num]++;
