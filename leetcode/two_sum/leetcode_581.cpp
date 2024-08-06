@@ -10,6 +10,7 @@ public:
             else
                 mid_max = nums[i];
         }
+        
         for (int i = nums.size() - 1; i >= 0; i--) {
             if (nums[i] > mid_min)  
                 mid_start = i;
