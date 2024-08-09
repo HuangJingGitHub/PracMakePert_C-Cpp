@@ -14,8 +14,9 @@ public:
         for (int idx = len_1 - 1; idx < len_2; idx++) {
             if (checkMapEquality(frequency_1, frequency_2) == true)
                 return true;
-            frequency_2[idx + 1]++;
-            frequency_2[idx - len_1 - 1]--;
+
+            frequency_2[s2[idx + 1]]++;
+            frequency_2[s2[idx - len_1 + 1]]--;
         }
         return false;
     }
