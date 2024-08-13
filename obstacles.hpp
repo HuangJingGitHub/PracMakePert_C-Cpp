@@ -21,14 +21,11 @@ float normSqr(const Point2f& pt) {
 }
 
 struct PolygonObstacle {
-    bool closed;
     vector<Point2f> vertices;
     Point2f min_distance_pt;
-    PolygonObstacle(): closed(true) {};
-    PolygonObstacle(vector<Point2f> polygon_vertices, bool is_close = true): closed(is_close), 
-                                        vertices(polygon_vertices) {}
-    PolygonObstacle(vector<Point> polygon_vertices, bool is_close = true) {
-        closed = is_close;
+    PolygonObstacle() {};
+    PolygonObstacle(vector<Point2f> polygon_vertices): vertices(polygon_vertices) {}
+    PolygonObstacle(vector<Point> polygon_vertices) {
         vertices = vector<Point2f>(polygon_vertices.size(), Point2f(0, 0));
         for (int i = 0; i < polygon_vertices.size(); i++) {
             vertices[i].x = (float) polygon_vertices[i].x;
@@ -53,13 +50,9 @@ int Orientation(const Point2f& p1, const Point2f& p2, const Point2f& p3) {
 
 bool OnSegment(const Point2f& p1, const Point2f& p2, const Point2f& q) {  
 // check if point q is on the segment p1-p2 when the three points are colinear
-/*     if (q.x <= max(p1.x, p2.x) && q.x >= min(p1.x, p2.x)
-        && q.y <= max(p1.y, p2.y) && q.y >= min(p1.y, p2.y))
-            return true;
-    return false; */
     Point2f vec_1 = p1 - q, vec_2 = p2 - q;
     float inner_product = vec_1.x * vec_2.x + vec_1.y * vec_2.y;
-    return inner_product < 0;
+    return inner_product <= 0;
 }
 
 bool SegmentIntersection(const Point2f& p1, const Point2f& p2, const Point2f& q1, const Point2f& q2) {
@@ -97,6 +90,7 @@ Point2f ClosestPtOnSegmentToPt(const Point2f& p1, const Point2f& p2, const Point
         res_pt = p1 + projection_segment_len_ratio * segment_vec;
     return res_pt;
 }
+
 
 
 Point2f GetSegmentsIntersectionPt(const Point2f& p1, const Point2f& p2, const Point2f& q1, const Point2f& q2) {
@@ -172,13 +166,11 @@ bool ObstacleFree(const PolygonObstacle& obs, Point2f p1, Point2f p2) {
     if (obs.vertices.size() <= 1)
         return true;
     
-    for (int i = 0; i < obs.vertices.size() - 1; i++) {
-        if (SegmentIntersection(obs.vertices[i], obs.vertices[i + 1], p1, p2))
+    int vertex_num = obs.vertices.size();
+    for (int i = 0; i < vertex_num; i++) {
+        if (SegmentIntersection(obs.vertices[i], obs.vertices[(i + 1) % vertex_num], p1, p2))
             return false;
     }
-    if (obs.closed)
-        if (SegmentIntersection(obs.vertices[0], obs.vertices.back(), p1, p2))
-            return false;
     return true;
 }
 
@@ -215,27 +207,21 @@ vector<Point2f> GetPassageInnerEnds(PolygonObstacle obs1, PolygonObstacle obs2) 
             obs_centroid_2 = GetObstaclesCentroids({obs2})[0],
             inner_end_1, inner_end_2;
 
-    if (obs1.closed)
-        obs1.vertices.push_back(obs1.vertices.front());
-    for (int i = 0; i < obs1.vertices.size() - 1; i++) {
-        if (SegmentIntersection(obs1.vertices[i], obs1.vertices[i + 1], obs_centroid_1, obs_centroid_2)) {
-            inner_end_1 = GetSegmentsIntersectionPt(obs1.vertices[i], obs1.vertices[i + 1], obs_centroid_1, obs_centroid_2);
+    int vertex_num_1 = obs1.vertices.size();
+    for (int i = 0; i < vertex_num_1; i++) {
+        if (SegmentIntersection(obs1.vertices[i], obs1.vertices[(i + 1) % vertex_num_1], obs_centroid_1, obs_centroid_2)) {
+            inner_end_1 = GetSegmentsIntersectionPt(obs1.vertices[i], obs1.vertices[(i + 1) % vertex_num_1], obs_centroid_1, obs_centroid_2);
             break;
         }
     }
-    if (obs1.closed)
-        obs1.vertices.pop_back();
     
-    if (obs2.closed)
-        obs2.vertices.push_back(obs2.vertices.front());
-    for (int i = 0; i < obs2.vertices.size() - 1; i++) {
-        if (SegmentIntersection(obs2.vertices[i], obs2.vertices[i + 1], obs_centroid_1, obs_centroid_2)) {
-            inner_end_2 = GetSegmentsIntersectionPt(obs2.vertices[i], obs2.vertices[i + 1], obs_centroid_1, obs_centroid_2);
+    int vertex_num_2 = obs2.vertices.size();
+    for (int i = 0; i < vertex_num_2; i++) {
+        if (SegmentIntersection(obs2.vertices[i], obs2.vertices[(i + 1) % vertex_num_2], obs_centroid_1, obs_centroid_2)) {
+            inner_end_2 = GetSegmentsIntersectionPt(obs2.vertices[i], obs2.vertices[(i + 1) % vertex_num_2], obs_centroid_1, obs_centroid_2);
             break;
         }
     }
-    if (obs2.closed)
-        obs2.vertices.pop_back();
 
     return {inner_end_1, inner_end_2};
 }
@@ -274,12 +260,11 @@ Point2f GetClosestIntersectionPt(PolygonObstacle& obs, Point2f p1, Point2f p2, P
         return res;
     }
 
-    if (obs.closed)
-        obs.vertices.push_back(obs.vertices.front());
 
+    int vertex_num = obs.vertices.size();
     float min_distance_sqr = FLT_MAX;
     for (int i = 0; i < obs.vertices.size() - 1; i++) {
-        if (SegmentIntersection(p1, p2, obs.vertices[i], obs.vertices[i + 1])) {
+        if (SegmentIntersection(p1, p2, obs.vertices[i], obs.vertices[(i + 1) % vertex_num])) {
             Point2f cur_intersection_pt = GetSegmentsIntersectionPt(p1, p2, obs.vertices[i], obs.vertices[i + 1]);
             if (normSqr(cur_intersection_pt - testPt) < min_distance_sqr) {
                 res = cur_intersection_pt;
@@ -288,8 +273,6 @@ Point2f GetClosestIntersectionPt(PolygonObstacle& obs, Point2f p1, Point2f p2, P
         }
     }
     
-    if (obs.closed)
-        obs.vertices.pop_back();
     return res;
 } 
 
@@ -316,7 +299,7 @@ float MinDistanceToObstaclesVec(const vector<PolygonObstacle>& obstacles, Point2
 
 pair<int, Point2f> FindPassageEndonObstacles(const vector<PolygonObstacle>& obstacles, Point2f start_pt, Point2f virtual_end) {
     int res_obs_idx = 0;
-    Point2f res_passage_end;
+    Point2f res_passage_end(-1, -1);
     float min_passage_len = FLT_MAX;
     for (int obs_idx = 0; obs_idx < obstacles.size(); obs_idx++) {
         int obs_vertices_num = obstacles[obs_idx].vertices.size();
@@ -370,7 +353,7 @@ float GetMinPassageWidthPassed(const vector<vector<Point2f>>& passage_pts, Point
             res = min(res, (float)cv::norm(passage_pts[i][0] - passage_pts[i][1]));
     }
     
-    if (res == FLT_MAX)
+    if (res > FLT_MAX - 1)
         return -1.0;
     return res;
 }
@@ -382,14 +365,14 @@ vector<PolygonObstacle> GenerateRandomObstacles(int obstacle_num, Size2f config_
         return {};
     }
 
-    // By default, add environment 4 walls as obstacles
+    // By default, add 4 environment walls as obstacles
     vector<PolygonObstacle> res_obs_vec(obstacle_num + 4);
     vector<Point2f> top_obs_vertices{Point2f(0, 0), Point2f(config_size.width, 0), Point2f(10, -10)},
                     bottom_obs_vertices{Point2f(0, config_size.height), Point2f(config_size.width, config_size.height), 
-                               Point2f(10, config_size.height + 10)},
+                                    Point2f(10, config_size.height + 10)},
                     left_obs_vertices{Point2f(0, 0), Point2f(0, config_size.height), Point2f(-10, 10)},
                     right_obs_vertices{Point2f(config_size.width, 0), Point2f(config_size.width, config_size.height), 
-                              Point2f(config_size.width + 10, 10)};
+                                    Point2f(config_size.width + 10, 10)};
     PolygonObstacle top_obs(top_obs_vertices), bottom_obs(bottom_obs_vertices), 
                     left_obs(left_obs_vertices), right_obs(right_obs_vertices);
     res_obs_vec[0] = top_obs;
@@ -455,7 +438,7 @@ pair<vector<vector<int>>, vector<vector<Point2f>>> PureVisibilityPassageCheck(co
     vector<vector<int>> res_passage_pair;
     vector<vector<Point2f>> res_passage_pts;
     
-    int start_idx = 0; // 4 if the first four wall obstacles are not considered.
+    int start_idx = 4; // 4 if the first four wall obstacles are not considered.
     for (int i = start_idx; i < obstacles.size() - 1; i++) {
         int j = i < 4 ? 4 : i + 1;
         for (; j < obstacles.size(); j++) {
@@ -483,7 +466,7 @@ pair<vector<vector<int>>, vector<vector<Point2f>>> ExtendedVisibilityPassageChec
     vector<vector<int>> res_passage_pair;
     vector<vector<Point2f>> res_passage_pts;
     
-    int start_idx = 0; // 4 if the first four wall obstacles are not considered.
+    int start_idx = 4; // 4 if the first four wall obstacles are not considered.
     for (int i = start_idx; i < obstacles.size() - 1; i++) {
         int j = i < 4 ? 4 : i + 1;
         for (; j < obstacles.size(); j++) {
@@ -512,6 +495,65 @@ pair<vector<vector<int>>, vector<vector<Point2f>>> ExtendedVisibilityPassageChec
         }
     }
     return make_pair(res_passage_pair, res_passage_pts);
+}
+
+void DFSCycleDetection(int cur_node, int parent_node, int color[], int parent[], int& cycle_num, 
+                        vector<int> adjacency_list[], vector<vector<int>>& cycle_vertices_vec) {
+    if (color[cur_node] == 2)
+        return;
+    
+    if (color[cur_node] == 1) {
+        cycle_num++;
+
+        vector<int> cycle_vertices;
+        int temp_node = parent_node;
+        cycle_vertices.push_back(temp_node);
+        while (temp_node != cur_node) {
+            temp_node = parent[temp_node];
+            cycle_vertices.push_back(temp_node);
+        }
+        cycle_vertices_vec.push_back(cycle_vertices);
+        return;
+    }
+
+    parent[cur_node] = parent_node;
+    color[cur_node] = 1;
+
+    for (int neighbor_node : adjacency_list[cur_node]) {
+        if (neighbor_node == parent[cur_node])
+            continue;
+        DFSCycleDetection(neighbor_node, cur_node, color, parent, cycle_num, adjacency_list, cycle_vertices_vec);
+    }
+    color[cur_node] = 2;
+}
+
+vector<vector<int>> DetectGraphCycles(vector<vector<int>>& passage_pairs, int obs_num = 100) {
+    obs_num = 0;
+    for (vector<int>& cur_passage_pair : passage_pairs) {
+        obs_num = std::max(obs_num, cur_passage_pair[1] + 1);
+    }
+    cout << "obs_num " << obs_num << "\n";
+
+    vector<vector<int>> cycle_vertices_vec;
+    vector<int> adjacency_list[obs_num];
+    for (vector<int>& cur_passage_pair : passage_pairs) {
+        adjacency_list[cur_passage_pair[0]].push_back(cur_passage_pair[1]);
+        adjacency_list[cur_passage_pair[1]].push_back(cur_passage_pair[0]);
+    }
+
+    cout << "adjacency list\n";
+    for (int i = 0; i < obs_num; i++) {
+        cout << i << ": ";
+        for (int& obs_idx : adjacency_list[i])
+            cout << obs_idx << ", ";
+        cout << "\n";
+    }
+
+    int color[obs_num] = {0}, parent[obs_num] = {0};  // color 1---partially visited node, color 2---completely visited node
+    int cycle_num = 0;
+    DFSCycleDetection(passage_pairs[0][0], passage_pairs[0][1], color, parent, cycle_num, adjacency_list, cycle_vertices_vec);
+
+    return cycle_vertices_vec;
 }
 
 #endif
