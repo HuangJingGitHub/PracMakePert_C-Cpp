@@ -512,6 +512,33 @@ void DFSCycleDetection(int cur_node, int parent_node, int color[], int parent[],
             temp_node = parent[temp_node];
             cycle_vertices.push_back(temp_node);
         }
+        // chord check
+        int vertex_num = cycle_vertices.size();
+        if (vertex_num > 3) {
+            int back_idx = vertex_num - 1, start_idx = 1;
+            while (back_idx > 2) {
+                start_idx = 1;
+                while (start_idx < back_idx - 1) {
+                    int back_node = cycle_vertices[back_idx],
+                        start_node = cycle_vertices[start_idx];
+
+                    if (std::count(adjacency_list[start_node].begin(), adjacency_list[start_node].end(), back_node) > 0) {
+                        while (back_idx < vertex_num) {
+                            cycle_vertices[start_idx + 1] = cycle_vertices[back_idx];
+                            start_idx++;
+                            back_idx++;
+                        }
+                        cycle_vertices.resize(start_idx + 1);
+                        back_idx = 0;
+                        break;
+                    }
+
+                    start_idx++;
+                }
+                back_idx--;
+            }
+        }
+
         cycle_vertices_vec.push_back(cycle_vertices);
         return;
     }
@@ -532,7 +559,6 @@ vector<vector<int>> DetectGraphCycles(vector<vector<int>>& passage_pairs, int ob
     for (vector<int>& cur_passage_pair : passage_pairs) {
         obs_num = std::max(obs_num, cur_passage_pair[1] + 1);
     }
-    cout << "obs_num " << obs_num << "\n";
 
     vector<vector<int>> cycle_vertices_vec;
     vector<int> adjacency_list[obs_num];
