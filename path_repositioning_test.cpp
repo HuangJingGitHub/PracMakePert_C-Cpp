@@ -32,7 +32,7 @@ void DrawDshedLine(Mat img, const Point2f& initial_pt, const Point2f& end_pt, Sc
 
 int main(int argc, char** argv) {
     Mat back_img(Size(500, 300), CV_64FC3, Scalar(255, 255, 255)), back_img_2;
-    int obs_num = 30;
+    int obs_num = 20;
     vector<PolygonObstacle> obs_vec = GenerateRandomObstacles(obs_num, back_img.size());
     for (int i = 4; i < obs_num + 4; i++) {
         PolygonObstacle cur_obs = obs_vec[i];
@@ -63,7 +63,8 @@ int main(int argc, char** argv) {
         auto smooth_path = QuadraticBSplineSmoothing(planned_path_node);
         vector<int> passage_indices = RetrievePassedPassages(planned_path_node, planner_weight_cost.extended_visibility_passage_pts_).first;
         for (int passage_idx : passage_indices) {
-            cout << planner_weight_cost.extended_visibility_passage_pair_[passage_idx][0] << "---" << planner_weight_cost.extended_visibility_passage_pair_[passage_idx][1] << '\n';
+            cout << planner_weight_cost.extended_visibility_passage_pair_[passage_idx][0] << "---" 
+                << planner_weight_cost.extended_visibility_passage_pair_[passage_idx][1] << '\n';
             // auto intersection_pt = GetPathSetIntersectionsOnPassageLine(planned_path_pts, {start}, {end}, 0,  
             //                                                             planner_weight_cost.extended_visibility_passage_pts_[passage_idx]).first;
             // circle(back_img, intersection_pt[0], 4, Scalar(0, 0, 255), -1);
@@ -77,10 +78,11 @@ int main(int argc, char** argv) {
 
         auto add_general_passage_res = AddGeneralPassagesSingleSide(planner_weight_cost.extended_visibility_passage_pair_, planner_weight_cost.extended_visibility_passage_pts_, 
                                                                     planner_weight_cost.obstacles_, planned_path_pts);
-        cout << "Passage number before vs. after: " << planner_weight_cost.extended_visibility_passage_pts_.size() << " vs. " << add_general_passage_res.second.size() << "\n";
+        cout << "Passage number before vs. after: " << planner_weight_cost.extended_visibility_passage_pts_.size() 
+             << " vs. " << add_general_passage_res.second.size() << "\n";
         
-        auto path_set = GeneratePathSetUpdated(planned_path_pts, init_pts, target_pts, pivot_idx, planner_weight_cost.extended_visibility_passage_pts_, planner_weight_cost.obstacles_, back_img_2);
-        // auto path_set = GeneratePathSetUpdated(planned_path_pts, init_pts, target_pts, pivot_idx, add_general_passage_res.second, planner_weight_cost.obstacles_, back_img_2);
+        //auto path_set = GeneratePathSetUpdated(planned_path_pts, init_pts, target_pts, pivot_idx, planner_weight_cost.extended_visibility_passage_pts_, planner_weight_cost.obstacles_, back_img_2);
+        auto path_set = GeneratePathSetUpdated(planned_path_pts, init_pts, target_pts, pivot_idx, add_general_passage_res.second, planner_weight_cost.obstacles_, back_img_2);
         auto direct_path_set_reposition = GetTransferPathSet(reposition_path, init_pts, target_pts, pivot_idx);
         // for (auto cur_path : direct_path_set_reposition)
         //     DrawPath(back_img_2, cur_path, cv::viz::Color::blue());
