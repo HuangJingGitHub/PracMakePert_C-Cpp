@@ -512,7 +512,6 @@ void DFSCycleDetection(int cur_node, int parent_node, int color[], int parent[],
             temp_node = parent[temp_node];
             cycle_vertices.push_back(temp_node);
         }
-        
         // chord check
         int vertex_num = cycle_vertices.size();
         if (vertex_num > 3) {
