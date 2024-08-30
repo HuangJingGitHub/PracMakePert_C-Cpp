@@ -27,6 +27,7 @@ struct Point {
 std::vector<std::vector<size_t>> find_faces(std::vector<Point> vertices, std::vector<std::vector<size_t>> adj) {
     size_t n = vertices.size();
     std::vector<std::vector<char>> used(n);
+    
     for (size_t i = 0; i < n; i++) {
         used[i].resize(adj[i].size());
         used[i].assign(adj[i].size(), 0);
@@ -39,6 +40,7 @@ std::vector<std::vector<size_t>> find_faces(std::vector<Point> vertices, std::ve
         };
         std::sort(adj[i].begin(), adj[i].end(), compare);
     }
+    
     std::vector<std::vector<size_t>> faces;
     for (size_t i = 0; i < n; i++) {
         for (size_t edge_id = 0; edge_id < adj[i].size(); edge_id++) {
