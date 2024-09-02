@@ -67,6 +67,7 @@ std::vector<std::vector<size_t>> find_faces(std::vector<Point> vertices, std::ve
                 v = u;
                 e = e1;
             }
+            
             std::reverse(face.begin(), face.end());
             int sign = 0;
             for (size_t j = 0; j < face.size(); j++) {
