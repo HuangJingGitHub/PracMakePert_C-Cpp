@@ -21,6 +21,7 @@ public:
 class Solution {
 public:
     vector<int> res;
+
     vector<int> postorder(Node* root) {
         if (root == nullptr)
             return res;
