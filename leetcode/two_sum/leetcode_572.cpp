@@ -48,16 +48,12 @@ public:
 // recursion 
 class Solution {
 public:
-    bool res = false;
     bool isSubtree(TreeNode* root, TreeNode* subRoot) { 
-        if (root == nullptr && subRoot == nullptr)
+        if (isEqualTree(root, subRoot))
             return true;
-        if (root == nullptr && subRoot != nullptr)
+        if (root == nullptr)
             return false;
-
-        return isEqualTree(root, subRoot) ||
-               isSubtree(root->left, subRoot) ||
-               isSubtree(root->right, subRoot);
+        return isSubtree(root->left, subRoot) || isSubtree(root->right, subRoot);
     }
 
     bool isEqualTree(TreeNode* root_1, TreeNode* root_2) {
