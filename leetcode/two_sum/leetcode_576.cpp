@@ -8,7 +8,7 @@ public:
         for (int move = 1; move <= maxMove; move++) 
             for (int row = 0; row < m; row++)
                 for (int col = 0; col < n; col++) {
-                    // How the boundaries are processed is efficient and avoid 
+                    // How the boundaries are processed is efficient and avoids 
                     // processing by categories.
                     if (row == 0)
                         dp[row][col][move]++;
