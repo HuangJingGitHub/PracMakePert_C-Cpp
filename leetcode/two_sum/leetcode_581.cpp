@@ -1,7 +1,7 @@
 class Solution {
 public:
     int findUnsortedSubarray(vector<int>& nums) {
-        int mid_max = nums[0], mid_min = nums.back();
+        int mid_max = nums[0], mid_min = nums.back();  // mid-middle range
         int mid_start = 0, mid_end = 0;
 
         for (int i = 0; i < nums.size(); i++) {
