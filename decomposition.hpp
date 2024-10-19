@@ -1,6 +1,8 @@
 #ifndef DECOMPOSITION_INCLUDED
 #define DECOMPOSITION_INCLUDED
 
+#include <unordered_map>
+#include <opencv2/imgproc/imgproc.hpp>
 #include "obstacles.hpp"
 
 int InNegativeHalfPlane(Point2f& pt) {
@@ -11,7 +13,14 @@ float TriplePtCross(Point2f& origin_pt, Point2f& p1, Point2f& p2) {
     return (p1 - origin_pt).cross(p2 - origin_pt);
 }
 
-vector<std::vector<int>> FindPlannarFaces(const vector<PolygonObstacle>& obstacles, const vector<vector<int>>& passage_pairs) {
+string Point2fToString(Point2f& pt) {
+    string str_x = to_string(pt.x), str_y = to_string(pt.y);
+    str_x = str_x.substr(0, str_x.find(".") + 3);
+    str_y = str_y.substr(0, str_y.find(".") + 3);
+    return str_x + "+" + str_y;
+}
+
+vector<vector<int>> FindPlannarFaces(const vector<PolygonObstacle>& obstacles, const vector<vector<int>>& passage_pairs) {
     int obs_num = obstacles.size();
     vector<Point2f> obs_centroids = GetObstaclesCentroids(obstacles);
     vector<vector<int>> adjacency_list(obs_num);
@@ -83,6 +92,46 @@ vector<std::vector<int>> FindPlannarFaces(const vector<PolygonObstacle>& obstacl
         }
     }
     return faces;
+}
+
+vector<vector<int>> DelaunayTriangulationOfObstable(vector<PolygonObstacle>& obs_vec, Size2f rect_size = Size2f(1000, 1000)) {
+    vector<vector<int>> adjacency_list(obs_vec.size());
+    vector<set<int>> adjacency_set(obs_vec.size());
+    vector<Point2f> obstacle_centroids_vec = GetObstaclesCentroids(obs_vec);
+    unordered_map<string, int> centroid_obs_map;
+    for (int i = 0; i < obstacle_centroids_vec.size(); i++)
+        centroid_obs_map[Point2fToString(obstacle_centroids_vec[i])] = i;
+
+    cv::Rect2f bounding_box(0, 0, rect_size.width, rect_size.height);
+    cv::Subdiv2D subdiv(bounding_box);
+    
+    for (Point2f& centroid : obstacle_centroids_vec)
+        subdiv.insert(centroid);
+    
+    vector<Vec6f> triangle_list;
+    subdiv.getTriangleList(triangle_list);
+    for (Vec6f& triangle : triangle_list) {
+        Point2f vertex_1(triangle[0], triangle[1]), 
+                vertex_2(triangle[2], triangle[3]), 
+                vertex_3(triangle[4], triangle[5]);
+        string key_str_1 = Point2fToString(vertex_1),
+               key_str_2 = Point2fToString(vertex_2),
+               key_str_3 = Point2fToString(vertex_3);
+        int obs_idx_1 = centroid_obs_map[key_str_1], 
+            obs_idx_2 = centroid_obs_map[key_str_2],
+            obs_idx_3 = centroid_obs_map[key_str_3];
+        adjacency_set[obs_idx_1].insert(obs_idx_2);
+        adjacency_set[obs_idx_1].insert(obs_idx_3);
+        adjacency_set[obs_idx_2].insert(obs_idx_1);
+        adjacency_set[obs_idx_2].insert(obs_idx_3);
+        adjacency_set[obs_idx_3].insert(obs_idx_1);
+        adjacency_set[obs_idx_3].insert(obs_idx_2);        
+    }
+
+    for (int i = 0; i < obs_vec.size(); i++) {
+        adjacency_list[i] = vector<int>(adjacency_set[i].begin(), adjacency_set[i].end());
+    }
+    return adjacency_list;
 }
 
 #endif
