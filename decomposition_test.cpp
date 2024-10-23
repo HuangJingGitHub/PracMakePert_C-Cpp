@@ -1,22 +1,9 @@
-#include "path_processing.hpp"
+#include <chrono>
+#include <ctime>
 #include "decomposition.hpp"
 #include <opencv2/viz/types.hpp>
 
-void DrawPath(Mat img, const vector<Point2f>& path, 
-            Scalar color = Scalar(255, 0, 0), 
-            int thickness = 2,
-            Point2f shift = Point2f(0, 0)) {
-    for (int i = 0; i < path.size() - 1; i++)
-        line(img, path[i] + shift, path[i + 1] + shift, color, thickness);
-}
-
-void DrawPath(Mat img, const vector<RRTStarNode*>& path, 
-            Scalar color = Scalar(255, 0, 0), 
-            int thickness = 2,
-            Point2f shift = Point2f(0, 0)) {
-    for (int i = 0; i < path.size() - 1; i++)
-        line(img, path[i]->pos + shift, path[i + 1]->pos + shift, color, thickness);
-}
+using namespace std::chrono;
 
 void DrawDshedLine(Mat img, const Point2f& initial_pt, const Point2f& end_pt, Scalar color = Scalar(0, 0, 0), int thickness = 2, float dash_len = 5) {
     float line_len = cv::norm(end_pt - initial_pt);
@@ -31,10 +18,41 @@ void DrawDshedLine(Mat img, const Point2f& initial_pt, const Point2f& end_pt, Sc
             line(img, initial_pt + i * dash_len * line_direction, initial_pt + (i + 1) * dash_len * line_direction, color, thickness);
 }
 
+void ConsistencyTest(const int test_num = 100, const int obs_num = 50, const int side_len = 30) {
+    Mat back_img(Size(1000, 600), CV_64FC3, Scalar(255, 255, 255));
+    
+    float extended_check_time = 0, DG_check_time = 0;
+    int inconsistency_num = 0;
+    for (int i = 0; i < test_num; i++) {
+        vector<PolygonObstacle> obs_vec = GenerateRandomObstacles(obs_num, back_img.size(), side_len);
+
+        auto start_time = high_resolution_clock::now();
+        auto extended_visibility_check_res = ExtendedVisibilityPassageCheck(obs_vec);
+        auto end_time = high_resolution_clock::now();
+        auto duration_time = duration_cast<milliseconds>(end_time - start_time);
+        extended_check_time += (float) duration_time.count();
+
+        start_time = high_resolution_clock::now();
+        auto DG_check_res = PassageCheckInDelaunayGraph(obs_vec);        
+        end_time = high_resolution_clock::now();
+        duration_time = duration_cast<milliseconds>(end_time - start_time);
+        DG_check_time += (float) duration_time.count();
+
+        if (extended_visibility_check_res.first.size() != DG_check_res.first.size())
+            inconsistency_num++;
+    }
+
+    cout << "TEST RESULT:\n"
+         << "obstacle number: " << obs_num << "\n"
+         << "In " << test_num << " tests, " << inconsistency_num << " inconsistent test(s) happen.\n"
+         << "Average check time using extended visibility condition: " << extended_check_time / test_num << " ms\n"
+         << "Average check time based on Delaunay graph: " << DG_check_time / test_num << " ms\n";
+}
+
 int main(int argc, char** argv) {
     Mat back_img(Size(1000, 600), CV_64FC3, Scalar(255, 255, 255));
-    int obs_num = 30;
-    vector<PolygonObstacle> obs_vec = GenerateRandomObstacles(obs_num, back_img.size(), 50);
+    int obs_num = 100;
+    vector<PolygonObstacle> obs_vec = GenerateRandomObstacles(obs_num, back_img.size(), 20);
 
     for (int i = 4; i < obs_num + 4; i++) {
         PolygonObstacle cur_obs = obs_vec[i];
@@ -57,7 +75,6 @@ int main(int argc, char** argv) {
          << "\nDelaunay graph check passage res: "<< DG_check_res.first.size() << "\n";
     
     int larger_size = max(extended_visibility_check_res.first.size(), DG_check_res.first.size());
-    cout << larger_size << "***\n";
     for (int i = 0; i < larger_size; i++) {
         if (i < extended_visibility_check_res.first.size())
             cout << i << ": " << extended_visibility_check_res.first[i][0] << "-" << extended_visibility_check_res.first[i][1] << "---";
@@ -65,6 +82,7 @@ int main(int argc, char** argv) {
             cout << DG_check_res.first[i][0] << "-" << DG_check_res.first[i][1] << "\n";
     }
     cout << "\n";
+    ConsistencyTest(1000, 100, 20);
 /*     vector<vector<int>> faces = FindPlannarFaces(obs_vec, extended_visibility_check_res.first);
     cout << "Detected face number among sparse passages: " << faces.size() << "\n";
     for (vector<int>& face : faces) {

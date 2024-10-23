@@ -147,16 +147,28 @@ pair<vector<vector<int>>, vector<vector<Point2f>>> PassageCheckInDelaunayGraph(c
     vector<vector<Point2f>> res_passage_pts;
     vector<vector<int>> adjacency_list = DelaunayTriangulationObstables(obstacles);
 
+/*     auto extended_passages = ExtendedVisibilityPassageCheck(obstacles).first;
+    for (vector<int>& cur_passage : extended_passages) {
+        int obs_1 = cur_passage[0], obs_2 = cur_passage[1];
+        if (std::find(adjacency_list[obs_1].begin(), adjacency_list[obs_1].end(), obs_2) == adjacency_list[obs_1].end())
+            cout << "Warning: " << obs_1 << "-" << obs_2 << " is not an edge in the Delaunary graph!\n";
+    } */
+
     int start_idx = 4; 
     for (int i = start_idx; i < obstacles.size(); i++) {
-        // obstacle within geodesic distance (gd) one
-        for (int j : adjacency_list[i]) {
-            if (j < i)
+        // obstacle within geodesic distance (gd) two
+        set<int> neighbor_obs_gd_two(adjacency_list[i].begin(), adjacency_list[i].end());
+        for (int neighbor_gd_1 : adjacency_list[i])
+           for (int neighbor_gd_2 : adjacency_list[neighbor_gd_1]) 
+                neighbor_obs_gd_two.insert(neighbor_gd_2);
+
+        for (int j : neighbor_obs_gd_two) {
+            if (j <= i)
                 continue;
 
             vector<Point2f> cur_passage_segment_pts = GetPassageSegmentPts(obstacles[i], obstacles[j]);
             float cur_passage_length = cv::norm(cur_passage_segment_pts[0] - cur_passage_segment_pts[1]);
-
+            // obstacle within geodesic distance (gd) one
             set<int> obs_gd_one(adjacency_list[i].begin(), adjacency_list[i].end());
             for (int k : adjacency_list[j])
                 obs_gd_one.insert(k);
@@ -166,7 +178,7 @@ pair<vector<vector<int>>, vector<vector<Point2f>>> PassageCheckInDelaunayGraph(c
                 int k = *it;
                 if (k == i || k == j)
                     continue;
-                    
+
                 if (ObstacleFree(obstacles[k], cur_passage_segment_pts[0], cur_passage_segment_pts[1]) == false) {
                     is_passage_valid = false;
                     break;
@@ -174,7 +186,7 @@ pair<vector<vector<int>>, vector<vector<Point2f>>> PassageCheckInDelaunayGraph(c
                 Point2f cur_passage_center = (cur_passage_segment_pts[0] + cur_passage_segment_pts[1]) / 2;
                 float cur_obs_passage_center_dist = MinDistanceToObstacle(obstacles[k], cur_passage_center);
                 if (cur_obs_passage_center_dist <= cur_passage_length / 2) {
-                    is_passage_valid = false;
+                    is_passage_valid = false;                    
                     break;
                 }
             }
