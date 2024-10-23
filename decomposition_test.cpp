@@ -34,7 +34,7 @@ void DrawDshedLine(Mat img, const Point2f& initial_pt, const Point2f& end_pt, Sc
 int main(int argc, char** argv) {
     Mat back_img(Size(1000, 600), CV_64FC3, Scalar(255, 255, 255));
     int obs_num = 30;
-    vector<PolygonObstacle> obs_vec = GenerateRandomObstacles(obs_num, back_img.size(), 60);
+    vector<PolygonObstacle> obs_vec = GenerateRandomObstacles(obs_num, back_img.size(), 50);
 
     for (int i = 4; i < obs_num + 4; i++) {
         PolygonObstacle cur_obs = obs_vec[i];
@@ -47,14 +47,25 @@ int main(int argc, char** argv) {
     }
     auto visibility_check_res = PureVisibilityPassageCheck(obs_vec);
     auto extended_visibility_check_res = ExtendedVisibilityPassageCheck(obs_vec);
+    auto DG_check_res = PassageCheckInDelaunayGraph(obs_vec);
     // for (int i = 0; i < visibility_check_res.first.size(); i++) 
     //     DrawDshedLine(back_img, visibility_check_res.second[i][0], visibility_check_res.second[i][1], Scalar(0.741, 0.447, 0), 1);
     for (int i = 0; i < extended_visibility_check_res.first.size(); i++)
         DrawDshedLine(back_img, extended_visibility_check_res.second[i][0], extended_visibility_check_res.second[i][1], Scalar(0, 0, 0), 2);
     cout << "Visibility check passage res: " << visibility_check_res.first.size() 
-         << "\nExtended visibility check passage res: " << extended_visibility_check_res.first.size() << "\n";
+         << "\nExtended visibility check passage res: " << extended_visibility_check_res.first.size() 
+         << "\nDelaunay graph check passage res: "<< DG_check_res.first.size() << "\n";
     
-    vector<vector<int>> faces = FindPlannarFaces(obs_vec, extended_visibility_check_res.first);
+    int larger_size = max(extended_visibility_check_res.first.size(), DG_check_res.first.size());
+    cout << larger_size << "***\n";
+    for (int i = 0; i < larger_size; i++) {
+        if (i < extended_visibility_check_res.first.size())
+            cout << i << ": " << extended_visibility_check_res.first[i][0] << "-" << extended_visibility_check_res.first[i][1] << "---";
+        if (i < DG_check_res.first.size())
+            cout << DG_check_res.first[i][0] << "-" << DG_check_res.first[i][1] << "\n";
+    }
+    cout << "\n";
+/*     vector<vector<int>> faces = FindPlannarFaces(obs_vec, extended_visibility_check_res.first);
     cout << "Detected face number among sparse passages: " << faces.size() << "\n";
     for (vector<int>& face : faces) {
         for (int& obs_idx : face)
@@ -66,14 +77,14 @@ int main(int argc, char** argv) {
     for (int i = 0; i < obs_vec_no_box.size(); i++)
         obs_vec_no_box[i] = obs_vec[i + 4];
     
-    vector<vector<int>> DT_result = DelaunayTriangulationOfObstable(obs_vec_no_box);
+    vector<vector<int>> DT_result = DelaunayTriangulationObstables(obs_vec);
     for (int i = 0; i < DT_result.size(); i++) {
-        cout << i + 4 << "---";
+        cout << i << "---";
         for (int idx : DT_result[i])
-            cout << idx + 4 << ", ";
+            cout << idx << ", ";
         cout << "\n";
     }
-
+ */
 
     imshow("Gabriel Cells", back_img);
     waitKey(0); 
