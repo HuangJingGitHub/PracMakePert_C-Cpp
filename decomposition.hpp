@@ -33,6 +33,8 @@ vector<vector<int>> FindPlannarFaces(const vector<PolygonObstacle>& obstacles, c
     for (int i = 0; i < obs_num; i++) {
         used[i].resize(adjacency_list[i].size());
         used[i].assign(adjacency_list[i].size(), 0);
+        // sort points by angles. Two cases for transitivity: 1) on the same half plane, 2) on different half planes. 
+        // Purely using cross product is insufficient in comparer.
         auto compare = [&](int l, int r) {
             Point2f pl = obs_centroids[l] - obs_centroids[i];
             Point2f pr = obs_centroids[r] - obs_centroids[i];
