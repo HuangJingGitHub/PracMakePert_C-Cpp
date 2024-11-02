@@ -18,12 +18,12 @@ void DrawDshedLine(Mat img, const Point2f& initial_pt, const Point2f& end_pt, Sc
             line(img, initial_pt + i * dash_len * line_direction, initial_pt + (i + 1) * dash_len * line_direction, color, thickness);
 }
 
-void ConsistencyTest(const int test_num = 100, const int obs_num = 50, const int side_len = 30) {
-    Mat back_img(Size(1000, 600), CV_64FC3, Scalar(255, 255, 255));
-    
+// Test consistency between extended visibility condition and methods using Gabriel garph
+void ConsistencyTest(const int test_num = 100, const int obs_num = 50, const int side_len = 30, 
+                    Mat back_img = Mat(Size(1000, 600), CV_64FC3, Scalar(255, 255, 255))) {
     float extended_check_time = 0, DG_check_time = 0;
     int inconsistency_num = 0;
-    for (int i = 0; i < test_num; i++) {
+    for (int test_idx = 0; test_idx < test_num; test_idx++) {
         vector<PolygonObstacle> obs_vec = GenerateRandomObstacles(obs_num, back_img.size(), side_len);
 
         auto start_time = high_resolution_clock::now();
@@ -38,8 +38,57 @@ void ConsistencyTest(const int test_num = 100, const int obs_num = 50, const int
         duration_time = duration_cast<milliseconds>(end_time - start_time);
         DG_check_time += (float) duration_time.count();
 
-        if (extended_visibility_check_res.first.size() != DG_check_res.first.size())
+        if (extended_visibility_check_res.first.size() != DG_check_res.first.size()) {
             inconsistency_num++;
+            cout << extended_visibility_check_res.first.size() << " vs " << DG_check_res.first.size() << "\n";
+            set<vector<int>> extended_psg_set(extended_visibility_check_res.first.begin(), extended_visibility_check_res.first.end()),
+                             DG_psg_set(DG_check_res.first.begin(), DG_check_res.first.end());
+            vector<vector<int>> extended_exclusive(10), DG_exclusive(10);
+            auto extended_itr = set_difference(extended_psg_set.begin(), extended_psg_set.end(), DG_psg_set.begin(), DG_psg_set.end(), extended_exclusive.begin());
+            extended_exclusive.resize(extended_itr - extended_exclusive.begin());
+            auto DG_itr = set_difference(DG_psg_set.begin(), DG_psg_set.end(), extended_psg_set.begin(), extended_psg_set.end(), DG_exclusive.begin());
+            DG_exclusive.resize(DG_itr - DG_exclusive.begin());
+            cout << "passages only in extended check condition: ";
+            for (auto psg : extended_exclusive)
+                cout << psg[0] << "-" << psg[1] << "\n";
+            cout << "\npassages only in DG check: ";
+            for (auto psg : DG_exclusive) {
+                cout << psg[0] << "-" << psg[1] << "\n";
+                for (int i = 0; i < DG_check_res.first.size(); i++)
+                    if (DG_check_res.first[i][0] == psg[0] && DG_check_res.first[i][1] == psg[1]) {
+                        DrawDshedLine(back_img, DG_check_res.second[i][0], DG_check_res.second[i][1], Scalar(0, 0, 255), 2);
+                        circle(back_img, (DG_check_res.second[i][0] + DG_check_res.second[i][1]) / 2, 
+                                cv::norm(DG_check_res.second[i][0] - DG_check_res.second[i][1]) / 2, Scalar(0, 0, 255), 2);
+                        break;
+                    }
+            }
+            
+            Mat DG_img = back_img.clone();
+            for (int i = 4; i < obs_num + 4; i++) {
+                PolygonObstacle cur_obs = obs_vec[i];
+                int cur_vertex_num = cur_obs.vertices.size();
+                for (int j = 0; j < cur_vertex_num; j++) {
+                    line(back_img, cur_obs.vertices[j], cur_obs.vertices[(j + 1) % cur_vertex_num], Scalar(0, 0, 0), 2);
+                    line(DG_img, cur_obs.vertices[j], cur_obs.vertices[(j + 1) % cur_vertex_num], Scalar(0, 0, 0), 2);
+                }
+                Point2f cur_centroid = GetObstaclesCentroids({cur_obs}).front();
+                putText(back_img, std::to_string(i), cur_centroid - Point2f(10, -5), cv::FONT_HERSHEY_SIMPLEX, 0.6, Scalar(255, 0, 0), 2);
+            }  
+            
+            for (int i = 0; i < extended_visibility_check_res.first.size(); i++)
+                DrawDshedLine(back_img, extended_visibility_check_res.second[i][0], extended_visibility_check_res.second[i][1], Scalar(0, 0, 0), 2);
+
+            vector<vector<int>> DG_adj = DelaunayTriangulationObstables(obs_vec);
+            for (int i = 0; i < DG_adj.size(); i++) 
+                for (int j : DG_adj[i]) 
+                    if (i < j)
+                        DrawDshedLine(DG_img, GetObstaclesCentroids({obs_vec[i]})[0], GetObstaclesCentroids({obs_vec[j]})[0], Scalar(0, 0, 255), 2);
+            cout << "here\n";
+            imshow("Delaunay Trigulation", DG_img);
+
+            imshow("Gabriel Cells", back_img);
+            waitKey(0);                                       
+        }
     }
 
     cout << "TEST RESULT:\n"
@@ -51,38 +100,7 @@ void ConsistencyTest(const int test_num = 100, const int obs_num = 50, const int
 
 int main(int argc, char** argv) {
     Mat back_img(Size(1000, 600), CV_64FC3, Scalar(255, 255, 255));
-    int obs_num = 100;
-    vector<PolygonObstacle> obs_vec = GenerateRandomObstacles(obs_num, back_img.size(), 20);
-
-    for (int i = 4; i < obs_num + 4; i++) {
-        PolygonObstacle cur_obs = obs_vec[i];
-        int cur_vertex_num = cur_obs.vertices.size();
-        for (int j = 0; j < cur_vertex_num; j++)
-            line(back_img, cur_obs.vertices[j], cur_obs.vertices[(j + 1) % cur_vertex_num], Scalar(0, 0, 0), 2);
-        
-        Point2f cur_centroid = GetObstaclesCentroids({cur_obs}).front();
-        putText(back_img, std::to_string(i), cur_centroid - Point2f(10, -5), cv::FONT_HERSHEY_SIMPLEX, 0.6, Scalar(255, 0, 0), 2);
-    }
-    auto visibility_check_res = PureVisibilityPassageCheck(obs_vec);
-    auto extended_visibility_check_res = ExtendedVisibilityPassageCheck(obs_vec);
-    auto DG_check_res = PassageCheckInDelaunayGraph(obs_vec);
-    // for (int i = 0; i < visibility_check_res.first.size(); i++) 
-    //     DrawDshedLine(back_img, visibility_check_res.second[i][0], visibility_check_res.second[i][1], Scalar(0.741, 0.447, 0), 1);
-    for (int i = 0; i < extended_visibility_check_res.first.size(); i++)
-        DrawDshedLine(back_img, extended_visibility_check_res.second[i][0], extended_visibility_check_res.second[i][1], Scalar(0, 0, 0), 2);
-    cout << "Visibility check passage res: " << visibility_check_res.first.size() 
-         << "\nExtended visibility check passage res: " << extended_visibility_check_res.first.size() 
-         << "\nDelaunay graph check passage res: "<< DG_check_res.first.size() << "\n";
-    
-    int larger_size = max(extended_visibility_check_res.first.size(), DG_check_res.first.size());
-    for (int i = 0; i < larger_size; i++) {
-        if (i < extended_visibility_check_res.first.size())
-            cout << i << ": " << extended_visibility_check_res.first[i][0] << "-" << extended_visibility_check_res.first[i][1] << "---";
-        if (i < DG_check_res.first.size())
-            cout << DG_check_res.first[i][0] << "-" << DG_check_res.first[i][1] << "\n";
-    }
-    cout << "\n";
-    ConsistencyTest(1000, 100, 20);
+    ConsistencyTest(50, 400, 2, back_img);
 /*     vector<vector<int>> faces = FindPlannarFaces(obs_vec, extended_visibility_check_res.first);
     cout << "Detected face number among sparse passages: " << faces.size() << "\n";
     for (vector<int>& face : faces) {
@@ -90,21 +108,6 @@ int main(int argc, char** argv) {
             cout << obs_idx << "<-->";
         cout << "\n";
     }
-
-    vector<PolygonObstacle> obs_vec_no_box(obs_vec.size() - 4);
-    for (int i = 0; i < obs_vec_no_box.size(); i++)
-        obs_vec_no_box[i] = obs_vec[i + 4];
-    
-    vector<vector<int>> DT_result = DelaunayTriangulationObstables(obs_vec);
-    for (int i = 0; i < DT_result.size(); i++) {
-        cout << i << "---";
-        for (int idx : DT_result[i])
-            cout << idx << ", ";
-        cout << "\n";
-    }
  */
-
-    imshow("Gabriel Cells", back_img);
-    waitKey(0); 
     return 0;
 }

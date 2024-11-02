@@ -105,8 +105,8 @@ vector<vector<int>> DelaunayTriangulationObstables(const vector<PolygonObstacle>
     for (int i = 0; i < obstacle_centroids_vec.size(); i++)
         centroid_obs_map[PointToString(obstacle_centroids_vec[i])] = i;
 
-    cv::Rect2f bounding_box(0, 0, rect_size.width, rect_size.height);
-    cv::Subdiv2D subdiv(bounding_box);
+    Rect2f bounding_box(0, 0, rect_size.width, rect_size.height);
+    Subdiv2D subdiv(bounding_box);
     
     // Environment boundaries, if any, are not included in trigulation.
     if (contain_env_walls == true) {
@@ -170,13 +170,16 @@ pair<vector<vector<int>>, vector<vector<Point2f>>> PassageCheckInDelaunayGraph(c
 
             vector<Point2f> cur_passage_segment_pts = GetPassageSegmentPts(obstacles[i], obstacles[j]);
             float cur_passage_length = cv::norm(cur_passage_segment_pts[0] - cur_passage_segment_pts[1]);
-            // obstacle within geodesic distance (gd) one
-            set<int> obs_gd_one(adjacency_list[i].begin(), adjacency_list[i].end());
+            // obstacle within geodesic distance (gd) two of two ends
+            set<int> obs_gd_two = neighbor_obs_gd_two;
             for (int k : adjacency_list[j])
-                obs_gd_one.insert(k);
+                obs_gd_two.insert(k);
+            for (int k : adjacency_list[j])
+                for (int l : adjacency_list[k])
+                    obs_gd_two.insert(l);
 
             bool is_passage_valid = true;
-            for (auto it = obs_gd_one.begin(); it != obs_gd_one.end(); it++) {
+            for (auto it = obs_gd_two.begin(); it != obs_gd_two.end(); it++) {
                 int k = *it;
                 if (k == i || k == j)
                     continue;
