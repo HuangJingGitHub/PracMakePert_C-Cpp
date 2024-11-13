@@ -39,8 +39,6 @@ int Orientation(const Point2f& p1, const Point2f& p2, const Point2f& p3) {
     // Normalization is important to mitigate the threshold error brought by value magnitude.
     Point2f vec1 = (p2 - p1) / cv::norm(p2 - p1), vec2 = (p3 - p1) / cv::norm(p3 - p1);
     float cross_product = vec1.x * vec2.y - vec1.y * vec2.x;
-    if (abs(cross_product) < 0.1)
-        cout << "Cross product: " << cross_product << "\n";
     if (cross_product > threshold)  // > 0
         return 1;   // From segment p1-p2 to p1-p3, counterclockwise direction, CCW
     else if (cross_product < -threshold) // < 0
@@ -122,10 +120,28 @@ Point2f GetSegmentsIntersectionPt(const Point2f& p1, const Point2f& p2, const Po
           kq = (q2.y - q1.y) / (q2.x - q1.x),
           x_p1 = p1.x, y_p1 = p1.y,
           x_q1 = q1.x, y_q1 = q1.y;
-    if (abs(kp - kq) < 1e-6) {
-        cout << p1 << ", " << p2 << ", " << q1 << ", " << q2 << "\n";
-        string msg = "Receive parallel lines as arguments in " + string(__func__);
-        throw std::invalid_argument(msg);       
+
+    // Due to projections on regular shapes, e.g., rectangles, parallel and overlapping segments
+    // are often input. Careful processing is needed to make procedures sound.
+    if (abs(kp - kq) < 1e-4) {
+        Point2f p_vec = (p2 - p1) / cv::norm(p2 - p1), pq_vec = (q1 - p1) / cv::norm(q1 - p1);
+        float cross_product = p_vec.x * pq_vec.y - p_vec.y * pq_vec.x;
+        if (abs(cross_product) > 1e-2) 
+            throw std::invalid_argument("Receive parallel but non-intersecting segments as arguments in " + string(__func__));
+    
+        if (OnSegment(p1, p2, q1) == true && OnSegment(p1, p2, q2) == false)
+            return q1;
+        else if (OnSegment(p1, p2, q1) == false && OnSegment(p1, p2, q2) == true)
+            return q2;
+        else if (OnSegment(p1, p2, q1) == true && OnSegment(p1, p2, q2) == true) {
+            // Return the point closer to midpoint of p1, p2 so that invoking in shadow volume intersection
+            // procedure can work well.
+            Point2f ref_pt = (p1 + p2) / 2;
+            return normSqr(ref_pt - q1) < normSqr(ref_pt - q2) ? q1 : q2;
+        }
+        else {
+            return p1;
+        } 
     }
     float x = (y_p1 - y_q1 - kp * x_p1 + kq * x_q1) / (kq - kp),
           y = y_p1 + kp * (x - x_p1);
@@ -145,7 +161,7 @@ vector<Point2f> GetEndsOfColinearPts(const vector<Point2f>& points) {
     float x_min = points[0].x, x_max = x_min;
     for (int i = 1; i < points.size(); i++) {
         x_min = min(x_min, points[i].x);
-        x_max = min(x_max, points[i].x);
+        x_max = max(x_max, points[i].x);
     }
 
     vector<Point2f> res;
@@ -278,15 +294,14 @@ vector<Point2f> GetPassageSegmentPts(const PolygonObstacle& obs1, const PolygonO
 Point2f GetClosestIntersectionPt(const PolygonObstacle& obs, Point2f p1, Point2f p2, Point2f testPt) {
     Point2f res = Point2f(0, 0);
     if (obs.vertices.size() <= 1) {
-        cout << "Obstacle vertex number less than 1.\n";
-        return res;
+        throw std::invalid_argument("Obstacle has vertices less than one in " + string(__func__));
     }
 
     int vertex_num = obs.vertices.size();
     float min_distance_sqr = FLT_MAX;
     for (int i = 0; i < obs.vertices.size(); i++) {
         if (SegmentIntersection(p1, p2, obs.vertices[i], obs.vertices[(i + 1) % vertex_num])) {
-            Point2f cur_intersection_pt = GetSegmentsIntersectionPt(p1, p2, obs.vertices[i], obs.vertices[i + 1]);
+            Point2f cur_intersection_pt = GetSegmentsIntersectionPt(p1, p2, obs.vertices[i], obs.vertices[(i + 1) % vertex_num]);
             if (normSqr(cur_intersection_pt - testPt) < min_distance_sqr) {
                 res = cur_intersection_pt;
                 min_distance_sqr = normSqr(cur_intersection_pt - testPt);
@@ -304,7 +319,7 @@ vector<vector<Point2f>> SVIntersection(const PolygonObstacle& obs1, const Polygo
             psg_center = (psg_seg_pts[0] + psg_seg_pts[1]) / 2,
             max_proj_pt_1, max_proj_pt_2, min_proj_pt_1, min_proj_pt_2;
     
-    float max_proj_1 = FLT_MIN, min_proj_1 = FLT_MAX, max_dist_to_psg_center = 0;
+    float max_proj_1 = -FLT_MAX, min_proj_1 = FLT_MAX, max_dist_to_psg_center = 0;
     for (const Point2f& vertex: obs1.vertices) {
         Point2f cur_vec = vertex - psg_center;
         max_dist_to_psg_center = max(max_dist_to_psg_center, (float)cv::norm(cur_vec));
@@ -319,7 +334,7 @@ vector<vector<Point2f>> SVIntersection(const PolygonObstacle& obs1, const Polygo
         }
     }
     
-    float max_proj_2 = FLT_MIN, min_proj_2 = FLT_MAX;
+    float max_proj_2 = -FLT_MAX, min_proj_2 = FLT_MAX;
     for (const Point2f& vertex: obs2.vertices) {
         Point2f cur_vec = vertex - psg_center;
         max_dist_to_psg_center = max(max_dist_to_psg_center, (float)cv::norm(cur_vec));
@@ -336,22 +351,22 @@ vector<vector<Point2f>> SVIntersection(const PolygonObstacle& obs1, const Polygo
 
     Point2f SVI_max_ref_pt = (max_proj_1 < max_proj_2) ? max_proj_pt_1 : max_proj_pt_2,
             SVI_min_ref_pt = (min_proj_1 > min_proj_2) ? min_proj_pt_1 : min_proj_pt_2;
-    
+
     Point2f SVI_max_side_pt_1 = SVI_max_ref_pt + psg_seg_vec * max_dist_to_psg_center,
             SVI_max_side_pt_2 = SVI_max_ref_pt - psg_seg_vec * max_dist_to_psg_center,
             SVI_min_side_pt_1 = SVI_min_ref_pt + psg_seg_vec * max_dist_to_psg_center,
             SVI_min_side_pt_2 = SVI_min_ref_pt - psg_seg_vec * max_dist_to_psg_center;
-    vector<vector<Point2f>> res({{SVI_max_side_pt_1, SVI_max_side_pt_2}, 
-                                {SVI_min_side_pt_1, SVI_min_side_pt_2}, 
-                                psg_seg_pts});   
-/*     SVI_max_side_pt_1 = GetClosestIntersectionPt(obs1, SVI_max_side_pt_1, SVI_max_side_pt_2, SVI_max_ref_pt);
+
+    SVI_max_side_pt_1 = GetClosestIntersectionPt(obs1, SVI_max_side_pt_1, SVI_max_side_pt_2, SVI_max_ref_pt);
     SVI_max_side_pt_2 = GetClosestIntersectionPt(obs2, SVI_max_side_pt_1, SVI_max_side_pt_2, SVI_max_ref_pt);
     SVI_min_side_pt_1 = GetClosestIntersectionPt(obs1, SVI_min_side_pt_1, SVI_min_side_pt_2, SVI_min_ref_pt);
     SVI_min_side_pt_2 = GetClosestIntersectionPt(obs2, SVI_min_side_pt_1, SVI_min_side_pt_2, SVI_min_ref_pt);
     
-    res.push_back({SVI_max_side_pt_1, SVI_max_side_pt_2});
+/*     res.push_back({SVI_max_side_pt_1, SVI_max_side_pt_2});
     res.push_back({SVI_min_side_pt_1, SVI_min_side_pt_2}); */
-
+    vector<vector<Point2f>> res({{SVI_max_side_pt_1, SVI_max_side_pt_2}, 
+                                {SVI_min_side_pt_1, SVI_min_side_pt_2}, 
+                                psg_seg_pts});  
     return res;
 } 
 
