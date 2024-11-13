@@ -18,7 +18,7 @@ void DrawDshedLine(Mat img, const Point2f& initial_pt, const Point2f& end_pt, Sc
             line(img, initial_pt + i * dash_len * line_direction, initial_pt + (i + 1) * dash_len * line_direction, color, thickness);
 }
 
-// Test consistency between extended visibility condition and methods using Gabriel garph
+// Test consistency between extended visibility condition and Gabriel garph-based methods
 void ConsistencyTest(const int test_num = 100, const int obs_num = 50, const int side_len = 30, 
                     Mat back_img = Mat(Size(1000, 600), CV_64FC3, Scalar(255, 255, 255))) {
     float extended_check_time = 0, DG_check_time = 0;
@@ -91,16 +91,43 @@ void ConsistencyTest(const int test_num = 100, const int obs_num = 50, const int
         }
     }
 
-    cout << "TEST RESULT:\n"
-         << "obstacle number: " << obs_num << "\n"
-         << "In " << test_num << " tests, " << inconsistency_num << " inconsistent test(s) happen.\n"
-         << "Average check time using extended visibility condition: " << extended_check_time / test_num << " ms\n"
-         << "Average check time based on Delaunay graph: " << DG_check_time / test_num << " ms\n";
+    cout << "TEST RESULT:"
+         << "\nobstacle number: " << obs_num
+         << "\nobstacle side primary length: " << side_len
+         << "\nIn " << test_num << " tests, " << inconsistency_num << " inconsistent test(s) happen."
+         << "\nAverage check time using extended visibility condition: " << extended_check_time / test_num << " ms"
+         << "\nAverage check time based on Delaunay graph: " << DG_check_time / test_num << " ms\n";
+}
+
+void SVITest(const int obs_num = 50, const int side_len = 30, 
+            Mat back_img = Mat(Size(1000, 600), CV_64FC3, Scalar(255, 255, 255))) {
+    vector<PolygonObstacle> obs_vec = GenerateRandomObstacles(obs_num, back_img.size(), side_len);
+    auto extended_visibility_check_res = ExtendedVisibilityPassageCheck(obs_vec);
+    for (int i = 4; i < obs_num + 4; i++) {
+        Point2f cur_centroid = GetObstaclesCentroids({obs_vec[i]}).front();
+        putText(back_img, std::to_string(i), cur_centroid - Point2f(10, -5), cv::FONT_HERSHEY_SIMPLEX, 0.6, Scalar(255, 0, 0), 2); 
+        int cur_obs_vertex_num = obs_vec[i].vertices.size();
+        for (int j = 0; j < cur_obs_vertex_num; j++)
+            line(back_img, obs_vec[i].vertices[j], obs_vec[i].vertices[(j + 1) % cur_obs_vertex_num], Scalar(0, 0, 0), 2);           
+    }
+
+    for (int i = 0; i < extended_visibility_check_res.first.size(); i++) {
+        vector<int> pair = extended_visibility_check_res.first[i];
+        vector<vector<Point2f>> SVI_key_pts = SVIntersection(obs_vec[pair[0]], obs_vec[pair[1]]);
+        line(back_img, SVI_key_pts[0][0], SVI_key_pts[0][1], Scalar(0, 0, 255), 2);
+        line(back_img, SVI_key_pts[1][0], SVI_key_pts[1][1], Scalar(0, 0, 255), 2);
+        DrawDshedLine(back_img, SVI_key_pts[2][0], SVI_key_pts[2][1], Scalar(0, 0, 0), 2);
+/*         line(back_img, SVI_key_pts[3][0], SVI_key_pts[3][1], Scalar(0, 0, 0), 2);
+        line(back_img, SVI_key_pts[4][0], SVI_key_pts[4][1], Scalar(0, 0, 0), 2); */
+    }
+    imshow("Shadow Volume for Passage Representation", back_img);
+    waitKey(0); 
 }
 
 int main(int argc, char** argv) {
     Mat back_img(Size(1000, 600), CV_64FC3, Scalar(255, 255, 255));
-    ConsistencyTest(50, 400, 2, back_img);
+    //ConsistencyTest(1000, 100, 30, back_img);
+    SVITest(30, 50, back_img);
 /*     vector<vector<int>> faces = FindPlannarFaces(obs_vec, extended_visibility_check_res.first);
     cout << "Detected face number among sparse passages: " << faces.size() << "\n";
     for (vector<int>& face : faces) {

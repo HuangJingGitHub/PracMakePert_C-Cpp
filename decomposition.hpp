@@ -170,7 +170,7 @@ pair<vector<vector<int>>, vector<vector<Point2f>>> PassageCheckInDelaunayGraph(c
 
             vector<Point2f> cur_passage_segment_pts = GetPassageSegmentPts(obstacles[i], obstacles[j]);
             float cur_passage_length = cv::norm(cur_passage_segment_pts[0] - cur_passage_segment_pts[1]);
-            // obstacle within geodesic distance (gd) two of two ends
+            // obstacle within geodesic distance (gd) two of two obstacles
             set<int> obs_gd_two = neighbor_obs_gd_two;
             for (int k : adjacency_list[j])
                 obs_gd_two.insert(k);
