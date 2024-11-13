@@ -8,7 +8,6 @@
 #include <algorithm>
 #include <random>
 #include <ctime>
-// #include <tuple>
 #include <opencv2/core.hpp>
 #include <opencv2/highgui.hpp>
 #include <eigen3/Eigen/Dense>
@@ -36,10 +35,12 @@ struct PolygonObstacle {
 };
 
 int Orientation(const Point2f& p1, const Point2f& p2, const Point2f& p3) {
-    float threshold = 1e-5;
-    float vec1_x = p2.x - p1.x, vec1_y = p2.y - p1.y,
-          vec2_x = p3.x - p1.x, vec2_y = p3.y - p1.y;
-    float cross_product = vec1_x * vec2_y - vec1_y * vec2_x;
+    float threshold = 1e-3;
+    // Normalization is important to mitigate the threshold error brought by value magnitude.
+    Point2f vec1 = (p2 - p1) / cv::norm(p2 - p1), vec2 = (p3 - p1) / cv::norm(p3 - p1);
+    float cross_product = vec1.x * vec2.y - vec1.y * vec2.x;
+    if (abs(cross_product) < 0.1)
+        cout << "Cross product: " << cross_product << "\n";
     if (cross_product > threshold)  // > 0
         return 1;   // From segment p1-p2 to p1-p3, counterclockwise direction, CCW
     else if (cross_product < -threshold) // < 0
@@ -48,15 +49,16 @@ int Orientation(const Point2f& p1, const Point2f& p2, const Point2f& p3) {
         return 0;  
 }
 
+/// check if point q is on the segment p1-p2 when the three points are colinear
 bool OnSegment(const Point2f& p1, const Point2f& p2, const Point2f& q) {  
-// check if point q is on the segment p1-p2 when the three points are colinear
     Point2f vec_1 = p1 - q, vec_2 = p2 - q;
     float inner_product = vec_1.x * vec_2.x + vec_1.y * vec_2.y;
     return inner_product <= 0;
 }
 
+/// segments: p1-p2, q1-q2
 bool SegmentIntersection(const Point2f& p1, const Point2f& p2, const Point2f& q1, const Point2f& q2) {
-    int ori1 = Orientation(p1, p2, q1),  // segments: p1-p2, q1-q2
+    int ori1 = Orientation(p1, p2, q1),  
         ori2 = Orientation(p1, p2, q2),
         ori3 = Orientation(q1, q2, p1),
         ori4 = Orientation(q1, q2, p2);
@@ -74,8 +76,8 @@ bool SegmentIntersection(const Point2f& p1, const Point2f& p2, const Point2f& q1
     return false;
 }
 
+/// Return the point on segment p1-p2 closest to test_pt.
 Point2f ClosestPtOnSegmentToPt(const Point2f& p1, const Point2f& p2, const Point2f& test_pt) {
-    // Return the point on segment p1-p2 closest to test_pt
     Point2f p_1_to_test_pt_vec = test_pt - p1,
             segment_vec = p2 - p1,
             res_pt;
@@ -92,20 +94,39 @@ Point2f ClosestPtOnSegmentToPt(const Point2f& p1, const Point2f& p2, const Point
 }
 
 
-
+ /// Segment p1-p2, q1-q2 intersect, return the intersection point. Otherwise will return intersection point of two lines.
 Point2f GetSegmentsIntersectionPt(const Point2f& p1, const Point2f& p2, const Point2f& q1, const Point2f& q2) {
- // Segment p1-p2, q1-q2 intersect, otherwise will return intersection point of two lines.
     if (abs(p1.x - p2.x) < 1e-4 && abs(q1.x - q2.x) > 1e-4)
         return Point2f(p1.x, q1.y + (q1.y - q2.y) / (q1.x - q2.x) * (p1.x - q1.x));
     else if (abs(p1.x - p2.x) > 1e-4 && abs(q1.x - q2.x) < 1e-4)
         return Point2f(q1.x, p1.y + (p1.y - p2.y) / (p1.x - p2.x) * (q1.x - p1.x));
-    else if (abs(p1.x - p2.x) < 1e-4 && abs(q1.x - q2.x) < 1e-4)
-        return Point2f(0, 0);        
-    
+    else if (abs(p1.x - p2.x) < 1e-4 && abs(q1.x - q2.x) < 1e-4 && (abs(p1.x - q1.x) < 1e-4 || abs(p1.x - q2.x))) {
+        float p_min_y = min(p1.y, p2.y), p_max_y = max(p1.y, p2.y),
+              q_min_y = min(q1.y, q2.y), q_max_y = max(q1.y, q2.y);
+        if (q1.y >= p_min_y && q1.y <= p_max_y)
+            return q1;
+        else if (q2.y >= p_min_y && q2.y <= p_max_y)
+            return q2;
+        else if (p1.y >= q_min_y && p1.y <= q_max_y)
+            return p1;
+        else if (p2.y >= q_min_y && p2.y <= q_max_y)
+            return p2;
+        return Point2f(p1.x, 0);        
+    }
+    else if (abs(p1.x - p2.x) < 1e-4 && abs(q1.x - q2.x) < 1e-4) {
+        string msg = "Receive parallel vertical lines as arguments in " + string(__func__);
+        throw std::invalid_argument(msg);
+    }
+
     float kp = (p2.y - p1.y) / (p2.x - p1.x),
           kq = (q2.y - q1.y) / (q2.x - q1.x),
           x_p1 = p1.x, y_p1 = p1.y,
           x_q1 = q1.x, y_q1 = q1.y;
+    if (abs(kp - kq) < 1e-6) {
+        cout << p1 << ", " << p2 << ", " << q1 << ", " << q2 << "\n";
+        string msg = "Receive parallel lines as arguments in " + string(__func__);
+        throw std::invalid_argument(msg);       
+    }
     float x = (y_p1 - y_q1 - kp * x_p1 + kq * x_q1) / (kq - kp),
           y = y_p1 + kp * (x - x_p1);
     return Point2f(x, y);
@@ -159,7 +180,7 @@ vector<Point2f> GetObstaclesCentroids(const vector<PolygonObstacle>& obstacles) 
             obs_centroids[i] += vertex;
         obs_centroids[i] /= (float) obstacles[i].vertices.size();
     } 
-    return obs_centroids;   
+    return obs_centroids;
 }
 
 bool ObstacleFree(const PolygonObstacle& obs, Point2f p1, Point2f p2) {
@@ -194,7 +215,7 @@ bool ObstacleFreeVecForPassage(const vector<PolygonObstacle>& obs, int obs_idx_1
     return true;
 }
 
-bool AreObstaclesOverlapped(const PolygonObstacle& obs1, const PolygonObstacle& obs2) {
+bool ObstaclesIntersect(const PolygonObstacle& obs1, const PolygonObstacle& obs2) {
     int vertex_num_1 = obs1.vertices.size();
     for (int i = 0; i < vertex_num_1; i++) 
         if (ObstacleFree(obs2, obs1.vertices[i], obs1.vertices[(i + 1) % vertex_num_1]) == false)
@@ -228,14 +249,14 @@ vector<Point2f> GetPassageInnerEnds(PolygonObstacle obs1, PolygonObstacle obs2) 
 
 vector<Point2f> GetPassageSegmentPts(const PolygonObstacle& obs1, const PolygonObstacle& obs2) {
     int vertices_num_1 = obs1.vertices.size(), vertices_num_2 = obs2.vertices.size();
-    float min_dist = FLT_MAX;
+    float min_dist_sqr = FLT_MAX;
     Point2f res_pt_1, res_pt_2;
     for (int i = 0; i < vertices_num_1; i++)
         for (int j = 0; j < vertices_num_2; j++) {
             Point2f cur_pt_2 = ClosestPtOnSegmentToPt(obs2.vertices[j], obs2.vertices[(j + 1) % vertices_num_2], obs1.vertices[i]);
-            float cur_dist = cv::norm(obs1.vertices[i] - cur_pt_2); 
-            if (cur_dist < min_dist) {
-                min_dist = cur_dist;
+            float cur_dist_sqr = normSqr(obs1.vertices[i] - cur_pt_2); 
+            if (cur_dist_sqr < min_dist_sqr) {
+                min_dist_sqr = cur_dist_sqr;
                 res_pt_1 = obs1.vertices[i];
                 res_pt_2 = cur_pt_2;
             }
@@ -243,9 +264,9 @@ vector<Point2f> GetPassageSegmentPts(const PolygonObstacle& obs1, const PolygonO
     for (int i = 0; i < vertices_num_2; i++)
         for (int j = 0; j < vertices_num_1; j++) {
             Point2f cur_pt_1 = ClosestPtOnSegmentToPt(obs1.vertices[j], obs1.vertices[(j + 1) % vertices_num_1], obs2.vertices[i]);
-             float cur_dist = cv::norm(obs2.vertices[i] - cur_pt_1); 
-            if (cur_dist < min_dist) {
-                min_dist = cur_dist;
+             float cur_dist_sqr = normSqr(obs2.vertices[i] - cur_pt_1); 
+            if (cur_dist_sqr < min_dist_sqr) {
+                min_dist_sqr = cur_dist_sqr;
                 res_pt_1 = cur_pt_1;
                 res_pt_2 = obs2.vertices[i];
             }           
@@ -253,17 +274,17 @@ vector<Point2f> GetPassageSegmentPts(const PolygonObstacle& obs1, const PolygonO
     return {res_pt_1, res_pt_2};
 }
 
-Point2f GetClosestIntersectionPt(PolygonObstacle& obs, Point2f p1, Point2f p2, Point2f testPt) {
+/// p1-p2 may intersect with two sides of a convex obstacle, return the intersection point closer to testPt.
+Point2f GetClosestIntersectionPt(const PolygonObstacle& obs, Point2f p1, Point2f p2, Point2f testPt) {
     Point2f res = Point2f(0, 0);
     if (obs.vertices.size() <= 1) {
         cout << "Obstacle vertex number less than 1.\n";
         return res;
     }
 
-
     int vertex_num = obs.vertices.size();
     float min_distance_sqr = FLT_MAX;
-    for (int i = 0; i < obs.vertices.size() - 1; i++) {
+    for (int i = 0; i < obs.vertices.size(); i++) {
         if (SegmentIntersection(p1, p2, obs.vertices[i], obs.vertices[(i + 1) % vertex_num])) {
             Point2f cur_intersection_pt = GetSegmentsIntersectionPt(p1, p2, obs.vertices[i], obs.vertices[i + 1]);
             if (normSqr(cur_intersection_pt - testPt) < min_distance_sqr) {
@@ -272,7 +293,65 @@ Point2f GetClosestIntersectionPt(PolygonObstacle& obs, Point2f p1, Point2f p2, P
             } 
         }
     }
+    return res;
+}
+
+/// shadow volume intersection detection
+vector<vector<Point2f>> SVIntersection(const PolygonObstacle& obs1, const PolygonObstacle& obs2) {
+    vector<Point2f> psg_seg_pts = GetPassageSegmentPts(obs1, obs2);
+    Point2f psg_seg_vec = (psg_seg_pts[0] - psg_seg_pts[1]) / cv::norm(psg_seg_pts[0] - psg_seg_pts[1]),
+            psg_seg_normal = Point2f(-psg_seg_vec.y, psg_seg_vec.x),
+            psg_center = (psg_seg_pts[0] + psg_seg_pts[1]) / 2,
+            max_proj_pt_1, max_proj_pt_2, min_proj_pt_1, min_proj_pt_2;
     
+    float max_proj_1 = FLT_MIN, min_proj_1 = FLT_MAX, max_dist_to_psg_center = 0;
+    for (const Point2f& vertex: obs1.vertices) {
+        Point2f cur_vec = vertex - psg_center;
+        max_dist_to_psg_center = max(max_dist_to_psg_center, (float)cv::norm(cur_vec));
+        float cur_proj = cur_vec.x * psg_seg_normal.x + cur_vec.y * psg_seg_normal.y;
+        if (cur_proj > max_proj_1) {
+            max_proj_1 = cur_proj;
+            max_proj_pt_1 = psg_center + cur_proj * psg_seg_normal;
+        }
+        if (cur_proj < min_proj_1) {
+            min_proj_1 = cur_proj;
+            min_proj_pt_1 = psg_center + cur_proj * psg_seg_normal;
+        }
+    }
+    
+    float max_proj_2 = FLT_MIN, min_proj_2 = FLT_MAX;
+    for (const Point2f& vertex: obs2.vertices) {
+        Point2f cur_vec = vertex - psg_center;
+        max_dist_to_psg_center = max(max_dist_to_psg_center, (float)cv::norm(cur_vec));
+        float cur_proj = cur_vec.x * psg_seg_normal.x + cur_vec.y * psg_seg_normal.y;
+        if (cur_proj > max_proj_2) {
+            max_proj_2 = cur_proj;
+            max_proj_pt_2 = psg_center + cur_proj * psg_seg_normal;
+        }
+        if (cur_proj < min_proj_2) {
+            min_proj_2 = cur_proj;
+            min_proj_pt_2 = psg_center + cur_proj * psg_seg_normal;
+        }
+    }
+
+    Point2f SVI_max_ref_pt = (max_proj_1 < max_proj_2) ? max_proj_pt_1 : max_proj_pt_2,
+            SVI_min_ref_pt = (min_proj_1 > min_proj_2) ? min_proj_pt_1 : min_proj_pt_2;
+    
+    Point2f SVI_max_side_pt_1 = SVI_max_ref_pt + psg_seg_vec * max_dist_to_psg_center,
+            SVI_max_side_pt_2 = SVI_max_ref_pt - psg_seg_vec * max_dist_to_psg_center,
+            SVI_min_side_pt_1 = SVI_min_ref_pt + psg_seg_vec * max_dist_to_psg_center,
+            SVI_min_side_pt_2 = SVI_min_ref_pt - psg_seg_vec * max_dist_to_psg_center;
+    vector<vector<Point2f>> res({{SVI_max_side_pt_1, SVI_max_side_pt_2}, 
+                                {SVI_min_side_pt_1, SVI_min_side_pt_2}, 
+                                psg_seg_pts});   
+/*     SVI_max_side_pt_1 = GetClosestIntersectionPt(obs1, SVI_max_side_pt_1, SVI_max_side_pt_2, SVI_max_ref_pt);
+    SVI_max_side_pt_2 = GetClosestIntersectionPt(obs2, SVI_max_side_pt_1, SVI_max_side_pt_2, SVI_max_ref_pt);
+    SVI_min_side_pt_1 = GetClosestIntersectionPt(obs1, SVI_min_side_pt_1, SVI_min_side_pt_2, SVI_min_ref_pt);
+    SVI_min_side_pt_2 = GetClosestIntersectionPt(obs2, SVI_min_side_pt_1, SVI_min_side_pt_2, SVI_min_ref_pt);
+    
+    res.push_back({SVI_max_side_pt_1, SVI_max_side_pt_2});
+    res.push_back({SVI_min_side_pt_1, SVI_min_side_pt_2}); */
+
     return res;
 } 
 
@@ -420,7 +499,7 @@ vector<PolygonObstacle> GenerateRandomObstacles(int obstacle_num, Size2f config_
 
         bool is_cur_obs_valid = true;
         for (int j = 0; j < i; j++) {
-            if (AreObstaclesOverlapped(cur_obs, res_obs_vec[j]) == true) {
+            if (ObstaclesIntersect(cur_obs, res_obs_vec[j]) == true) {
                 is_cur_obs_valid = false;
                 break;
             }
@@ -430,7 +509,6 @@ vector<PolygonObstacle> GenerateRandomObstacles(int obstacle_num, Size2f config_
         else
             res_obs_vec[i] = cur_obs;
     }
-
     return res_obs_vec;
 }
 
@@ -497,89 +575,5 @@ pair<vector<vector<int>>, vector<vector<Point2f>>> ExtendedVisibilityPassageChec
     return make_pair(res_passage_pair, res_passage_pts);
 }
 
-void DFSCycleDetection(int cur_node, int parent_node, int color[], int parent[], int& cycle_num, 
-                        vector<int> adjacency_list[], vector<vector<int>>& cycle_vertices_vec) {
-    if (color[cur_node] == 2)
-        return;
-    
-    if (color[cur_node] == 1) {
-        cycle_num++;
-
-        vector<int> cycle_vertices;
-        int temp_node = parent_node;
-        cycle_vertices.push_back(temp_node);
-        while (temp_node != cur_node) {
-            temp_node = parent[temp_node];
-            cycle_vertices.push_back(temp_node);
-        }
-        // chord check
-        int vertex_num = cycle_vertices.size();
-        if (vertex_num > 3) {
-            int back_idx = vertex_num - 1, start_idx = 1;
-            while (back_idx > 2) {
-                start_idx = 1;
-                while (start_idx < back_idx - 1) {
-                    int back_node = cycle_vertices[back_idx],
-                        start_node = cycle_vertices[start_idx];
-
-                    if (std::count(adjacency_list[start_node].begin(), adjacency_list[start_node].end(), back_node) > 0) {
-                        while (back_idx < vertex_num) {
-                            cycle_vertices[start_idx + 1] = cycle_vertices[back_idx];
-                            start_idx++;
-                            back_idx++;
-                        }
-                        cycle_vertices.resize(start_idx + 1);
-                        back_idx = 0;
-                        break;
-                    }
-
-                    start_idx++;
-                }
-                back_idx--;
-            }
-        }
-
-        cycle_vertices_vec.push_back(cycle_vertices);
-        return;
-    }
-
-    parent[cur_node] = parent_node;
-    color[cur_node] = 1;
-
-    for (int neighbor_node : adjacency_list[cur_node]) {
-        if (neighbor_node == parent[cur_node])
-            continue;
-        DFSCycleDetection(neighbor_node, cur_node, color, parent, cycle_num, adjacency_list, cycle_vertices_vec);
-    }
-    color[cur_node] = 2;
-}
-
-vector<vector<int>> DetectGraphCycles(vector<vector<int>>& passage_pairs, int obs_num = 100) {
-    obs_num = 0;
-    for (vector<int>& cur_passage_pair : passage_pairs) {
-        obs_num = std::max(obs_num, cur_passage_pair[1] + 1);
-    }
-
-    vector<vector<int>> cycle_vertices_vec;
-    vector<int> adjacency_list[obs_num];
-    for (vector<int>& cur_passage_pair : passage_pairs) {
-        adjacency_list[cur_passage_pair[0]].push_back(cur_passage_pair[1]);
-        adjacency_list[cur_passage_pair[1]].push_back(cur_passage_pair[0]);
-    }
-
-    cout << "adjacency list\n";
-    for (int i = 0; i < obs_num; i++) {
-        cout << i << ": ";
-        for (int& obs_idx : adjacency_list[i])
-            cout << obs_idx << ", ";
-        cout << "\n";
-    }
-
-    int color[obs_num] = {0}, parent[obs_num] = {0};  // color 1---partially visited node, color 2---completely visited node
-    int cycle_num = 0;
-    DFSCycleDetection(passage_pairs[0][0], passage_pairs[0][1], color, parent, cycle_num, adjacency_list, cycle_vertices_vec);
-
-    return cycle_vertices_vec;
-}
 
 #endif
