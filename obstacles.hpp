@@ -91,7 +91,6 @@ Point2f ClosestPtOnSegmentToPt(const Point2f& p1, const Point2f& p2, const Point
     return res_pt;
 }
 
-
  /// Segment p1-p2, q1-q2 intersect, return the intersection point. Otherwise will return intersection point of two lines.
 Point2f GetSegmentsIntersectionPt(const Point2f& p1, const Point2f& p2, const Point2f& q1, const Point2f& q2) {
     if (abs(p1.x - p2.x) < 1e-4 && abs(q1.x - q2.x) > 1e-4)
