@@ -34,6 +34,19 @@ struct PolygonObstacle {
     }                                                              
 };
 
+void DrawDshedLine(Mat img, const Point2f& initial_pt, const Point2f& end_pt, Scalar color = Scalar(0, 0, 0), int thickness = 2, float dash_len = 5) {
+    float line_len = cv::norm(end_pt - initial_pt);
+    Point2f line_direction = (end_pt -initial_pt) / line_len;
+    int dash_num = line_len / dash_len;
+    if (line_len < 2 * dash_len) 
+        line(img, initial_pt, initial_pt + dash_len * line_direction, color, thickness);
+    for (int i = 0; i <= dash_num; i += 2) 
+        if (i == dash_num)
+            line(img, initial_pt + i * dash_len * line_direction, end_pt, color, thickness);
+        else
+            line(img, initial_pt + i * dash_len * line_direction, initial_pt + (i + 1) * dash_len * line_direction, color, thickness);
+}
+
 int Orientation(const Point2f& p1, const Point2f& p2, const Point2f& p3) {
     float threshold = 1e-3;
     // Normalization is important to mitigate the threshold error brought by value magnitude.
@@ -91,13 +104,14 @@ Point2f ClosestPtOnSegmentToPt(const Point2f& p1, const Point2f& p2, const Point
     return res_pt;
 }
 
+
  /// Segment p1-p2, q1-q2 intersect, return the intersection point. Otherwise will return intersection point of two lines.
 Point2f GetSegmentsIntersectionPt(const Point2f& p1, const Point2f& p2, const Point2f& q1, const Point2f& q2) {
     if (abs(p1.x - p2.x) < 1e-4 && abs(q1.x - q2.x) > 1e-4)
         return Point2f(p1.x, q1.y + (q1.y - q2.y) / (q1.x - q2.x) * (p1.x - q1.x));
     else if (abs(p1.x - p2.x) > 1e-4 && abs(q1.x - q2.x) < 1e-4)
         return Point2f(q1.x, p1.y + (p1.y - p2.y) / (p1.x - p2.x) * (q1.x - p1.x));
-    else if (abs(p1.x - p2.x) < 1e-4 && abs(q1.x - q2.x) < 1e-4 && (abs(p1.x - q1.x) < 1e-4 || abs(p1.x - q2.x))) {
+    else if (abs(p1.x - p2.x) < 1e-4 && abs(q1.x - q2.x) < 1e-4 && abs(p1.x - q1.x) < 1e-4) {
         float p_min_y = min(p1.y, p2.y), p_max_y = max(p1.y, p2.y),
               q_min_y = min(q1.y, q2.y), q_max_y = max(q1.y, q2.y);
         if (q1.y >= p_min_y && q1.y <= p_max_y)
@@ -111,7 +125,7 @@ Point2f GetSegmentsIntersectionPt(const Point2f& p1, const Point2f& p2, const Po
         return Point2f(p1.x, 0);        
     }
     else if (abs(p1.x - p2.x) < 1e-4 && abs(q1.x - q2.x) < 1e-4) {
-        string msg = "Receive parallel vertical lines as arguments in " + string(__func__);
+        string msg = "Receive parallel non-intersecting vertical lines as arguments in " + string(__func__);
         throw std::invalid_argument(msg);
     }
 
@@ -120,27 +134,39 @@ Point2f GetSegmentsIntersectionPt(const Point2f& p1, const Point2f& p2, const Po
           x_p1 = p1.x, y_p1 = p1.y,
           x_q1 = q1.x, y_q1 = q1.y;
 
-    // Due to projections on regular shapes, e.g., rectangles, parallel and overlapping segments
-    // are often input. Careful processing is needed to make procedures sound.
+    // Due to projections on regular shapes, e.g., rectangles, parallel and overlapping 
+    // segments are often input. Careful processing is needed to make procedures sound.
     if (abs(kp - kq) < 1e-4) {
-        Point2f p_vec = (p2 - p1) / cv::norm(p2 - p1), pq_vec = (q1 - p1) / cv::norm(q1 - p1);
-        float cross_product = p_vec.x * pq_vec.y - p_vec.y * pq_vec.x;
-        if (abs(cross_product) > 1e-2) 
-            throw std::invalid_argument("Receive parallel but non-intersecting segments as arguments in " + string(__func__));
-    
+        Point2f p_vec = (p2 - p1) / cv::norm(p2 - p1), pq_vec = q1 - p1;
+        float inner_product = p_vec.x * pq_vec.x + p_vec.y * pq_vec.y,
+              line_dist = cv::norm(pq_vec - inner_product * p_vec);
+
         if (OnSegment(p1, p2, q1) == true && OnSegment(p1, p2, q2) == false)
             return q1;
         else if (OnSegment(p1, p2, q1) == false && OnSegment(p1, p2, q2) == true)
             return q2;
         else if (OnSegment(p1, p2, q1) == true && OnSegment(p1, p2, q2) == true) {
-            // Return the point closer to midpoint of p1, p2 so that invoking in shadow volume intersection
-            // procedure can work well.
+            // Return the point closer to midpoint of p1, p2 so that invoking 
+            // in the shadow volume intersection procedure can work well.
             Point2f ref_pt = (p1 + p2) / 2;
             return normSqr(ref_pt - q1) < normSqr(ref_pt - q2) ? q1 : q2;
-        }
-        else {
+        }  
+        else if (OnSegment(q1, q2, p1) == true && OnSegment(q1, q2, p2) == false)
             return p1;
-        } 
+        else if (OnSegment(q1, q2, p1) == false && OnSegment(q1, q2, p2) == true)
+            return p2;
+        else if (OnSegment(q1, q2, p1) == true && OnSegment(q1, q2, p2) == true) {
+            Point2f ref_pt = (p1 + p2) / 2;
+            return normSqr(ref_pt - p1) < normSqr(ref_pt - p2) ? p1 : p2;
+        }     
+        else if (line_dist > 1e-2) { 
+            // It turns out that using line distance or cross product to judge if tow segments are parallel but not coincident 
+            // is not accurate using float numbers. The computed distance of two coincident segments can be 0.0x or even 0.x,
+            // much larger than zero.
+            throw std::invalid_argument("Receive parallel but non-intersecting segments as arguments in " + string(__func__));  
+         }     
+        else 
+            return p1;
     }
     float x = (y_p1 - y_q1 - kp * x_p1 + kq * x_q1) / (kq - kp),
           y = y_p1 + kp * (x - x_p1);
@@ -217,49 +243,12 @@ bool obstacleFreeVec(vector<PolygonObstacle>& obs, Point2f p1, Point2f p2) {
     return true;
 }
 
-bool ObstacleFreeVecForPassage(const vector<PolygonObstacle>& obs, int obs_idx_1, int obs_idx_2) {
-    vector<Point2f> obs_centroids = GetObstaclesCentroids(obs);
-    Point2f obs_centroid_1 = obs_centroids[obs_idx_1],
-            obs_centroid_2 = obs_centroids[obs_idx_2];
-    for (int i = 0; i < obs.size(); i++) {
-        if (i == obs_idx_1 || i == obs_idx_2)
-            continue;
-        if (!ObstacleFree(obs[i], obs_centroid_1, obs_centroid_2))
-            return false;
-    }
-    return true;
-}
-
 bool ObstaclesIntersect(const PolygonObstacle& obs1, const PolygonObstacle& obs2) {
     int vertex_num_1 = obs1.vertices.size();
     for (int i = 0; i < vertex_num_1; i++) 
         if (ObstacleFree(obs2, obs1.vertices[i], obs1.vertices[(i + 1) % vertex_num_1]) == false)
             return true;    
     return false;
-}
-
-vector<Point2f> GetPassageInnerEnds(PolygonObstacle obs1, PolygonObstacle obs2) {
-    Point2f obs_centroid_1 = GetObstaclesCentroids({obs1})[0],
-            obs_centroid_2 = GetObstaclesCentroids({obs2})[0],
-            inner_end_1, inner_end_2;
-
-    int vertex_num_1 = obs1.vertices.size();
-    for (int i = 0; i < vertex_num_1; i++) {
-        if (SegmentIntersection(obs1.vertices[i], obs1.vertices[(i + 1) % vertex_num_1], obs_centroid_1, obs_centroid_2)) {
-            inner_end_1 = GetSegmentsIntersectionPt(obs1.vertices[i], obs1.vertices[(i + 1) % vertex_num_1], obs_centroid_1, obs_centroid_2);
-            break;
-        }
-    }
-    
-    int vertex_num_2 = obs2.vertices.size();
-    for (int i = 0; i < vertex_num_2; i++) {
-        if (SegmentIntersection(obs2.vertices[i], obs2.vertices[(i + 1) % vertex_num_2], obs_centroid_1, obs_centroid_2)) {
-            inner_end_2 = GetSegmentsIntersectionPt(obs2.vertices[i], obs2.vertices[(i + 1) % vertex_num_2], obs_centroid_1, obs_centroid_2);
-            break;
-        }
-    }
-
-    return {inner_end_1, inner_end_2};
 }
 
 vector<Point2f> GetPassageSegmentPts(const PolygonObstacle& obs1, const PolygonObstacle& obs2) {
@@ -361,7 +350,7 @@ vector<vector<Point2f>> SVIntersection(const PolygonObstacle& obs1, const Polygo
     SVI_min_side_pt_1 = GetClosestIntersectionPt(obs1, SVI_min_side_pt_1, SVI_min_side_pt_2, SVI_min_ref_pt);
     SVI_min_side_pt_2 = GetClosestIntersectionPt(obs2, SVI_min_side_pt_1, SVI_min_side_pt_2, SVI_min_ref_pt);
     
-/*     res.push_back({SVI_max_side_pt_1, SVI_max_side_pt_2});
+    /*     res.push_back({SVI_max_side_pt_1, SVI_max_side_pt_2});
     res.push_back({SVI_min_side_pt_1, SVI_min_side_pt_2}); */
     vector<vector<Point2f>> res({{SVI_max_side_pt_1, SVI_max_side_pt_2}, 
                                 {SVI_min_side_pt_1, SVI_min_side_pt_2}, 
@@ -388,32 +377,6 @@ float MinDistanceToObstaclesVec(const vector<PolygonObstacle>& obstacles, Point2
             res = distance_to_obs;
     }
     return res;
-}
-
-pair<int, Point2f> FindPassageEndonObstacles(const vector<PolygonObstacle>& obstacles, Point2f start_pt, Point2f virtual_end) {
-    int res_obs_idx = 0;
-    Point2f res_passage_end(-1, -1);
-    float min_passage_len = FLT_MAX;
-    for (int obs_idx = 0; obs_idx < obstacles.size(); obs_idx++) {
-        int obs_vertices_num = obstacles[obs_idx].vertices.size();
-        for (int i = 0; i < obs_vertices_num; i++) {
-            if (SegmentIntersection(obstacles[obs_idx].vertices[i], 
-                                    obstacles[obs_idx].vertices[(i + 1) % obs_vertices_num],
-                                    start_pt, virtual_end) == true) {
-                Point2f cur_passage_end = GetSegmentsIntersectionPt(obstacles[obs_idx].vertices[i], 
-                                                                    obstacles[obs_idx].vertices[(i + 1) % obs_vertices_num],
-                                                                    start_pt, virtual_end);
-                float cur_passage_len = cv::norm(cur_passage_end - start_pt);
-                if (cur_passage_len < min_passage_len) {
-                    min_passage_len = cur_passage_len;
-                    res_obs_idx = obs_idx;
-                    res_passage_end = cur_passage_end;
-                }
-            }
-        }
-    }
-
-    return make_pair(res_obs_idx, res_passage_end);
 }
 
 float GetMinPassageWidthPassed(const vector<PolygonObstacle>& obstacles, Point2f pt1, Point2f pt2) {
@@ -473,7 +436,6 @@ vector<PolygonObstacle> GenerateRandomObstacles(int obstacle_num, Size2f config_
     res_obs_vec[2] = left_obs;
     res_obs_vec[3] = right_obs;
     
-    //float size_len = 30;
     Eigen::Matrix<float, 2, 4> vertices_square, vertices_rectangle; 
                                vertices_square << -size_len / 2, size_len / 2, size_len / 2, -size_len / 2,
                                                  -size_len / 2, -size_len / 2, size_len / 2, size_len / 2;
@@ -527,67 +489,69 @@ vector<PolygonObstacle> GenerateRandomObstacles(int obstacle_num, Size2f config_
 }
 
 pair<vector<vector<int>>, vector<vector<Point2f>>> PureVisibilityPassageCheck(const vector<PolygonObstacle>& obstacles) {
-    vector<vector<int>> res_passage_pair;
-    vector<vector<Point2f>> res_passage_pts;
+    vector<vector<int>> res_psg_pair;
+    vector<vector<Point2f>> res_psg_pts;
     
     int start_idx = 4; // 4 if the first four wall obstacles are not considered.
     for (int i = start_idx; i < obstacles.size() - 1; i++) {
         int j = i < 4 ? 4 : i + 1;
         for (; j < obstacles.size(); j++) {
-            vector<Point2f> cur_passage_segment_pts = GetPassageSegmentPts(obstacles[i], obstacles[j]);
+            vector<Point2f> psg_segment_pts = GetPassageSegmentPts(obstacles[i], obstacles[j]);
             
-            bool is_passage_segment_obstacle_free = true;
+            bool is_psg_valid = true;
             for (int k = start_idx; k < obstacles.size(); k++) {
                 if (k == i || k == j)
                     continue;
-                if (ObstacleFree(obstacles[k], cur_passage_segment_pts[0], cur_passage_segment_pts[1]) == false) {
-                    is_passage_segment_obstacle_free = false;
+                if (ObstacleFree(obstacles[k], psg_segment_pts[0], psg_segment_pts[1]) == false) {
+                    is_psg_valid = false;
                     break;
                 }
             }
-            if (is_passage_segment_obstacle_free == true) {
-                res_passage_pair.push_back({i, j});
-                res_passage_pts.push_back(cur_passage_segment_pts);
+            if (is_psg_valid == true) {
+                res_psg_pair.push_back({i, j});
+                res_psg_pts.push_back(psg_segment_pts);
             }
         }
     }
-    return make_pair(res_passage_pair, res_passage_pts);
+    return make_pair(res_psg_pair, res_psg_pts);
 }
 
 pair<vector<vector<int>>, vector<vector<Point2f>>> ExtendedVisibilityPassageCheck(const vector<PolygonObstacle>& obstacles) {
-    vector<vector<int>> res_passage_pair;
-    vector<vector<Point2f>> res_passage_pts;
+    vector<vector<int>> res_psg_pair;
+    vector<vector<Point2f>> res_psg_pts;
     
     int start_idx = 4; // 4 if the first four wall obstacles are not considered.
     for (int i = start_idx; i < obstacles.size() - 1; i++) {
         int j = i < 4 ? 4 : i + 1;
         for (; j < obstacles.size(); j++) {
-            vector<Point2f> cur_passage_segment_pts = GetPassageSegmentPts(obstacles[i], obstacles[j]);
-            float cur_passage_length = cv::norm(cur_passage_segment_pts[0] - cur_passage_segment_pts[1]);
+            vector<vector<Point2f>> psg_key_pts = SVIntersection(obstacles[i], obstacles[j]);
+            vector<Point2f> psg_segment_pts = psg_key_pts.back();            
+            // vector<Point2f> psg_segment_pts = GetPassageSegmentPts(obstacles[i], obstacles[j]);
+            float psg_length = cv::norm(psg_segment_pts[0] - psg_segment_pts[1]);
 
-            bool is_passage_valid = true;
+            bool is_psg_valid = true;
             for (int k = start_idx; k < obstacles.size(); k++) {
                 if (k == i || k == j)
                     continue;
-                if (ObstacleFree(obstacles[k], cur_passage_segment_pts[0], cur_passage_segment_pts[1]) == false) {
-                    is_passage_valid = false;
+                if (ObstacleFree(obstacles[k], psg_key_pts[0][0], psg_key_pts[0][1]) == false
+                    || ObstacleFree(obstacles[k], psg_key_pts[1][0], psg_key_pts[1][1]) == false) {
+                    is_psg_valid = false;
                     break;
                 }
-                Point2f cur_passage_center = (cur_passage_segment_pts[0] + cur_passage_segment_pts[1]) / 2;
-                float cur_obs_passage_center_dist = MinDistanceToObstacle(obstacles[k], cur_passage_center);
-                if (cur_obs_passage_center_dist <= cur_passage_length / 2) {
-                    is_passage_valid = false;
+                Point2f psg_center = (psg_segment_pts[0] + psg_segment_pts[1]) / 2;
+                float obs_psg_center_dist = MinDistanceToObstacle(obstacles[k], psg_center);
+                if (obs_psg_center_dist <= psg_length / 2) {
+                    is_psg_valid = false;
                     break;
                 }
             }
-            if (is_passage_valid == true) {
-                res_passage_pair.push_back({i, j});
-                res_passage_pts.push_back(cur_passage_segment_pts);
+            if (is_psg_valid == true) {
+                res_psg_pair.push_back({i, j});
+                res_psg_pts.push_back(psg_segment_pts);
             }
         }
     }
-    return make_pair(res_passage_pair, res_passage_pts);
+    return make_pair(res_psg_pair, res_psg_pts);
 }
-
 
 #endif
