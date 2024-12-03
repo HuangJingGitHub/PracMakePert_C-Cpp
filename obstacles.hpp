@@ -161,7 +161,7 @@ Point2f GetSegmentsIntersectionPt(const Point2f& p1, const Point2f& p2, const Po
         }     
         else if (line_dist > 1e-2) { 
             // It turns out that using line distance or cross product to judge if tow segments are parallel but not coincident 
-            // is not accurate using float numbers. The computed distance of two coincident segments can be 0.0x or even 0.x,
+            // is not accurate due to rounding error. The computed distance of two coincident segments can be 0.0x or even 0.x,
             // much larger than zero.
             throw std::invalid_argument("Receive parallel but non-intersecting segments as arguments in " + string(__func__));  
          }     
