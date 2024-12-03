@@ -100,21 +100,21 @@ vector<vector<int>> DelaunayTriangulationObstables(const vector<PolygonObstacle>
                                                     Size2f rect_size = Size2f(1000, 1000)) {
     vector<vector<int>> adjacency_list(obs_vec.size());
     vector<set<int>> adjacency_set(obs_vec.size());
-    vector<Point2f> obstacle_centroids_vec = GetObstaclesCentroids(obs_vec);
+    vector<Point2f> obs_centroids_vec = GetObstaclesCentroids(obs_vec);
     unordered_map<string, int> centroid_obs_map;
-    for (int i = 0; i < obstacle_centroids_vec.size(); i++)
-        centroid_obs_map[PointToString(obstacle_centroids_vec[i])] = i;
+    for (int i = 0; i < obs_centroids_vec.size(); i++)
+        centroid_obs_map[PointToString(obs_centroids_vec[i])] = i;
 
     Rect2f bounding_box(0, 0, rect_size.width, rect_size.height);
     Subdiv2D subdiv(bounding_box);
     
     // Environment boundaries, if any, are not included in trigulation.
     if (contain_env_walls == true) {
-        for (int i = 4; i < obstacle_centroids_vec.size(); i++)
-            subdiv.insert(obstacle_centroids_vec[i]);
+        for (int i = 4; i < obs_centroids_vec.size(); i++)
+            subdiv.insert(obs_centroids_vec[i]);
     }
     else {
-        for (Point2f& centroid : obstacle_centroids_vec)
+        for (Point2f& centroid : obs_centroids_vec)
             subdiv.insert(centroid);
     }
 
@@ -145,11 +145,11 @@ vector<vector<int>> DelaunayTriangulationObstables(const vector<PolygonObstacle>
 }
 
 pair<vector<vector<int>>, vector<vector<Point2f>>> PassageCheckInDelaunayGraph(const vector<PolygonObstacle>& obstacles) {
-    vector<vector<int>> res_passage_pair;
-    vector<vector<Point2f>> res_passage_pts;
+    vector<vector<int>> res_psg_pair;
+    vector<vector<Point2f>> res_psg_pts;
     vector<vector<int>> adjacency_list = DelaunayTriangulationObstables(obstacles);
 
-/*     auto extended_passages = ExtendedVisibilityPassageCheck(obstacles).first;
+    /* auto extended_passages = ExtendedVisibilityPassageCheck(obstacles).first;
     for (vector<int>& cur_passage : extended_passages) {
         int obs_1 = cur_passage[0], obs_2 = cur_passage[1];
         if (std::find(adjacency_list[obs_1].begin(), adjacency_list[obs_1].end(), obs_2) == adjacency_list[obs_1].end())
@@ -168,8 +168,10 @@ pair<vector<vector<int>>, vector<vector<Point2f>>> PassageCheckInDelaunayGraph(c
             if (j <= i)
                 continue;
 
-            vector<Point2f> cur_passage_segment_pts = GetPassageSegmentPts(obstacles[i], obstacles[j]);
-            float cur_passage_length = cv::norm(cur_passage_segment_pts[0] - cur_passage_segment_pts[1]);
+            vector<vector<Point2f>> psg_key_pts = SVIntersection(obstacles[i], obstacles[j]);
+            vector<Point2f> psg_segment_pts = psg_key_pts.back();
+            // vector<Point2f> psg_segment_pts = GetPassageSegmentPts(obstacles[i], obstacles[j]);
+            float psg_length = cv::norm(psg_segment_pts[0] - psg_segment_pts[1]);
             // obstacle within geodesic distance (gd) two of two obstacles
             set<int> obs_gd_two = neighbor_obs_gd_two;
             for (int k : adjacency_list[j])
@@ -178,30 +180,33 @@ pair<vector<vector<int>>, vector<vector<Point2f>>> PassageCheckInDelaunayGraph(c
                 for (int l : adjacency_list[k])
                     obs_gd_two.insert(l);
 
-            bool is_passage_valid = true;
+            bool is_psg_valid = true;
             for (auto it = obs_gd_two.begin(); it != obs_gd_two.end(); it++) {
                 int k = *it;
                 if (k == i || k == j)
                     continue;
-
-                if (ObstacleFree(obstacles[k], cur_passage_segment_pts[0], cur_passage_segment_pts[1]) == false) {
-                    is_passage_valid = false;
+                
+                // Assume if an obstacle collides with the passage region, it must collide with 
+                // one of the passage region boundaries.
+                if (ObstacleFree(obstacles[k], psg_key_pts[0][0], psg_key_pts[0][1]) == false
+                    || ObstacleFree(obstacles[k], psg_key_pts[1][0], psg_key_pts[1][1]) == false) {
+                    is_psg_valid = false;
                     break;
                 }
-                Point2f cur_passage_center = (cur_passage_segment_pts[0] + cur_passage_segment_pts[1]) / 2;
-                float cur_obs_passage_center_dist = MinDistanceToObstacle(obstacles[k], cur_passage_center);
-                if (cur_obs_passage_center_dist <= cur_passage_length / 2) {
-                    is_passage_valid = false;                    
+                Point2f psg_center = (psg_segment_pts[0] + psg_segment_pts[1]) / 2;
+                float obs_psg_center_dist = MinDistanceToObstacle(obstacles[k], psg_center);
+                if (obs_psg_center_dist <= psg_length / 2) {
+                    is_psg_valid = false;                    
                     break;
                 }
             }
-            if (is_passage_valid == true) {
-                res_passage_pair.push_back({i, j});
-                res_passage_pts.push_back(cur_passage_segment_pts);
+            if (is_psg_valid == true) {
+                res_psg_pair.push_back({i, j});
+                res_psg_pts.push_back(psg_segment_pts);
             }
         }
     }
-    return make_pair(res_passage_pair, res_passage_pts);
+    return make_pair(res_psg_pair, res_psg_pts);
 }
 
 #endif
