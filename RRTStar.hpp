@@ -44,7 +44,7 @@ public:
 
     RRTStarPlanner(): start_node_(nullptr), target_node_(nullptr) {}
     RRTStarPlanner(Point2f start, Point2f target, vector<PolygonObstacle> obs, 
-                   float step_len = 18, 
+                   float step_len = 20, 
                    float min_dist_to_goal = 10, 
                    Size2f config_size = Size2f(640, 480), 
                    int cost_function_type = 0,
@@ -182,8 +182,8 @@ public:
     }
 
     void Rewire(RRTStarNode* nearest_node, RRTStarNode* new_node) {
-        float gamma_star = 800,
-              gamma = gamma_star * sqrt(log(GRAPH_SIZE) * 3.32 / GRAPH_SIZE),
+        float gamma_star = sqrt(6 * config_size_.width * config_size_.height * 0.5 / M_PI),
+              gamma = gamma_star * sqrt(log(GRAPH_SIZE) / GRAPH_SIZE),
               radius_alg = std::min(gamma, step_len_);
         float x_min = std::max((float)0.0, new_node->pos.x - radius_alg), x_max = std::min(new_node->pos.x + radius_alg, config_size_.width),
               y_min = std::max((float)0.0, new_node->pos.y - radius_alg), y_max = std::min(new_node->pos.y + radius_alg, config_size_.height); 
@@ -216,7 +216,7 @@ public:
             float new_near_node_cost = NewCost(new_node, near_node);
             if (new_near_node_cost < near_node->cost
                 || (new_near_node_cost < near_node->cost + 1e-2
-                    && new_node->len + cv::norm(near_node->pos - new_node->pos) < near_node->len)) {
+                   && new_node->len + cv::norm(near_node->pos - new_node->pos) < near_node->len)) {
                 UpdateSubtree(new_node, near_node);
             }
         }

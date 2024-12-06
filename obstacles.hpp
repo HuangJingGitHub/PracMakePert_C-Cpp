@@ -27,12 +27,15 @@ struct PolygonObstacle {
             vertices[i].x = (float) polygon_vertices[i].x;
             vertices[i].y = (float) polygon_vertices[i].y;
         }
-            
     }                                                              
 };
 
 float NormSqr(const Point2f& pt) {
     return pt.x * pt.x + pt.y * pt.y;
+}
+
+float CrossProductVal(const Point2f& pt_1, const Point2f& pt_2) {
+    return pt_1.x * pt_2.y - pt_1.y * pt_2.x;
 }
 
 void InsertIntoSortedList(std::list<float>& input_list, const float val) {
@@ -63,7 +66,7 @@ int Orientation(const Point2f& p1, const Point2f& p2, const Point2f& p3) {
     float threshold = 1e-3;
     // Normalization is important to mitigate the threshold error brought by value magnitude.
     Point2f vec1 = (p2 - p1) / cv::norm(p2 - p1), vec2 = (p3 - p1) / cv::norm(p3 - p1);
-    float cross_product = vec1.x * vec2.y - vec1.y * vec2.x;
+    float cross_product = CrossProductVal(vec1, vec2);
     // From segment p1-p2 to p1-p3, counterclockwise direction, CCW
     if (cross_product > threshold)
         return 1;   
@@ -186,46 +189,6 @@ Point2f GetSegmentsIntersectionPt(const Point2f& p1, const Point2f& p2, const Po
     return Point2f(x, y);
 }
 
-vector<Point2f> GetEndsOfColinearPts(const vector<Point2f>& points) {
-    if (points.size() == 2)
-        return points;
-    else if (points.size() == 1)
-        return {points[0], points[0]};
-    else if (points.size() == 0) {
-        cout << "Warning: An empty point set is input for ends finding of colinear points\n";
-        return {};
-    }
-    
-    float x_min = points[0].x, x_max = x_min;
-    for (int i = 1; i < points.size(); i++) {
-        x_min = min(x_min, points[i].x);
-        x_max = max(x_max, points[i].x);
-    }
-
-    vector<Point2f> res;
-    if (x_max - x_min > 1e-2) {
-        Point2f min_x_pt  = points[0], max_x_pt = points[0];
-        for (int i = 1; i < points.size(); i++) {
-            if (points[i].x < min_x_pt.x)
-                min_x_pt = points[i];
-            if (points[i].x > max_x_pt.x)
-                max_x_pt = points[i];
-        }
-        res = vector<Point2f>{min_x_pt, max_x_pt};
-    }
-    else {
-        Point2f min_y_pt  = points[0], max_y_pt = points[0];
-        for (int i = 1; i < points.size(); i++) {
-            if (points[i].y < min_y_pt.y)
-                min_y_pt = points[i];
-            if (points[i].y > max_y_pt.y)
-                max_y_pt = points[i];
-        }
-        res = vector<Point2f>{min_y_pt, max_y_pt};
-    }
-    return res;
-}
-
 vector<Point2f> GetObstaclesCentroids(const vector<PolygonObstacle>& obstacles) {
     vector<Point2f> obs_centroids(obstacles.size());
     for (int i = 0; i < obstacles.size(); i++) {
@@ -235,6 +198,27 @@ vector<Point2f> GetObstaclesCentroids(const vector<PolygonObstacle>& obstacles) 
         obs_centroids[i] /= (float) obstacles[i].vertices.size();
     } 
     return obs_centroids;
+}
+
+float MinDistanceToObstacle(const PolygonObstacle& obs, Point2f testPt) {
+    float res = FLT_MAX;
+    int obs_vertices_num = obs.vertices.size();
+    for (int i = 0; i < obs_vertices_num; i++) {
+        Point2f closest_pt = ClosestPtOnSegmentToPt(obs.vertices[i], obs.vertices[(i + 1) % obs_vertices_num], testPt);
+        float distance = cv::norm(testPt - closest_pt);
+        res = min(res, distance);
+    }
+    return res;
+}
+
+float MinDistanceToObstaclesVec(const vector<PolygonObstacle>& obstacles, Point2f testPt) {
+    float res = FLT_MAX, distance_to_obs;
+    for (PolygonObstacle obs : obstacles) {
+        distance_to_obs = MinDistanceToObstacle(obs, testPt);
+        if (distance_to_obs < res)
+            res = distance_to_obs;
+    }
+    return res;
 }
 
 bool ObstacleFree(const PolygonObstacle& obs, Point2f p1, Point2f p2) {
@@ -303,6 +287,7 @@ Point2f GetClosestIntersectionPt(const PolygonObstacle& obs, Point2f p1, Point2f
     for (int i = 0; i < obs.vertices.size(); i++) {
         Point2f side_direction = obs.vertices[(i + 1) % vertex_num] - obs.vertices[i];
         side_direction /= cv::norm(side_direction);
+        // Prolonging obstacle sides a little helpes to make robust computations in corner cases.
         Point2f prolong_vertex_1 = obs.vertices[i] - 0.5 * side_direction, 
                 prolong_vertex_2 = obs.vertices[(i + 1) % vertex_num] + 0.5 * side_direction;
         if (SegmentIntersection(p1, p2, prolong_vertex_1, prolong_vertex_2)) {
@@ -316,7 +301,7 @@ Point2f GetClosestIntersectionPt(const PolygonObstacle& obs, Point2f p1, Point2f
     return res;
 }
 
-/// shadow volume intersection detection
+/// Shadow volume intersection detection
 vector<vector<Point2f>> SVIntersection(const PolygonObstacle& obs1, const PolygonObstacle& obs2) {
     vector<Point2f> psg_seg_pts = GetPassageSegmentPts(obs1, obs2);
     Point2f psg_seg_vec = (psg_seg_pts[0] - psg_seg_pts[1]) / cv::norm(psg_seg_pts[0] - psg_seg_pts[1]),
@@ -371,31 +356,10 @@ vector<vector<Point2f>> SVIntersection(const PolygonObstacle& obs1, const Polygo
                                 {SVI_min_side_pt_1, SVI_min_side_pt_2}, 
                                 psg_seg_pts});  
     return res;
-} 
-
-float MinDistanceToObstacle(const PolygonObstacle& obs, Point2f testPt) {
-    float res = FLT_MAX;
-    int obs_vertices_num = obs.vertices.size();
-    for (int i = 0; i < obs_vertices_num; i++) {
-        Point2f cur_closest_pt = ClosestPtOnSegmentToPt(obs.vertices[i], obs.vertices[(i + 1) % obs_vertices_num], testPt);
-        float cur_distance = cv::norm(testPt - cur_closest_pt);
-        res = min(res, cur_distance);
-    }
-    return res;
 }
 
-float MinDistanceToObstaclesVec(const vector<PolygonObstacle>& obstacles, Point2f testPt) {
-    float res = FLT_MAX, distance_to_obs;
-    for (PolygonObstacle obs : obstacles) {
-        distance_to_obs = MinDistanceToObstacle(obs, testPt);
-        if (distance_to_obs < res)
-            res = distance_to_obs;
-    }
-    return res;
-}
-
+/// Return the min width of passages the segment pt1-pt2 passes. Return -1 if no passage is passed
 float GetMinPassageWidthPassed(const vector<PolygonObstacle>& obstacles, Point2f pt1, Point2f pt2) {
-    // Return the min width of passages the segment pt1-pt2 passes. Return -1 if no passage is passed
     // Full search version
     float res = FLT_MAX;
     vector<Point2f> obs_centroids = GetObstaclesCentroids(obstacles);
@@ -451,6 +415,7 @@ vector<PolygonObstacle> GenerateRandomObstacles(int obstacle_num, Size2f config_
     res_obs_vec[2] = left_obs;
     res_obs_vec[3] = right_obs;
     
+    // Ensure vertices are placed in order.
     Eigen::Matrix<float, 2, 4> vertices_square, vertices_rectangle; 
                                vertices_square << -size_len / 2, size_len / 2, size_len / 2, -size_len / 2,
                                                  -size_len / 2, -size_len / 2, size_len / 2, size_len / 2;
@@ -503,6 +468,23 @@ vector<PolygonObstacle> GenerateRandomObstacles(int obstacle_num, Size2f config_
     return res_obs_vec;
 }
 
+float ComputeObstacleArea(PolygonObstacle& obs) {
+    if (obs.vertices.size() <= 2) {
+        throw std::invalid_argument("An obstacle with vertex number less than two is input in " + string(__func__));
+    }
+    float res = 0;
+    for (int i = 0; i < obs.vertices.size(); i++)
+        res += CrossProductVal(obs.vertices[i], obs.vertices[(i + 1) % obs.vertices.size()]);
+    return abs(res) / 2;
+}
+
+float FreespaceRatio(const vector<PolygonObstacle>& obstacles, const Size2f config_size) {
+    float total_obs_area = 0, total_area = config_size.width * config_size.height;
+    for (auto obs : obstacles)
+        total_obs_area += ComputeObstacleArea(obs);
+    return 1 - total_obs_area / total_area;
+} 
+
 pair<vector<vector<int>>, vector<vector<Point2f>>> PureVisibilityPassageCheck(const vector<PolygonObstacle>& obstacles) {
     vector<vector<int>> res_psg_pair;
     vector<vector<Point2f>> res_psg_pts;
@@ -537,7 +519,7 @@ pair<vector<vector<int>>, vector<vector<Point2f>>> ExtendedVisibilityPassageChec
     vector<vector<Point2f>> res_psg_pts;
     
     // 4 if the first four wall obstacles are not considered.
-    int start_idx = 4; 
+    int start_idx = 0; 
     for (int i = start_idx; i < obstacles.size() - 1; i++) {
         int j = i < 4 ? 4 : i + 1;
         for (; j < obstacles.size(); j++) {
