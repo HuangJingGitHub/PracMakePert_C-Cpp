@@ -30,7 +30,6 @@ public:
     std::vector<std::vector<Point2f>> ev_passage_pts_;
     float step_len_;
     float dist_to_goal_;
-    float radius_;
     int cost_function_type_;
     bool use_ev_check_;
     float passage_width_weight_;
@@ -38,7 +37,7 @@ public:
     RRTStarNode* start_node_;
     RRTStarNode* target_node_;
     kdTree kd_tree_;
-    int MAX_GRAPH_SIZE = 5000;
+    int MAX_GRAPH_SIZE = 8000;
     int GRAPH_SIZE = 0;
     int update_cost_cnt_ = 0;
     bool plan_success_ = false;
@@ -46,7 +45,7 @@ public:
     RRTStarPlanner(): start_node_(nullptr), target_node_(nullptr) {}
     RRTStarPlanner(Point2f start, Point2f target, vector<PolygonObstacle> obs, 
                    float step_len = 18, 
-                   float radius = 10, float min_dist_to_goal = 10, 
+                   float min_dist_to_goal = 10, 
                    Size2f config_size = Size2f(640, 480), 
                    int cost_function_type = 0,
                    float passage_width_weight = 100,
@@ -54,8 +53,7 @@ public:
         start_pos_(start), 
         target_pos_(target), 
         obstacles_(obs),
-        step_len_(step_len), 
-        radius_(radius),
+        step_len_(step_len),
         dist_to_goal_(min_dist_to_goal),
         config_size_(config_size),
         cost_function_type_(cost_function_type),
@@ -143,12 +141,12 @@ public:
                 delete new_node;
             }
 
-            circle(source_img, start_pos_, 10, Scalar(0, 0, 255), -1);
+            /* circle(source_img, start_pos_, 10, Scalar(0, 0, 255), -1);
             circle(source_img, target_pos_, 10, Scalar(0, 0, 255), -1);
             imshow("RRT* path planning", source_img);
             waitKey(1);
             if (GRAPH_SIZE == MAX_GRAPH_SIZE)
-                destroyWindow("RRT* path planning");
+                destroyWindow("RRT* path planning"); */
         }
 
         if (plan_success_ == false)
@@ -191,27 +189,33 @@ public:
               y_min = std::max((float)0.0, new_node->pos.y - radius_alg), y_max = std::min(new_node->pos.y + radius_alg, config_size_.height); 
 
         std::vector<RRTStarNode*> near_set = kd_tree_.RanageSearch(x_min, x_max, y_min, y_max);
+        int k = 0;
+        for (int i = 0; i < near_set.size(); i++)
+            if (EdgeObstacleFree(near_set[i], new_node)) {
+                near_set[k++] = near_set[i];
+            }
+        near_set.resize(k);
 
         // find minimum-cost path
         RRTStarNode* min_cost_node = nearest_node;
         float min_cost = NewCost(nearest_node, new_node);
         for (auto near_node : near_set) {
             float cur_cost = NewCost(near_node, new_node);       
-            if (cur_cost < min_cost && EdgeObstacleFree(near_node, new_node)) {
+            if (cur_cost < min_cost) {
                 min_cost_node = near_node;
                 min_cost = cur_cost;
             }            
         }
-
         UpdateSubtree(min_cost_node, new_node); 
         // line(source_img, min_cost_node->pos, new_node->pos, Scalar(0, 0, 200), 1.5);
 
         for (auto near_node : near_set) {
             if (near_node == min_cost_node)
                 continue;
+
             float new_near_node_cost = NewCost(new_node, near_node);
-            if (new_near_node_cost < near_node->cost && EdgeObstacleFree(new_node, near_node)
-                || (new_near_node_cost < near_node->cost + 1e-2 && EdgeObstacleFree(new_node, near_node) 
+            if (new_near_node_cost < near_node->cost
+                || (new_near_node_cost < near_node->cost + 1e-2
                     && new_node->len + cv::norm(near_node->pos - new_node->pos) < near_node->len)) {
                 UpdateSubtree(new_node, near_node);
             }
