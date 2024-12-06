@@ -89,7 +89,7 @@ public:
                 << "\n3: Compound cost: len - k_weight * k_min_passed_passage_widths"
                 << "\n4: Compound cost: len - weight * passed_passage_widths"
                 << "\n5: Minimum passage width cost: min_passed_passage_width"
-                << "\n6: Weighted passage width sum cost: sum of weight_i * i_th_min_passed_passage_width\n";      
+                << "\n6: Weighted passage width sum cost: sum of weight_i * i_th_min_passed_passage_width\n\n";      
     }
     ~RRTStarPlanner();
     RRTStarPlanner(const RRTStarPlanner&);
@@ -106,30 +106,29 @@ public:
         Point2f rand_pos = Point2f(0, 0);
         int sample_num = 0;
         while (GRAPH_SIZE < MAX_GRAPH_SIZE) {
-            rand_pos.x = rand() / div_width;
-            rand_pos.y = rand() / div_height;
+            // Bias to target
             sample_num++;
-
-            // Instead of directly using rand_pos = target_pos_, add a small random shift to avoid resulting in
-            // samples in the same position and potentially further problematic circle connection in the graph.
             if (sample_num % (MAX_GRAPH_SIZE / 10) == 0) {
-                // rand_pos = target_pos_ + rand_pos / cv::norm(rand_pos);                              
+                rand_pos = SafeRandTarget();                         
             } 
+            else {
+                rand_pos.x = rand() / div_width;
+                rand_pos.y = rand() / div_height;
+            }
+
             RRTStarNode* nearest_node = kd_tree_.FindNearestNode(rand_pos);
             RRTStarNode* new_node = GenerateNewNode(nearest_node, rand_pos);
             
-            cout << GRAPH_SIZE << "\n";
+            // cout << GRAPH_SIZE << "\n";
             if (EdgeObstacleFree(nearest_node, new_node)) {
                 if (plan_in_interior && cost_function_type_ == 0)
                     if (MinDistanceToObstaclesVec(obstacles_no_env_walls_, new_node->pos) < interior_delta) {
                         delete new_node;
                         continue;
                     }
-                cout << "Enter rewiring\n";
                 Rewire(nearest_node, new_node);
-                cout << "Exit rewiring\n";
                 kd_tree_.Add(new_node);
-                cout << new_node->cost << "\n";
+
                 if (NormSqr(new_node->pos - target_pos_) <= dist_to_goal_* dist_to_goal_) {
                     if (new_node->cost < min_cost) {
                         target_node_->parent = new_node;
@@ -198,11 +197,7 @@ public:
         float min_cost = NewCost(nearest_node, new_node);
         for (auto near_node : near_set) {
             float cur_cost = NewCost(near_node, new_node);       
-            /* if (cur_cost < min_cost && EdgeObstacleFree(near_node, new_node)) {
-                min_cost_node = near_node;
-                min_cost = cur_cost;
-            } */
-            if (cur_cost < min_cost - 1e-3 && EdgeObstacleFree(near_node, new_node)) {
+            if (cur_cost < min_cost && EdgeObstacleFree(near_node, new_node)) {
                 min_cost_node = near_node;
                 min_cost = cur_cost;
             }            
@@ -215,8 +210,9 @@ public:
             if (near_node == min_cost_node)
                 continue;
             float new_near_node_cost = NewCost(new_node, near_node);
-            if (new_near_node_cost < near_node->cost && EdgeObstacleFree(new_node, near_node)) {
-                cout << "Rewiring " << new_near_node_cost << " " << near_node->cost << " " << new_node->cost << "\n";
+            if (new_near_node_cost < near_node->cost && EdgeObstacleFree(new_node, near_node)
+                || (new_near_node_cost < near_node->cost + 1e-2 && EdgeObstacleFree(new_node, near_node) 
+                    && new_node->len + cv::norm(near_node->pos - new_node->pos) < near_node->len)) {
                 UpdateSubtree(new_node, near_node);
             }
         }
@@ -315,6 +311,20 @@ public:
         }
     }
 
+    /// Instead of directly using rand_pos = target_pos_, add a small random shift to avoid resulting in
+    /// samples in the same position and potentially further problematic circle connection in the graph.
+    Point2f SafeRandTarget() {
+        float safe_dist_x = min(target_pos_.x, config_size_.width - target_pos_.x),
+              safe_dist_y = min(target_pos_.y, config_size_.height - target_pos_.y),
+              safe_dist = min(safe_dist_x, safe_dist_y) * 0.95;
+        float r = sqrt(rand() / (float)RAND_MAX) * safe_dist;
+        Point2f direction;
+        direction.x = rand() / (float)RAND_MAX; direction.y = rand() / (float)RAND_MAX;
+        direction = direction - Point2f(0.5, 0.5);
+        direction = direction / cv::norm(direction);
+        return target_pos_ + direction * r;
+    }
+
     std::vector<RRTStarNode*> GetPath() {
         std::vector<RRTStarNode*> res;
         if (!plan_success_) {
@@ -337,7 +347,7 @@ public:
         for (int i = 0; i < node_path.size(); i++)
             res[i] = node_path[i]->pos;
         return res;
-    }  
+    }
 };
 
 RRTStarPlanner::~RRTStarPlanner() {
