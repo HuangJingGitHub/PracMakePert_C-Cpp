@@ -1,41 +1,49 @@
 #ifndef KD_TREE_INCLUDED
 #define KD_TREE_INCLUDED
 
+#include <list>
+#include <iostream>
 #include <opencv2/core.hpp>
 #include <opencv2/highgui.hpp>
 
-using namespace cv;
-using namespace std;
+//using namespace cv;
+//using namespace std;
 
-float normSqr(const Point2f& pt) {
+float SquaredNorm(const cv::Point2f& pt) {
     return pt.x * pt.x + pt.y * pt.y;
 }
 
-struct RRTStarNode {
-    Point2f pos;
-    float cost;
-    float min_passage_width = 500;
-    RRTStarNode* parent;
-    RRTStarNode* left;
-    RRTStarNode* right;
-    vector<RRTStarNode*> adjacency_list;
-    RRTStarNode(): pos(Point2f(0, 0)), cost(0), parent(nullptr), left(nullptr), right(nullptr) {}
-    RRTStarNode(Point2f initPos): pos(initPos), cost(0), parent(nullptr), left(nullptr), right(nullptr) {}
+struct PathNode {
+    int id = 0;
+    cv::Point2f pos;
+    float cost = 0;
+    float len = 0;
+    float min_passage_width = 10000;
+    // The passage width passed by the edge parent node---current node
+    float cur_passage_width = -1;
+    std::list<float> sorted_passage_list;
+    // std::set<int> passage_idx_set;
+    PathNode* parent;
+    std::list<PathNode*> children;
+    PathNode* left;
+    PathNode* right;
+    PathNode(): pos(cv::Point2f(0, 0)), parent(nullptr), left(nullptr), right(nullptr) {}
+    PathNode(cv::Point2f initPos): pos(initPos), parent(nullptr), left(nullptr), right(nullptr) {}
 };
 
 class kdTree{
 private:
     const int kDimension_k_ = 2;
 public:
-    RRTStarNode* kd_tree_root_;
+    PathNode* kd_tree_root_;
 
     kdTree(): kd_tree_root_(nullptr) {}
-    kdTree(RRTStarNode* root_node): kd_tree_root_(root_node) {};
+    kdTree(PathNode* root_node): kd_tree_root_(root_node) {};
     ~kdTree();
     kdTree(const kdTree&);
     kdTree& operator=(const kdTree&);
 
-    void AddWithRoot(RRTStarNode* root, RRTStarNode* new_node, int depth) {
+    void AddWithRoot(PathNode* root, PathNode* new_node, int depth) {
         if (depth % kDimension_k_ == 0) {
             if (new_node->pos.x <= root->pos.x) {
                 if (root->left == nullptr) 
@@ -66,7 +74,7 @@ public:
         }
     }
 
-    void Add(RRTStarNode* new_node) {
+    void Add(PathNode* new_node) {
         if (new_node == nullptr)
             return;
 
@@ -76,22 +84,22 @@ public:
             AddWithRoot(kd_tree_root_, new_node, 0);
     }
 
-    RRTStarNode* GetCloestInTwo(RRTStarNode* target, RRTStarNode* candidate_1, RRTStarNode* candidate_2) {
+    PathNode* GetCloserInTwo(PathNode* target, PathNode* candidate_1, PathNode* candidate_2) {
         if (candidate_1 == nullptr)
             return candidate_2;
         if (candidate_2 == nullptr)
             return candidate_1;
 
-        if (normSqr(target->pos - candidate_1->pos) <= normSqr(target->pos - candidate_2->pos))
+        if (SquaredNorm(target->pos - candidate_1->pos) <= SquaredNorm(target->pos - candidate_2->pos))
             return candidate_1;
         return candidate_2;
     }
 
-    RRTStarNode* FindNearestNodeWithRoot(RRTStarNode* root, RRTStarNode* target, int depth) {
+    PathNode* FindNearestNodeWithRoot(PathNode* root, PathNode* target, int depth) {
         if (root == nullptr)
             return nullptr;
         
-        RRTStarNode *next_subtree = nullptr, *other_subtree = nullptr;
+        PathNode *next_subtree = nullptr, *other_subtree = nullptr;
         if (depth % kDimension_k_ == 0) {
             if (target->pos.x <= root->pos.x) {
                 next_subtree = root->left;
@@ -112,68 +120,74 @@ public:
                 other_subtree = root->left;
             }  
         }
-        RRTStarNode *temp_res = FindNearestNodeWithRoot(next_subtree, target, depth + 1),
-                    *cur_best = GetCloestInTwo(target, temp_res, root);
-        float cur_dist_square = normSqr(target->pos - cur_best->pos), dist_to_boundary_square, dist_to_boundary;
+        PathNode *temp_res = FindNearestNodeWithRoot(next_subtree, target, depth + 1),
+                    *cur_best = GetCloserInTwo(target, temp_res, root);
+        float cur_dist_square = SquaredNorm(target->pos - cur_best->pos), dist_to_boundary_sqr, dist_to_boundary;
         if (depth % kDimension_k_ == 0) 
             dist_to_boundary = target->pos.x - root->pos.x;
         else
             dist_to_boundary = target->pos.y - root->pos.y;
-        dist_to_boundary_square = dist_to_boundary * dist_to_boundary;
+        dist_to_boundary_sqr = dist_to_boundary * dist_to_boundary;
         
-        if (cur_dist_square >= dist_to_boundary_square) {
+        if (cur_dist_square >= dist_to_boundary_sqr) {
             temp_res = FindNearestNodeWithRoot(other_subtree, target, depth + 1);
-            cur_best = GetCloestInTwo(target, temp_res, cur_best);
+            cur_best = GetCloserInTwo(target, temp_res, cur_best);
         }
         return cur_best;
     }
 
-    RRTStarNode* FindNearestNode(RRTStarNode* target) {
+    PathNode* FindNearestNode(PathNode* target) {
         return FindNearestNodeWithRoot(kd_tree_root_, target, 0);
     } 
    
-    RRTStarNode* FindNearestNode(const Point2f& target_pos) {
-        RRTStarNode* target_node = new RRTStarNode(target_pos);
-        RRTStarNode* res = FindNearestNodeWithRoot(kd_tree_root_, target_node, 0);
+    PathNode* FindNearestNode(const cv::Point2f& target_pos) {
+        PathNode* target_node = new PathNode(target_pos);
+        PathNode* res = FindNearestNodeWithRoot(kd_tree_root_, target_node, 0);
         delete target_node;
         return res;
     }
 
-    void RangeSearchWithRoot(RRTStarNode* root, RRTStarNode* parent, vector<Point2f>& res_pt_vec, const float& x_min, const float& x_max, 
+    void RangeSearchWithRoot(PathNode* root, std::vector<PathNode*>& res_pt_vec, 
+                            const float& x_min, const float& x_max, 
                             const float& y_min, const float& y_max, int depth) {
         if (root == nullptr)
             return;
-        
-        if (depth % kDimension_k_ == 0 && parent != nullptr) {
-            if (root->pos.y <= parent->pos.y && parent->pos.y < y_min)
-                return;
-            if (root->pos.y > parent->pos.y && parent->pos.y > y_max)
-                return;
-        }
-        else if (parent != nullptr) {
-            if (root->pos.x <= parent->pos.x && parent->pos.x < x_min)
-                return;
-            if (root->pos.x > parent->pos.x && parent->pos.x > x_max)
-                return;        
-        }
 
         if (root->pos.x >= x_min && root->pos.x <= x_max && root->pos.y >= y_min && root->pos.y <= y_max)
-            res_pt_vec.push_back(root->pos);
-        RangeSearchWithRoot(root->left, root, res_pt_vec, x_min, x_max, y_min, y_max, depth + 1);
-        RangeSearchWithRoot(root->right, root, res_pt_vec, x_min, x_max, y_min, y_max, depth + 1);           
+            res_pt_vec.push_back(root);
+        
+        if (depth % kDimension_k_ == 0) {
+            if (root->pos.x < x_min)
+                RangeSearchWithRoot(root->right, res_pt_vec, x_min, x_max, y_min, y_max, depth + 1);
+            else if (root->pos.x > x_max)
+                RangeSearchWithRoot(root->left, res_pt_vec, x_min, x_max, y_min, y_max, depth + 1);
+            else {
+                RangeSearchWithRoot(root->left, res_pt_vec, x_min, x_max, y_min, y_max, depth + 1);
+                RangeSearchWithRoot(root->right, res_pt_vec, x_min, x_max, y_min, y_max, depth + 1);
+            }   
+        }
+        else {
+            if (root->pos.y < y_min)
+                RangeSearchWithRoot(root->right, res_pt_vec, x_min, x_max, y_min, y_max, depth + 1);
+            else if (root->pos.y > y_max)
+                RangeSearchWithRoot(root->left, res_pt_vec, x_min, x_max, y_min, y_max, depth + 1);
+            else {
+                RangeSearchWithRoot(root->left, res_pt_vec, x_min, x_max, y_min, y_max, depth + 1);
+                RangeSearchWithRoot(root->right, res_pt_vec, x_min, x_max, y_min, y_max, depth + 1);
+            }              
+        }         
     }
 
-    vector<Point2f> RanageSearch(const float& x_min, const float& x_max, const float& y_min, float& y_max) {
-        vector<Point2f> res;
+    std::vector<PathNode*> RanageSearch(const float& x_min, const float& x_max, const float& y_min, float& y_max) {
+        std::vector<PathNode*> res;
         if (x_min > x_max || y_min > y_max) {
-            cout << "Invalid range for range search.\n";
-            return res;
+            throw std::invalid_argument("Invalid range in range search. " + std::string(__func__));             
         }
-        RangeSearchWithRoot(kd_tree_root_, nullptr, res, x_min, x_max, y_min, y_max, 0);
+        RangeSearchWithRoot(kd_tree_root_, res, x_min, x_max, y_min, y_max, 0);
         return res;
     }
 
-    void deleteTree(RRTStarNode* root) {
+    void deleteTree(PathNode* root) {
         if (root == nullptr)
             return;
         
@@ -193,5 +207,6 @@ kdTree::kdTree(const kdTree& copied_tree) {
 
 kdTree& kdTree::operator=(const kdTree& rhs) {
     kd_tree_root_ = rhs.kd_tree_root_;
+    return *this;
 }
 #endif

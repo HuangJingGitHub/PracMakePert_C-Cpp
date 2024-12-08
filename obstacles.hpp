@@ -123,7 +123,6 @@ Point2f ClosestPtOnSegmentToPt(const Point2f& p1, const Point2f& p2, const Point
 
  /// Segment p1-p2, q1-q2 intersect, return the intersection point. Otherwise will return intersection point of two lines.
 Point2f GetSegmentsIntersectionPt(const Point2f& p1, const Point2f& p2, const Point2f& q1, const Point2f& q2) {
-    cout << "Input: " << p1 << "\n" << p2 << "\n" << q1 << "\n" << q2 << "\n\n";
     if (abs(p1.x - p2.x) < 1e-2 && abs(q1.x - q2.x) > 1e-2)
         return Point2f(p1.x, q1.y + (q1.y - q2.y) / (q1.x - q2.x) * (p1.x - q1.x));
     else if (abs(p1.x - p2.x) > 1e-2 && abs(q1.x - q2.x) < 1e-2)
@@ -293,7 +292,6 @@ Point2f GetClosestIntersectionPt(const PolygonObstacle& obs, Point2f p1, Point2f
                 prolong_vertex_2 = obs.vertices[(i + 1) % vertex_num] + 0.5 * side_direction;
         if (SegmentIntersection(p1, p2, prolong_vertex_1, prolong_vertex_2)) {
             Point2f intersection_pt = GetSegmentsIntersectionPt(p1, p2, prolong_vertex_1, prolong_vertex_2);
-            cout << "Intersection pt " << intersection_pt << "\n";
             if (NormSqr(intersection_pt - testPt) < min_distance_sqr) {
                 res = intersection_pt;
                 min_distance_sqr = NormSqr(intersection_pt - testPt);
@@ -348,21 +346,15 @@ vector<vector<Point2f>> SVIntersection(const PolygonObstacle& obs1, const Polygo
             SVI_max_side_pt_2 = SVI_max_ref_pt - psg_seg_vec * max_dist_to_psg_center,
             SVI_min_side_pt_1 = SVI_min_ref_pt + psg_seg_vec * max_dist_to_psg_center,
             SVI_min_side_pt_2 = SVI_min_ref_pt - psg_seg_vec * max_dist_to_psg_center;
-    
-    cout << "SV information:\n"
-         << SVI_max_side_pt_1 << "--" << SVI_max_side_pt_2 <<  "--" << SVI_min_side_pt_1 << "--" << SVI_min_side_pt_2 << "\n";
 
-    Point2f 
-    res_max_side_pt_1 = GetClosestIntersectionPt(obs1, SVI_max_side_pt_1, SVI_max_side_pt_2, SVI_max_ref_pt),
-    res_max_side_pt_2 = GetClosestIntersectionPt(obs2, SVI_max_side_pt_1, SVI_max_side_pt_2, SVI_max_ref_pt),
-    res_min_side_pt_1 = GetClosestIntersectionPt(obs1, SVI_min_side_pt_1, SVI_min_side_pt_2, SVI_min_ref_pt),
-    res_min_side_pt_2 = GetClosestIntersectionPt(obs2, SVI_min_side_pt_1, SVI_min_side_pt_2, SVI_min_ref_pt);
-
-    cout << SVI_max_side_pt_1 << "--" << SVI_max_side_pt_2 <<  "--" << SVI_min_side_pt_1 << "--" << SVI_min_side_pt_2 << "\n";
+    SVI_max_side_pt_1 = GetClosestIntersectionPt(obs1, SVI_max_side_pt_1, SVI_max_side_pt_2, SVI_max_ref_pt),
+    SVI_max_side_pt_2 = GetClosestIntersectionPt(obs2, SVI_max_side_pt_1, SVI_max_side_pt_2, SVI_max_ref_pt),
+    SVI_min_side_pt_1 = GetClosestIntersectionPt(obs1, SVI_min_side_pt_1, SVI_min_side_pt_2, SVI_min_ref_pt),
+    SVI_min_side_pt_2 = GetClosestIntersectionPt(obs2, SVI_min_side_pt_1, SVI_min_side_pt_2, SVI_min_ref_pt);
     
-    vector<vector<Point2f>> res({{res_max_side_pt_1, res_max_side_pt_2}, 
-                                {res_min_side_pt_1, res_min_side_pt_2}, 
-                                psg_seg_pts});  
+    vector<vector<Point2f>> res({{SVI_max_side_pt_1, SVI_max_side_pt_2}, 
+                                 {SVI_min_side_pt_1, SVI_min_side_pt_2}, 
+                                 psg_seg_pts});  
     return res;
 }
 
@@ -378,6 +370,22 @@ float GetMinPassageWidthPassed(const vector<vector<Point2f>>& passage_pts, Point
     if (res > FLT_MAX / 2) 
         return -1.0;
     return res;
+}
+
+int GetMinPassageIdxPassed(const vector<vector<Point2f>>& passage_pts, Point2f pt1, Point2f pt2) {
+    int res_idx = -1;
+    float min_width = FLT_MAX;
+
+    for (int i = 0; i < passage_pts.size(); i++) {
+        if (SegmentIntersection(passage_pts[i][0], passage_pts[i][1], pt1, pt2)) {
+            float width = cv::norm(passage_pts[i][0] - passage_pts[i][1]);
+            if (width < min_width) {
+                min_width = width;
+                res_idx = i;
+            }
+        }
+    }
+    return res_idx;
 }
 
 vector<PolygonObstacle> GenerateRandomObstacles(int obstacle_num, Size2f config_size = Size2f(640, 480), 
@@ -517,7 +525,9 @@ pair<vector<vector<int>>, vector<vector<Point2f>>> ExtendedVisibilityPassageChec
             float psg_length = cv::norm(psg_segment_pts[0] - psg_segment_pts[1]);
 
             bool is_psg_valid = true;
-            for (int k = start_idx; k < obstacles.size(); k++) {
+            // Using non-environment walls to check validity of passage candiate, therefore index starts at 4.
+            int k = 4;
+            for (; k < obstacles.size(); k++) {
                 if (k == i || k == j)
                     continue;
                 if (ObstacleFree(obstacles[k], psg_key_pts[2][0], psg_key_pts[2][1]) == false
