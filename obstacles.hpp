@@ -550,5 +550,4 @@ pair<vector<vector<int>>, vector<vector<Point2f>>> ExtendedVisibilityPassageChec
     }
     return make_pair(res_psg_pair, res_psg_pts);
 }
-
 #endif
