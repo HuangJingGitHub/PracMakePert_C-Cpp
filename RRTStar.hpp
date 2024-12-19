@@ -38,7 +38,7 @@ public:
     PathNode* start_node_;
     PathNode* target_node_;
     kdTree kd_tree_;
-    int MAX_GRAPH_SIZE = 5000;
+    int MAX_GRAPH_SIZE = 10000;
     int GRAPH_SIZE = 0;
     int update_cost_cnt_ = 0;
     bool plan_success_ = false;
@@ -74,9 +74,9 @@ public:
         pv_passage_pts_ = pv_check_res.second;
 
         // ev: extended visibility
-        auto EV_check_res = ExtendedVisibilityPassageCheck(obstacles_);
-        ev_passage_pairs_ = EV_check_res.first;
-        ev_passage_pts_ = EV_check_res.second; 
+        auto ev_check_res = ExtendedVisibilityPassageCheck(obstacles_);
+        ev_passage_pairs_ = ev_check_res.first;
+        ev_passage_pts_ = ev_check_res.second; 
 
         std::cout << "RRT* path planner instanced with cost function type: " << cost_function_type_ 
                 << "\n0: Any invalid type value: Default path length cost"
@@ -105,7 +105,7 @@ public:
         while (GRAPH_SIZE < MAX_GRAPH_SIZE) {
             // Bias to target
             sample_num++;
-            if (sample_num % (MAX_GRAPH_SIZE / 10) == 0) {
+            if (sample_num % (MAX_GRAPH_SIZE / 20) == 0) {
                 rand_pos = SafeRandTarget();                         
             } 
             else {
@@ -230,6 +230,9 @@ public:
               passed_psg_width = -1.0, 
               new_min_psg_width = near_node->min_passage_width,
               res = 0;
+        if (cost_function_type_ == 0)
+            return new_len;
+
         if (use_ev_check_ == true) 
             passed_psg_width = GetMinPassageWidthPassed(ev_passage_pts_, near_node->pos, new_node->pos);
         else 
@@ -247,24 +250,20 @@ public:
             // res = new_len - passage_width_weight_ * new_min_psg_width;
             res = -new_min_psg_width;
         }
-        else {
-            res = new_len;
-        }
-
         return res;      
     }    
 
     void UpdateNodeCost(PathNode* node) {
-        if (cost_function_type_ == 1) {
+        if (cost_function_type_ == 0) {
+            node->cost = node->len;
+        }            
+        else if (cost_function_type_ == 1) {
             node->cost = node->len / node->min_passage_width;
         } 
         else if (cost_function_type_ == 2) {
             // node->cost = node->len - passage_width_weight_ * node->min_passage_width;
             node->cost = -node->min_passage_width;
-        }
-        else {
-            node->cost = node->len;
-        }       
+        }   
     }
 
     void UpdateSubtree(PathNode* new_parent, PathNode* child) {
@@ -321,7 +320,7 @@ public:
     }
 
     /// Instead of directly using rand_pos = target_pos_, add a small random shift to avoid resulting in
-    /// samples in the same position and potentially further problematic circle connection in the graph.
+    /// samples in the same position and potentially any further problematic circle connection in the graph.
     Point2f SafeRandTarget() {
         float safe_dist_x = min(target_pos_.x, config_size_.width - target_pos_.x),
               safe_dist_y = min(target_pos_.y, config_size_.height - target_pos_.y),

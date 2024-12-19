@@ -397,12 +397,12 @@ vector<PolygonObstacle> GenerateRandomObstacles(int obstacle_num, Size2f config_
 
     // By default, add 4 environment walls as obstacles
     vector<PolygonObstacle> res_obs_vec(obstacle_num + 4);
-    vector<Point2f> top_obs_vertices{Point2f(0, 0), Point2f(config_size.width, 0), Point2f(10, -10)},
+    vector<Point2f> top_obs_vertices{Point2f(0, 0), Point2f(config_size.width, 0), Point2f(config_size.width / 2, -10)},
                     bottom_obs_vertices{Point2f(0, config_size.height), Point2f(config_size.width, config_size.height), 
-                                        Point2f(10, config_size.height + 10)},
-                    left_obs_vertices{Point2f(0, 0), Point2f(0, config_size.height), Point2f(-10, 10)},
+                                        Point2f(config_size.width / 2, config_size.height + 10)},
+                    left_obs_vertices{Point2f(0, 0), Point2f(0, config_size.height), Point2f(-10, config_size.height / 2)},
                     right_obs_vertices{Point2f(config_size.width, 0), Point2f(config_size.width, config_size.height), 
-                                        Point2f(config_size.width + 10, 10)};
+                                        Point2f(config_size.width + 10, config_size.height / 2)};
     PolygonObstacle top_obs(top_obs_vertices), bottom_obs(bottom_obs_vertices), 
                     left_obs(left_obs_vertices), right_obs(right_obs_vertices);
     res_obs_vec[0] = top_obs;
@@ -510,12 +510,12 @@ pair<vector<vector<int>>, vector<vector<Point2f>>> PureVisibilityPassageCheck(co
     return make_pair(res_psg_pair, res_psg_pts);
 }
 
-pair<vector<vector<int>>, vector<vector<Point2f>>> ExtendedVisibilityPassageCheck(const vector<PolygonObstacle>& obstacles) {
+pair<vector<vector<int>>, vector<vector<Point2f>>> ExtendedVisibilityPassageCheck(const vector<PolygonObstacle>& obstacles, bool contain_env_walls = true) {
     vector<vector<int>> res_psg_pair;
     vector<vector<Point2f>> res_psg_pts;
     
     // 4 if the first four wall obstacles are not considered.
-    int start_idx = 0; 
+    int start_idx = contain_env_walls ? 0 : 4; 
     for (int i = start_idx; i < obstacles.size() - 1; i++) {
         int j = i < 4 ? 4 : i + 1;
         for (; j < obstacles.size(); j++) {
@@ -526,12 +526,12 @@ pair<vector<vector<int>>, vector<vector<Point2f>>> ExtendedVisibilityPassageChec
 
             bool is_psg_valid = true;
             // Using non-environment walls to check validity of passage candiate, therefore index starts at 4.
-            int k = 4;
+            int k = 0;
             for (; k < obstacles.size(); k++) {
                 if (k == i || k == j)
                     continue;
-                if (ObstacleFree(obstacles[k], psg_key_pts[2][0], psg_key_pts[2][1]) == false
-                    || ObstacleFree(obstacles[k], psg_key_pts[2][0], psg_key_pts[2][1]) == false) {
+                if (ObstacleFree(obstacles[k], psg_key_pts[0][0], psg_key_pts[0][1]) == false
+                    || ObstacleFree(obstacles[k], psg_key_pts[1][0], psg_key_pts[1][1]) == false) {
                     is_psg_valid = false;
                     break;
                 }
@@ -550,4 +550,45 @@ pair<vector<vector<int>>, vector<vector<Point2f>>> ExtendedVisibilityPassageChec
     }
     return make_pair(res_psg_pair, res_psg_pts);
 }
+
+/// Only explicitly find passages linked to environment walls. Used for seperately processing environment walls.
+pair<vector<vector<int>>, vector<vector<Point2f>>> ExtendedVisibilityCheckForWalls(const vector<PolygonObstacle>& obstacles) {
+    vector<vector<int>> res_psg_pair;
+    vector<vector<Point2f>> res_psg_pts;
+    
+    // Four wall obstacles are not considered.
+    for (int i = 0; i < 4; i++) {
+        int j = i < 4 ? 4 : i + 1;
+        for (; j < obstacles.size(); j++) {
+            vector<vector<Point2f>> psg_key_pts = SVIntersection(obstacles[i], obstacles[j]);
+            vector<Point2f> psg_segment_pts = psg_key_pts.back();
+            float psg_length = cv::norm(psg_segment_pts[0] - psg_segment_pts[1]);
+
+            bool is_psg_valid = true;
+            // Using non-environment walls to check validity of passage candiate, therefore index starts at 4.
+            int k = 0;
+            for (; k < obstacles.size(); k++) {
+                if (k == i || k == j)
+                    continue;
+                if (ObstacleFree(obstacles[k], psg_key_pts[0][0], psg_key_pts[0][1]) == false
+                    || ObstacleFree(obstacles[k], psg_key_pts[1][0], psg_key_pts[1][1]) == false) {
+                    is_psg_valid = false;
+                    break;
+                }
+                Point2f psg_center = (psg_segment_pts[0] + psg_segment_pts[1]) / 2;
+                float obs_psg_center_dist = MinDistanceToObstacle(obstacles[k], psg_center);
+                if (obs_psg_center_dist <= psg_length / 2) {
+                    is_psg_valid = false;
+                    break;
+                }
+            }
+            if (is_psg_valid == true) {
+                res_psg_pair.push_back({i, j});
+                res_psg_pts.push_back(psg_segment_pts);
+            }
+        }
+    }
+    return make_pair(res_psg_pair, res_psg_pts);
+}
+
 #endif
