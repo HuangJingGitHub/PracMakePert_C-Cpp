@@ -144,7 +144,7 @@ vector<vector<int>> FindPlannarFaces(const vector<PolygonObstacle>& obstacles, c
     int obs_num = obstacles.size();
     vector<Point2f> obs_centroids = GetObstaclesCentroids(obstacles);
     // Expand centroids of environment walls so that their relative  
-    // directions w.r.t. one another are correct.
+    // directions w.r.t. one another are correctly computed.
     obs_centroids[0].y -= 1000;
     obs_centroids[1].y += 1000;
     obs_centroids[2].x -= 1000;
@@ -160,8 +160,8 @@ vector<vector<int>> FindPlannarFaces(const vector<PolygonObstacle>& obstacles, c
     for (int i = 0; i < obs_num; i++) {
         used[i].resize(adjacency_list[i].size());
         used[i].assign(adjacency_list[i].size(), 0);
-        // Sort points by axis angles. Two cases for transitivity: 1) on the same half plane, 2) on different half planes. 
-        // Solely using cross product is insufficient in comparer.
+        // Sort points by axis angles. Two cases for transitivity: 1) on the same half plane, 
+        // 2) on different half planes. Solely using cross product is insufficient in comparer.
         auto compare = [&](int l, int r) {
             Point2f pl = obs_centroids[l] - obs_centroids[i];
             Point2f pr = obs_centroids[r] - obs_centroids[i];
@@ -199,7 +199,7 @@ vector<vector<int>> FindPlannarFaces(const vector<PolygonObstacle>& obstacles, c
                 e = e_1;
             }
 
-            std::reverse(face.begin(), face.end());
+            // std::reverse(face.begin(), face.end());
             int sign = 0;
             for (int j = 0; j < face.size(); j++) {
                 int j_1 = (j + 1) % face.size();
@@ -225,7 +225,7 @@ vector<vector<int>> FindPlannarFaces(const vector<PolygonObstacle>& obstacles, c
 
 vector<vector<int>> ReportGabrielCells(const vector<PolygonObstacle>& obstacles, const vector<vector<int>>& passage_pairs) {
     vector<vector<int>> augmented_psg_pairs = passage_pairs, res;
-    // Add pseudo passage pairs of four environment walls.
+    // Add pseudo passage between four environment walls.
     augmented_psg_pairs.push_back({0, 2});
     augmented_psg_pairs.push_back({0, 3});
     augmented_psg_pairs.push_back({1, 2});
@@ -233,6 +233,46 @@ vector<vector<int>> ReportGabrielCells(const vector<PolygonObstacle>& obstacles,
 
     res = FindPlannarFaces(obstacles, augmented_psg_pairs);
     return res;
+}
+
+pair<vector<vector<int>>, vector<vector<vector<Point2f>>>> GetGabrielCellInfo(const vector<vector<int>>& cells, 
+                                                                              const pair<vector<vector<int>>, vector<vector<Point2f>>>& psg_res) {
+    // Add pseudo passage between four environment walls.
+    vector<vector<int>> augmented_psg_pairs = psg_res.first;
+    augmented_psg_pairs.push_back({0, 2});
+    augmented_psg_pairs.push_back({0, 3});
+    augmented_psg_pairs.push_back({1, 2});
+    augmented_psg_pairs.push_back({1, 3});
+    // Set invalid passage point positions such that no intersection with path segments is possible.
+    vector<vector<Point2f>> augmented_psg_pts = psg_res.second;
+    augmented_psg_pts.push_back({Point2f(0, -1), Point2f(-1, 0)});
+    augmented_psg_pts.push_back({Point2f(10000, -1), Point2f(10001, 0)});
+    augmented_psg_pts.push_back({Point2f(0, 10001), Point2f(-1, 10000)});
+    augmented_psg_pts.push_back({Point2f(10000, 10001), Point2f(10001, 10000)});   
+
+    unordered_map<string, vector<Point2f>> psg_obs_to_pt_map;
+    int psg_num = augmented_psg_pairs.size();
+    for (int i = 0; i < psg_num; i++) {
+        string key_str = to_string(augmented_psg_pairs[i][0]) + "-" + to_string(augmented_psg_pairs[i][1]);
+        psg_obs_to_pt_map[key_str] = augmented_psg_pts[i];
+    }
+
+    int cell_num = cells.size();
+    vector<vector<vector<Point2f>>> cell_side_pts(cell_num);
+    for (int i = 0; i < cell_num; i++) {
+        int vertex_num = cells[i].size();
+        for (int j = 0; j < vertex_num; j++) {
+            int obs_idx_1 = min(cells[i][j], cells[i][(j + 1) % vertex_num]),
+                obs_idx_2 = max(cells[i][j], cells[i][(j + 1) % vertex_num]);
+            string key_str = to_string(obs_idx_1) + "-" + to_string(obs_idx_2);
+            if (psg_obs_to_pt_map.count(key_str) == 0)
+                throw std::runtime_error("Passages as cell side not existing in detection results in " + string(__func__));
+
+            cell_side_pts[i].push_back(psg_obs_to_pt_map[key_str]);
+        }
+    }
+
+    return make_pair(cells, cell_side_pts);
 }
 
 #endif
