@@ -18,7 +18,6 @@ using namespace std;
 
 struct PolygonObstacle {
     vector<Point2f> vertices;
-    Point2f min_distance_pt;
     PolygonObstacle() {};
     PolygonObstacle(vector<Point2f> polygon_vertices): vertices(polygon_vertices) {}
     PolygonObstacle(vector<Point> polygon_vertices) {
@@ -28,6 +27,13 @@ struct PolygonObstacle {
             vertices[i].y = (float) polygon_vertices[i].y;
         }
     }                                                              
+};
+
+struct PolygonCell {
+    vector<int> obs_indices;
+    vector<Point2f> vertices;
+    PolygonCell() {};
+    PolygonCell(vector<int> cell_obs_indices, vector<Point2f> cell_vertices): obs_indices(cell_obs_indices), vertices(cell_vertices) {}
 };
 
 float NormSqr(const Point2f& pt) {
@@ -49,6 +55,17 @@ void InsertIntoSortedList(std::list<float>& input_list, const float val) {
     input_list.insert(it, val);
 }
 
+vector<Point2f> GetObstaclesCentroids(const vector<PolygonObstacle>& obstacles) {
+    vector<Point2f> obs_centroids(obstacles.size());
+    for (int i = 0; i < obstacles.size(); i++) {
+        obs_centroids[i] = Point2f(0, 0);
+        for (const Point2f& vertex : obstacles[i].vertices) 
+            obs_centroids[i] += vertex;
+        obs_centroids[i] /= (float) obstacles[i].vertices.size();
+    } 
+    return obs_centroids;
+}
+
 void DrawDshedLine(Mat img, const Point2f& initial_pt, const Point2f& end_pt, Scalar color = Scalar(0, 0, 0), int thickness = 2, float dash_len = 5) {
     float line_len = cv::norm(end_pt - initial_pt);
     Point2f line_direction = (end_pt -initial_pt) / line_len;
@@ -60,6 +77,22 @@ void DrawDshedLine(Mat img, const Point2f& initial_pt, const Point2f& end_pt, Sc
             line(img, initial_pt + i * dash_len * line_direction, end_pt, color, thickness);
         else
             line(img, initial_pt + i * dash_len * line_direction, initial_pt + (i + 1) * dash_len * line_direction, color, thickness);
+}
+
+void DrawObstacles(Mat back_img, const vector<PolygonObstacle>& obs_vec, bool put_obs_idx = true) {
+    int obs_num = obs_vec.size();
+    vector<Point2f> obs_centroids = GetObstaclesCentroids(obs_vec);
+
+    for (int i = 0; i < obs_num; i++) {
+        PolygonObstacle obs = obs_vec[i];
+        int cur_vertex_num = obs.vertices.size();
+        for (int j = 0; j < cur_vertex_num; j++) {
+            line(back_img, obs.vertices[j], obs.vertices[(j + 1) % cur_vertex_num], Scalar(0, 0, 0), 2);
+            // line(DG_img, obs.vertices[j], obs.vertices[(j + 1) % cur_vertex_num], Scalar(0, 0, 0), 2);
+        }
+        if (put_obs_idx)
+            putText(back_img, std::to_string(i), obs_centroids[i] - Point2f(10, -5), cv::FONT_HERSHEY_SIMPLEX, 0.6, Scalar(255, 0, 0), 2);
+    }      
 }
 
 int Orientation(const Point2f& p1, const Point2f& p2, const Point2f& p3) {
@@ -102,6 +135,30 @@ bool SegmentIntersection(const Point2f& p1, const Point2f& p2, const Point2f& q1
     else if (ori4 == 0 && OnSegment(q1, q2, p2))
         return true;
     return false;
+}
+
+bool InsidePolygon(const Point2f& pt, const vector<Point2f>& vertices) {
+    if (vertices.size() < 3)
+        throw std::invalid_argument("A polygon with a vertex number less than three in " + string(__func__));
+
+    float range_x_min = FLT_MAX, range_x_max = -FLT_MAX,
+          range_y_min = FLT_MAX, range_y_max = -FLT_MAX;
+    for (const Point2f& vertex : vertices) {
+        range_x_min = min(range_x_min, vertex.x);
+        range_x_max = max(range_x_max, vertex.x);
+        range_y_min = min(range_y_min, vertex.y);
+        range_y_max = max(range_y_max, vertex.y);
+    }
+    if (pt.x < range_x_min || pt.x > range_x_max || pt.y < range_y_min || pt.y > range_y_max)
+        return false;
+    
+    Point2f far_pt = pt + Point2f(1e5, 0);
+    int intersection_cnt = 0, vertex_num = vertices.size();
+    for (int i = 0; i < vertices.size(); i++) {
+        if (SegmentIntersection(pt, far_pt, vertices[i], vertices[(i + 1) % vertex_num]))
+            intersection_cnt++;
+    }
+    return intersection_cnt % 2 == 1;
 }
 
 /// Return the point on segment p1-p2 closest to test_pt.
@@ -187,17 +244,6 @@ Point2f GetSegmentsIntersectionPt(const Point2f& p1, const Point2f& p2, const Po
     float x = (y_p1 - y_q1 - kp * x_p1 + kq * x_q1) / (kq - kp),
           y = y_p1 + kp * (x - x_p1);
     return Point2f(x, y);
-}
-
-vector<Point2f> GetObstaclesCentroids(const vector<PolygonObstacle>& obstacles) {
-    vector<Point2f> obs_centroids(obstacles.size());
-    for (int i = 0; i < obstacles.size(); i++) {
-        obs_centroids[i] = Point2f(0, 0);
-        for (const Point2f& vertex : obstacles[i].vertices) 
-            obs_centroids[i] += vertex;
-        obs_centroids[i] /= (float) obstacles[i].vertices.size();
-    } 
-    return obs_centroids;
 }
 
 float MinDistanceToObstacle(const PolygonObstacle& obs, Point2f testPt) {
@@ -403,6 +449,11 @@ vector<PolygonObstacle> GenerateRandomObstacles(int obstacle_num, Size2f config_
                     left_obs_vertices{Point2f(0, 0), Point2f(0, config_size.height), Point2f(-10, config_size.height / 2)},
                     right_obs_vertices{Point2f(config_size.width, 0), Point2f(config_size.width, config_size.height), 
                                         Point2f(config_size.width + 10, config_size.height / 2)};
+    // -------0:top_obs------
+    // |                    |
+    // 2:left_obs       3:right_obs
+    // |                    |
+    // -----1:bottom_obs-----
     PolygonObstacle top_obs(top_obs_vertices), bottom_obs(bottom_obs_vertices), 
                     left_obs(left_obs_vertices), right_obs(right_obs_vertices);
     res_obs_vec[0] = top_obs;
@@ -525,7 +576,6 @@ pair<vector<vector<int>>, vector<vector<Point2f>>> ExtendedVisibilityPassageChec
             float psg_length = cv::norm(psg_segment_pts[0] - psg_segment_pts[1]);
 
             bool is_psg_valid = true;
-            // Using non-environment walls to check validity of passage candiate, therefore index starts at 4.
             int k = 0;
             for (; k < obstacles.size(); k++) {
                 if (k == i || k == j)
@@ -556,7 +606,7 @@ pair<vector<vector<int>>, vector<vector<Point2f>>> ExtendedVisibilityCheckForWal
     vector<vector<int>> res_psg_pair;
     vector<vector<Point2f>> res_psg_pts;
     
-    // Four wall obstacles are not considered.
+    // Find passage between walls and obstacles. Passage between walls are not detected.
     for (int i = 0; i < 4; i++) {
         int j = i < 4 ? 4 : i + 1;
         for (; j < obstacles.size(); j++) {
@@ -565,7 +615,6 @@ pair<vector<vector<int>>, vector<vector<Point2f>>> ExtendedVisibilityCheckForWal
             float psg_length = cv::norm(psg_segment_pts[0] - psg_segment_pts[1]);
 
             bool is_psg_valid = true;
-            // Using non-environment walls to check validity of passage candiate, therefore index starts at 4.
             int k = 0;
             for (; k < obstacles.size(); k++) {
                 if (k == i || k == j)

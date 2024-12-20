@@ -20,6 +20,13 @@ string PointToString(Point2f& pt) {
     return str_x + "+" + str_y;
 }
 
+string PassagePairToKeyString(const int obs_idx1, const int obs_idx2) {
+    string link_symbol = "-";
+    int min_idx = min(obs_idx1, obs_idx2),
+        max_idx = max(obs_idx1, obs_idx2);
+    return to_string(min_idx) + link_symbol + to_string(max_idx);
+}
+
 vector<vector<int>> DelaunayTriangulationObstables(const vector<PolygonObstacle>& obs_vec, 
                                                     bool contain_env_walls = false, 
                                                     Size2f rect_size = Size2f(3000, 3000)) {
@@ -198,7 +205,9 @@ vector<vector<int>> FindPlannarFaces(const vector<PolygonObstacle>& obstacles, c
                 v = u;
                 e = e_1;
             }
-
+            
+            // Obstacles in cells are in counterclockwise order except the outerest cell.
+            // If a clockwise order of obstacles is preferred, reverse face.
             // std::reverse(face.begin(), face.end());
             int sign = 0;
             for (int j = 0; j < face.size(); j++) {
@@ -231,12 +240,12 @@ vector<vector<int>> ReportGabrielCells(const vector<PolygonObstacle>& obstacles,
     augmented_psg_pairs.push_back({1, 2});
     augmented_psg_pairs.push_back({1, 3});
 
-    res = FindPlannarFaces(obstacles, augmented_psg_pairs);
-    return res;
+    return FindPlannarFaces(obstacles, augmented_psg_pairs);
 }
 
-pair<vector<vector<int>>, vector<vector<vector<Point2f>>>> GetGabrielCellInfo(const vector<vector<int>>& cells, 
-                                                                              const pair<vector<vector<int>>, vector<vector<Point2f>>>& psg_res) {
+vector<PolygonCell> GetGabrielCellsInfo(const vector<vector<int>>& cells, 
+                                        const pair<vector<vector<int>>, vector<vector<Point2f>>>& psg_res) {
+    vector<PolygonCell> res;
     // Add pseudo passage between four environment walls.
     vector<vector<int>> augmented_psg_pairs = psg_res.first;
     augmented_psg_pairs.push_back({0, 2});
@@ -250,29 +259,62 @@ pair<vector<vector<int>>, vector<vector<vector<Point2f>>>> GetGabrielCellInfo(co
     augmented_psg_pts.push_back({Point2f(0, 10001), Point2f(-1, 10000)});
     augmented_psg_pts.push_back({Point2f(10000, 10001), Point2f(10001, 10000)});   
 
-    unordered_map<string, vector<Point2f>> psg_obs_to_pt_map;
+    unordered_map<string, vector<Point2f>> psg_to_pt_map;
     int psg_num = augmented_psg_pairs.size();
     for (int i = 0; i < psg_num; i++) {
-        string key_str = to_string(augmented_psg_pairs[i][0]) + "-" + to_string(augmented_psg_pairs[i][1]);
-        psg_obs_to_pt_map[key_str] = augmented_psg_pts[i];
+        string key_str = PassagePairToKeyString(augmented_psg_pairs[i][0], augmented_psg_pairs[i][1]);
+        psg_to_pt_map[key_str] = augmented_psg_pts[i];
     }
 
     int cell_num = cells.size();
-    vector<vector<vector<Point2f>>> cell_side_pts(cell_num);
     for (int i = 0; i < cell_num; i++) {
+        // Skip the outer cell comprised of environment walls 0, 1, 2, 3.
+        if (cells[i].size() == 4 && accumulate(cells[i].begin(), cells[i].end(), 0) == 6)
+            continue;
+        
+        int vertex_num = cells[i].size();
+        vector<Point2f> cell_side_pts;
+        for (int j = 0; j < vertex_num; j++) {
+            int start_idx = cells[i][j], end_idx = cells[i][(j + 1) % vertex_num];
+            string key_str = PassagePairToKeyString(start_idx, end_idx);
+            
+            if (psg_to_pt_map.count(key_str) == 0) 
+                throw std::runtime_error("Error: Passage as a cell side does not exist in detection results in " + string(__func__));
+
+            // Passage points are stored with obstacle indices ascending in 
+            // passage detection results. In cells, however, obstacles are not ordered. 
+            if (start_idx < end_idx) {
+                cell_side_pts.push_back(psg_to_pt_map[key_str][0]);
+                cell_side_pts.push_back(psg_to_pt_map[key_str][1]);
+            }
+            else {
+                cell_side_pts.push_back(psg_to_pt_map[key_str][1]);
+                cell_side_pts.push_back(psg_to_pt_map[key_str][0]);                
+            }
+        }
+        res.push_back(PolygonCell(cells[i], cell_side_pts));
+    }
+    return res;
+}
+
+unordered_map<string, vector<int>> GetPassageCellMap(const vector<vector<int>>& cells) {
+    unordered_map<string, vector<int>> psg_to_cell_idx_map; 
+    for (int i = 0; i < cells.size(); i++) {
         int vertex_num = cells[i].size();
         for (int j = 0; j < vertex_num; j++) {
-            int obs_idx_1 = min(cells[i][j], cells[i][(j + 1) % vertex_num]),
-                obs_idx_2 = max(cells[i][j], cells[i][(j + 1) % vertex_num]);
-            string key_str = to_string(obs_idx_1) + "-" + to_string(obs_idx_2);
-            if (psg_obs_to_pt_map.count(key_str) == 0)
-                throw std::runtime_error("Passages as cell side not existing in detection results in " + string(__func__));
-
-            cell_side_pts[i].push_back(psg_obs_to_pt_map[key_str]);
+            string key_str = PassagePairToKeyString(cells[i][j], cells[i][(j + 1) % vertex_num]);
+            psg_to_cell_idx_map[key_str].push_back(i);
         }
     }
+    return psg_to_cell_idx_map;
+}
 
-    return make_pair(cells, cell_side_pts);
+int LocatePtInCells(const Point2f pt, const vector<PolygonCell> cell_info) {
+    for (int i = 0; i < cell_info.size(); i++) {
+        if (InsidePolygon(pt, cell_info[i].vertices))
+            return i;
+    }
+    return -1;
 }
 
 #endif
