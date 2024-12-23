@@ -29,7 +29,6 @@ public:
     std::vector<std::vector<Point2f>> ev_passage_pts_;
     float gamma_rrt_star_;
     float step_len_;
-    float dist_to_goal_;
     int cost_function_type_;
     bool use_ev_check_;
     float passage_width_weight_;
@@ -40,13 +39,11 @@ public:
     kdTree kd_tree_;
     int MAX_GRAPH_SIZE = 10000;
     int GRAPH_SIZE = 0;
-    int update_cost_cnt_ = 0;
     bool plan_success_ = false;
 
     RRTStarPlanner(): start_node_(nullptr), target_node_(nullptr) {}
     RRTStarPlanner(Point2f start, Point2f target, vector<PolygonObstacle> obs, 
                    float step_len = 20, 
-                   float min_dist_to_goal = 10, 
                    Size2f config_size = Size2f(640, 480), 
                    int cost_function_type = 0,
                    float passage_width_weight = 100,
@@ -55,7 +52,6 @@ public:
         target_pos_(target), 
         obstacles_(obs),
         step_len_(step_len),
-        dist_to_goal_(min_dist_to_goal),
         config_size_(config_size),
         cost_function_type_(cost_function_type),
         passage_width_weight_(passage_width_weight),
@@ -98,8 +94,10 @@ public:
         source_img_ = source_img;
         float div_width = RAND_MAX / config_size_.width,
               div_height = RAND_MAX / config_size_.height,
-              min_cost = FLT_MAX;
+              min_cost = FLT_MAX,
+              total_cost = FLT_MAX;
 
+        float dist_to_goal = 50;
         Point2f rand_pos = Point2f(0, 0);
         int sample_num = 0;
         while (GRAPH_SIZE < MAX_GRAPH_SIZE) {
@@ -115,8 +113,6 @@ public:
 
             PathNode* nearest_node = kd_tree_.FindNearestNode(rand_pos);
             PathNode* new_node = GenerateNewNode(nearest_node, rand_pos);
-            
-            // cout << GRAPH_SIZE << "\n";
             if (EdgeObstacleFree(nearest_node, new_node)) {
                 if (plan_in_interior && cost_function_type_ == 0)
                     if (MinDistanceToObstaclesVec(obstacles_, new_node->pos) < interior_delta) {
@@ -125,18 +121,23 @@ public:
                     }
                 Rewire(nearest_node, new_node);
                 kd_tree_.Add(new_node);
-                /* for (auto it = new_node->sorted_passage_list.begin(); it != new_node->sorted_passage_list.end(); it++)
+                /* cout << new_node->id << " cost: " << new_node->cost << " len " << new_node->len << "\n";
+                for (auto it = new_node->sorted_passage_list.begin(); it != new_node->sorted_passage_list.end(); it++)
                     cout << *it << ", ";
                 cout << "\n"; */
 
-                if (NormSqr(new_node->pos - target_pos_) <= dist_to_goal_* dist_to_goal_) {
-                    if (new_node->cost < min_cost) {
+                if (NormSqr(new_node->pos - target_pos_) <= dist_to_goal* dist_to_goal
+                    && EdgeObstacleFree(new_node, target_node_)) {
+                    total_cost = NewCost(new_node, target_node_);
+                    if (total_cost < min_cost + 1e-2) {
                         target_node_->parent = new_node;
-                        min_cost = new_node->cost;
+                        target_node_->sorted_passage_list = new_node->sorted_passage_list;
+                        min_cost = total_cost;
                     }      
                     plan_success_ = true;
                 }
                 GRAPH_SIZE++;
+                // cout << GRAPH_SIZE << "\n";
                 // circle(source_img, new_node->pos, 3, Scalar(0, 255, 0), -1);
             }
             else {
@@ -145,10 +146,10 @@ public:
 
             /* circle(source_img, start_pos_, 10, Scalar(0, 0, 255), -1);
             circle(source_img, target_pos_, 10, Scalar(0, 0, 255), -1);
-            imshow("RRT* path planning", source_img);
+            imshow("RRT* for PTOPP", source_img);
             waitKey(1);
             if (GRAPH_SIZE == MAX_GRAPH_SIZE)
-                destroyWindow("RRT* path planning"); */
+                destroyWindow("RRT* for PTOPP"); */
         }
 
         if (plan_success_ == false)
@@ -215,8 +216,8 @@ public:
                 continue;
 
             float new_near_node_cost = NewCost(new_node, near_node);
-            if (new_near_node_cost < near_node->cost 
-                || (new_near_node_cost < near_node->cost + 1e-2
+            if (new_near_node_cost < near_node->cost - 1e-1
+                || (new_near_node_cost <= near_node->cost + 1e-1
                    && new_node->len + cv::norm(near_node->pos - new_node->pos) < near_node->len)
                 ) {
                 UpdateSubtree(new_node, near_node);
@@ -250,6 +251,26 @@ public:
             // res = new_len - passage_width_weight_ * new_min_psg_width;
             res = -new_min_psg_width;
         }
+        else if (cost_function_type_ == 3) {
+            vector<float> base{1e4, 1e2, 1};
+            int list_size = new_psg_list.size();
+            auto it = new_psg_list.begin();
+            if (list_size < 3) {
+                int i = 0;
+                while (i < list_size) {
+                    res -= base[i] * (*it);
+                    i++; it++;
+                }
+                while (i < 3) {
+                    res -= base[i] * 1000;
+                    i++;
+                }
+            }
+            else {
+                for (int i = 0; i < 3; i++, it++) 
+                    res -= base[i] * (*it);
+            } 
+        }
         return res;      
     }    
 
@@ -261,9 +282,28 @@ public:
             node->cost = node->len / node->min_passage_width;
         } 
         else if (cost_function_type_ == 2) {
-            // node->cost = node->len - passage_width_weight_ * node->min_passage_width;
             node->cost = -node->min_passage_width;
         }   
+        else if (cost_function_type_ == 3) {
+            vector<float> base{1e4, 1e2, 1};
+            int list_size = node->sorted_passage_list.size();
+            auto it = node->sorted_passage_list.begin();
+            if (list_size < 3) {
+                int i = 0;
+                while (i < list_size) {
+                    node->cost -= base[i] * (*it);
+                    i++; it++;
+                }
+                while (i < 3) {
+                    node->cost -= base[i] * 1000;
+                    i++;
+                }
+            }
+            else {
+                for (int i = 0; i < 3; i++, it++)
+                    node->cost -= base[i] * (*it);
+            }         
+        }
     }
 
     void UpdateSubtree(PathNode* new_parent, PathNode* child) {
@@ -381,7 +421,6 @@ RRTStarPlanner::RRTStarPlanner(const RRTStarPlanner& planner) {
     }
     obstacles_ = planner.obstacles_;
     step_len_ = planner.step_len_;
-    dist_to_goal_ = planner.dist_to_goal_;
     config_size_ = planner.config_size_;
     MAX_GRAPH_SIZE = planner.MAX_GRAPH_SIZE;
     GRAPH_SIZE = planner.GRAPH_SIZE;
@@ -407,7 +446,6 @@ RRTStarPlanner& RRTStarPlanner::operator=(const RRTStarPlanner& rhs) {
     
     obstacles_ = rhs.obstacles_;
     step_len_ = rhs.step_len_;
-    dist_to_goal_ = rhs.dist_to_goal_;
     config_size_ = rhs.config_size_;    
     MAX_GRAPH_SIZE = rhs.MAX_GRAPH_SIZE;
     GRAPH_SIZE = rhs.GRAPH_SIZE;
