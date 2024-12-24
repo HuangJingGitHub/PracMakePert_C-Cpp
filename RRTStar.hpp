@@ -187,8 +187,10 @@ public:
     void Rewire(PathNode* nearest_node, PathNode* new_node) {
         float gamma = gamma_rrt_star_ * sqrt(log(GRAPH_SIZE) / GRAPH_SIZE),
               radius_alg = std::min(gamma, step_len_);
-        float x_min = std::max((float)0.0, new_node->pos.x - radius_alg), x_max = std::min(new_node->pos.x + radius_alg, config_size_.width),
-              y_min = std::max((float)0.0, new_node->pos.y - radius_alg), y_max = std::min(new_node->pos.y + radius_alg, config_size_.height); 
+        float x_min = std::max((float)0.0, new_node->pos.x - radius_alg), 
+              x_max = std::min(new_node->pos.x + radius_alg, config_size_.width),
+              y_min = std::max((float)0.0, new_node->pos.y - radius_alg), 
+              y_max = std::min(new_node->pos.y + radius_alg, config_size_.height); 
 
         std::vector<PathNode*> near_set = kd_tree_.RanageSearch(x_min, x_max, y_min, y_max);
         int k = 0;
@@ -203,7 +205,7 @@ public:
         float min_cost = NewCost(nearest_node, new_node);
         for (auto near_node : near_set) {
             float cur_cost = NewCost(near_node, new_node);       
-            if (cur_cost < min_cost - 1e-2) {
+            if (cur_cost < min_cost) {
                 min_cost_node = near_node;
                 min_cost = cur_cost;
             }            
@@ -216,8 +218,8 @@ public:
                 continue;
 
             float new_near_node_cost = NewCost(new_node, near_node);
-            if (new_near_node_cost < near_node->cost - 1e-1
-                || (new_near_node_cost <= near_node->cost + 1e-1
+            if (new_near_node_cost < near_node->cost - 1e-2
+                || (new_near_node_cost <= near_node->cost + 100
                    && new_node->len + cv::norm(near_node->pos - new_node->pos) < near_node->len)
                 ) {
                 UpdateSubtree(new_node, near_node);
@@ -231,17 +233,23 @@ public:
               passed_psg_width = -1.0, 
               new_min_psg_width = near_node->min_passage_width,
               res = 0;
+        vector<float> passed_width_vec;
         if (cost_function_type_ == 0)
             return new_len;
 
-        if (use_ev_check_ == true) 
-            passed_psg_width = GetMinPassageWidthPassed(ev_passage_pts_, near_node->pos, new_node->pos);
+        if (use_ev_check_ == true) {
+            passed_width_vec = GetPassageWidthsPassed(ev_passage_pts_, near_node->pos, new_node->pos);
+            if (passed_width_vec.size() > 0)
+                passed_psg_width = passed_width_vec[0];
+                for (int i = 1 ; i < passed_width_vec.size(); i++)
+                    passed_psg_width = min(passed_psg_width, passed_width_vec[i]);
+        }
         else 
             passed_psg_width = GetMinPassageWidthPassed(pv_passage_pts_, near_node->pos, new_node->pos);
 
         if (passed_psg_width > 0) {
             new_min_psg_width = std::min(new_min_psg_width, passed_psg_width);
-            InsertIntoSortedList(new_psg_list, passed_psg_width);
+            InsertIntoSortedList(new_psg_list, passed_width_vec);
         }
         
         if (cost_function_type_ == 1) {
@@ -321,14 +329,22 @@ public:
         child->sorted_passage_list = new_parent->sorted_passage_list;
 
         float passed_psg_width = -1.0;
-        if (use_ev_check_ == true) 
-            passed_psg_width = GetMinPassageWidthPassed(ev_passage_pts_, new_parent->pos, child->pos);
+        vector<float> passed_width_vec;
+        if (use_ev_check_ == true) {
+            passed_width_vec = GetPassageWidthsPassed(ev_passage_pts_, new_parent->pos, child->pos);
+            if (passed_width_vec.size() > 0) {
+                passed_psg_width = passed_width_vec[0];
+                for (int i = 1; i < passed_width_vec.size(); i++)
+                    passed_psg_width = min(passed_psg_width, passed_width_vec[i]);
+            }
+        }
         else 
             passed_psg_width = GetMinPassageWidthPassed(pv_passage_pts_, new_parent->pos, child->pos);
 
         if (passed_psg_width > 0) {  
-            InsertIntoSortedList(child->sorted_passage_list, passed_psg_width); 
+            InsertIntoSortedList(child->sorted_passage_list, passed_width_vec); 
             child->cur_passage_width = passed_psg_width;
+            child->cur_passage_widths = passed_width_vec;
             child->min_passage_width = std::min(child->min_passage_width, passed_psg_width);          
         }
         UpdateNodeCost(child); 
@@ -351,7 +367,7 @@ public:
                 cur_child->sorted_passage_list = cur_node->sorted_passage_list;
                 if (cur_child->cur_passage_width > 0) {
                     cur_child->min_passage_width = std::min(cur_node->min_passage_width, cur_child->cur_passage_width);
-                    InsertIntoSortedList(cur_child->sorted_passage_list, cur_child->cur_passage_width);
+                    InsertIntoSortedList(cur_child->sorted_passage_list, cur_child->cur_passage_widths);
                 }
                 UpdateNodeCost(cur_child);
                 node_level.push(cur_child);

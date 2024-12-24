@@ -44,7 +44,7 @@ float CrossProductVal(const Point2f& pt_1, const Point2f& pt_2) {
     return pt_1.x * pt_2.y - pt_1.y * pt_2.x;
 }
 
-void InsertIntoSortedList(std::list<float>& input_list, const float val) {
+void InsertIntoSortedList(list<float>& input_list, const float val) {
     if (input_list.size() == 0) {
         input_list.push_back(val);
         return;
@@ -53,6 +53,31 @@ void InsertIntoSortedList(std::list<float>& input_list, const float val) {
     while (it != input_list.end() && *it < val)
         it++;
     input_list.insert(it, val);
+}
+
+void InsertIntoSortedList(list<float>& input_list, const vector<float> val_vec) {
+    for (const float& val : val_vec)
+        InsertIntoSortedList(input_list, val);
+}
+
+/// Input_list is sorted.
+list<float> ListOfUniqueValues(const list<float>& input_list) {
+    list<float> res;
+    if (input_list.size() <= 1) {
+        res = input_list;
+        return res;
+    }
+
+    res.push_back(input_list.front());
+    list<float>::const_iterator it = input_list.begin();
+    it++;
+    while (it != input_list.end()) {
+        float val = *it;
+        if (abs(val - res.back()) > 1e-2)
+            res.push_back(val);
+        it++;
+    }
+    return res;
 }
 
 vector<Point2f> GetObstaclesCentroids(const vector<PolygonObstacle>& obstacles) {
@@ -88,7 +113,6 @@ void DrawObstacles(Mat back_img, const vector<PolygonObstacle>& obs_vec, bool pu
         int cur_vertex_num = obs.vertices.size();
         for (int j = 0; j < cur_vertex_num; j++) {
             line(back_img, obs.vertices[j], obs.vertices[(j + 1) % cur_vertex_num], Scalar(0, 0, 0), 2);
-            // line(DG_img, obs.vertices[j], obs.vertices[(j + 1) % cur_vertex_num], Scalar(0, 0, 0), 2);
         }
         if (put_obs_idx)
             putText(back_img, std::to_string(i), obs_centroids[i] - Point2f(10, -5), cv::FONT_HERSHEY_SIMPLEX, 0.6, Scalar(255, 0, 0), 2);
@@ -409,12 +433,22 @@ float GetMinPassageWidthPassed(const vector<vector<Point2f>>& passage_pts, Point
     float res = FLT_MAX;
 
     for (int i = 0; i < passage_pts.size(); i++) {
-        if (SegmentIntersection(passage_pts[i][0], passage_pts[i][1], pt1, pt2)) 
+        if (SegmentIntersection(passage_pts[i][0], passage_pts[i][1], pt1, pt2))
             res = min(res, (float)cv::norm(passage_pts[i][0] - passage_pts[i][1]));
     }
     
     if (res > FLT_MAX / 2) 
         return -1.0;
+    return res;
+}
+
+vector<float> GetPassageWidthsPassed(const vector<vector<Point2f>>& passage_pts, Point2f pt1, Point2f pt2) {
+    vector<float> res;
+
+    for (int i = 0; i < passage_pts.size(); i++) {
+        if (SegmentIntersection(passage_pts[i][0], passage_pts[i][1], pt1, pt2))
+            res.push_back(cv::norm(passage_pts[i][0] - passage_pts[i][1]));
+    }
     return res;
 }
 
