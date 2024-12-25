@@ -37,7 +37,7 @@ public:
     PathNode* start_node_;
     PathNode* target_node_;
     kdTree kd_tree_;
-    int MAX_GRAPH_SIZE = 10000;
+    int MAX_GRAPH_SIZE = 15000;
     int GRAPH_SIZE = 0;
     bool plan_success_ = false;
 
@@ -95,7 +95,8 @@ public:
         float div_width = RAND_MAX / config_size_.width,
               div_height = RAND_MAX / config_size_.height,
               min_cost = FLT_MAX,
-              total_cost = FLT_MAX;
+              total_cost = FLT_MAX,
+              min_len = FLT_MAX;
 
         float dist_to_goal = 50;
         Point2f rand_pos = Point2f(0, 0);
@@ -119,7 +120,7 @@ public:
                         delete new_node;
                         continue;
                     }
-                Rewire(nearest_node, new_node);
+                Rewire(nearest_node, new_node, source_img);
                 kd_tree_.Add(new_node);
                 /* cout << new_node->id << " cost: " << new_node->cost << " len " << new_node->len << "\n";
                 for (auto it = new_node->sorted_passage_list.begin(); it != new_node->sorted_passage_list.end(); it++)
@@ -129,27 +130,29 @@ public:
                 if (NormSqr(new_node->pos - target_pos_) <= dist_to_goal* dist_to_goal
                     && EdgeObstacleFree(new_node, target_node_)) {
                     total_cost = NewCost(new_node, target_node_);
-                    if (total_cost < min_cost + 1e-2) {
+                    if (total_cost < min_cost 
+                        || (total_cost < min_cost + 1e-2 && new_node->len < min_len)) {
                         target_node_->parent = new_node;
                         target_node_->sorted_passage_list = new_node->sorted_passage_list;
                         min_cost = total_cost;
+                        min_len = new_node->len;
                     }      
                     plan_success_ = true;
                 }
                 GRAPH_SIZE++;
                 // cout << GRAPH_SIZE << "\n";
-                // circle(source_img, new_node->pos, 3, Scalar(0, 255, 0), -1);
+                circle(source_img, new_node->pos, 3, Scalar(0, 255, 0), -1);
             }
             else {
                 delete new_node;
             }
 
-            /* circle(source_img, start_pos_, 10, Scalar(0, 0, 255), -1);
+            circle(source_img, start_pos_, 10, Scalar(0, 0, 255), -1);
             circle(source_img, target_pos_, 10, Scalar(0, 0, 255), -1);
             imshow("RRT* for PTOPP", source_img);
             waitKey(1);
             if (GRAPH_SIZE == MAX_GRAPH_SIZE)
-                destroyWindow("RRT* for PTOPP"); */
+                destroyWindow("RRT* for PTOPP");
         }
 
         if (plan_success_ == false)
@@ -164,7 +167,7 @@ public:
     PathNode* GenerateNewNode(PathNode* nearest_node, Point2f& rand_pos) {
         float dist = cv::norm(rand_pos - nearest_node->pos);
         Point2f direction = (rand_pos - nearest_node->pos) / dist, new_pos;
-        if (true)
+        if (dist > step_len_)
             new_pos = nearest_node->pos + step_len_ * direction;
         else
             new_pos = rand_pos;
@@ -184,7 +187,7 @@ public:
         return true;
     }
 
-    void Rewire(PathNode* nearest_node, PathNode* new_node) {
+    void Rewire(PathNode* nearest_node, PathNode* new_node, Mat source_img) {
         float gamma = gamma_rrt_star_ * sqrt(log(GRAPH_SIZE) / GRAPH_SIZE),
               radius_alg = std::min(gamma, step_len_);
         float x_min = std::max((float)0.0, new_node->pos.x - radius_alg), 
@@ -204,22 +207,22 @@ public:
         PathNode* min_cost_node = nearest_node;
         float min_cost = NewCost(nearest_node, new_node);
         for (auto near_node : near_set) {
-            float cur_cost = NewCost(near_node, new_node);       
+            float cur_cost = NewCost(near_node, new_node);      
+            cout << cur_cost << "\n";
             if (cur_cost < min_cost) {
                 min_cost_node = near_node;
                 min_cost = cur_cost;
             }            
         }
         UpdateSubtree(min_cost_node, new_node); 
-        // line(source_img, min_cost_node->pos, new_node->pos, Scalar(0, 0, 200), 1.5);
+        line(source_img, min_cost_node->pos, new_node->pos, Scalar(0, 0, 200), 1.5);
 
         for (auto near_node : near_set) {
             if (near_node == min_cost_node)
                 continue;
-
             float new_near_node_cost = NewCost(new_node, near_node);
-            if (new_near_node_cost < near_node->cost - 1e-2
-                || (new_near_node_cost <= near_node->cost + 100
+            if (new_near_node_cost < near_node->cost
+                || (new_near_node_cost <= near_node->cost + 1
                    && new_node->len + cv::norm(near_node->pos - new_node->pos) < near_node->len)
                 ) {
                 UpdateSubtree(new_node, near_node);
