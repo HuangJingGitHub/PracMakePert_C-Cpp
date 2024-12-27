@@ -49,35 +49,19 @@ void InsertIntoSortedList(list<float>& input_list, const float val) {
         input_list.push_back(val);
         return;
     }
+
     list<float>::iterator it = input_list.begin();
     while (it != input_list.end() && *it < val)
         it++;
-    input_list.insert(it, val);
+    if (abs(*it - val) < 1e-3)
+       return;
+    else
+        input_list.insert(it, val);
 }
 
 void InsertIntoSortedList(list<float>& input_list, const vector<float> val_vec) {
     for (const float& val : val_vec)
         InsertIntoSortedList(input_list, val);
-}
-
-/// Input_list is sorted.
-list<float> ListOfUniqueValues(const list<float>& input_list) {
-    list<float> res;
-    if (input_list.size() <= 1) {
-        res = input_list;
-        return res;
-    }
-
-    res.push_back(input_list.front());
-    list<float>::const_iterator it = input_list.begin();
-    it++;
-    while (it != input_list.end()) {
-        float val = *it;
-        if (abs(val - res.back()) > 1e-2)
-            res.push_back(val);
-        it++;
-    }
-    return res;
 }
 
 vector<Point2f> GetObstaclesCentroids(const vector<PolygonObstacle>& obstacles) {
