@@ -37,7 +37,7 @@ public:
     PathNode* start_node_;
     PathNode* target_node_;
     kdTree kd_tree_;
-    int MAX_GRAPH_SIZE = 15000;
+    int MAX_GRAPH_SIZE = 10000;
     int GRAPH_SIZE = 0;
     bool plan_success_ = false;
 
@@ -259,7 +259,6 @@ public:
             res = new_len / new_min_psg_width;
         } 
         else if (cost_function_type_ == 2) {
-            // res = new_len - passage_width_weight_ * new_min_psg_width;
             res = -new_min_psg_width;
         }
         else if (cost_function_type_ == 3) {
