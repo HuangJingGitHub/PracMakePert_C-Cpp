@@ -13,8 +13,7 @@
 #include <opencv2/core.hpp>
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
-#include "obstacles.hpp"
-#include "kd_tree.hpp"
+#include "decomposition.hpp"
 
 using namespace cv;
 
@@ -27,6 +26,9 @@ public:
     std::vector<std::vector<Point2f>> pv_passage_pts_;
     std::vector<std::vector<int>> ev_passage_pairs_;
     std::vector<std::vector<Point2f>> ev_passage_pts_;
+    std::vector<std::vector<int>> cells_;
+    std::vector<PolygonCell> cells_info_;
+    std::unordered_map<std::string, std::vector<int>> psg_cell_idx_map_;
     float gamma_rrt_star_;
     float step_len_;
     int cost_function_type_;
@@ -37,7 +39,7 @@ public:
     PathNode* start_node_;
     PathNode* target_node_;
     kdTree kd_tree_;
-    int MAX_GRAPH_SIZE = 10000;
+    int MAX_GRAPH_SIZE = 4000;
     int GRAPH_SIZE = 0;
     bool plan_success_ = false;
 
@@ -70,9 +72,19 @@ public:
         pv_passage_pts_ = pv_check_res.second;
 
         // ev: extended visibility
-        auto ev_check_res = ExtendedVisibilityPassageCheck(obstacles_);
-        ev_passage_pairs_ = ev_check_res.first;
-        ev_passage_pts_ = ev_check_res.second; 
+        // auto ev_check_res = ExtendedVisibilityPassageCheck(obstacles_);
+        // ev_passage_pairs_ = ev_check_res.first;
+        // ev_passage_pts_ = ev_check_res.second; 
+
+        // Extended visibility as Gabriel condition in Delaunay graph
+        auto DG_check_res = PassageCheckDelaunayGraphWithWalls(obstacles_);
+        ev_passage_pairs_ = DG_check_res.first;
+        ev_passage_pts_ = DG_check_res.second; 
+
+        cells_ = ReportGabrielCells(obstacles_, ev_passage_pairs_);
+        cells_info_ = GetGabrielCellsInfo(cells_, DG_check_res);
+        psg_cell_idx_map_ = GetPassageCellMap(cells_info_);
+        start_node_->cell_id = LocatePtInCells(start_node_->pos, cells_info_);
 
         std::cout << "RRT* path planner instanced with cost function type: " << cost_function_type_ 
                 << "\n0: Any invalid type value: Default path length cost"
@@ -86,6 +98,7 @@ public:
     ~RRTStarPlanner();
     RRTStarPlanner(const RRTStarPlanner&);
     RRTStarPlanner& operator=(const RRTStarPlanner&);
+
 
     bool Plan(Mat source_img, float interior_delta = 0.5, bool plan_in_interior = false) {       
         srand(time(NULL));
@@ -140,18 +153,18 @@ public:
                 }
                 GRAPH_SIZE++;
                 // cout << GRAPH_SIZE << "\n";
-                circle(source_img, new_node->pos, 3, Scalar(0, 255, 0), -1);
+                // circle(source_img, new_node->pos, 3, Scalar(0, 255, 0), -1);
             }
             else {
                 delete new_node;
             }
 
-            circle(source_img, start_pos_, 10, Scalar(0, 0, 255), -1);
+            /* circle(source_img, start_pos_, 10, Scalar(0, 0, 255), -1);
             circle(source_img, target_pos_, 10, Scalar(0, 0, 255), -1);
             imshow("RRT* for PTOPP", source_img);
-            waitKey(1);
+            waitKey(1); 
             if (GRAPH_SIZE == MAX_GRAPH_SIZE)
-                destroyWindow("RRT* for PTOPP");
+                destroyWindow("RRT* for PTOPP"); */
         }
 
         if (plan_success_ == false)
@@ -207,14 +220,14 @@ public:
         float min_cost = NewCost(nearest_node, new_node);
         for (auto near_node : near_set) {
             float cur_cost = NewCost(near_node, new_node);      
-            cout << cur_cost << "\n";
+            // cout << cur_cost << "\n";
             if (cur_cost < min_cost) {
                 min_cost_node = near_node;
                 min_cost = cur_cost;
             }            
         }
         UpdateSubtree(min_cost_node, new_node); 
-        line(source_img, min_cost_node->pos, new_node->pos, Scalar(0, 0, 200), 1.5);
+        // line(source_img, min_cost_node->pos, new_node->pos, Scalar(0, 0, 200), 1.5);
 
         for (auto near_node : near_set) {
             if (near_node == min_cost_node)
@@ -240,7 +253,8 @@ public:
             return new_len;
 
         if (use_ev_check_ == true) {
-            passed_width_vec = GetPassageWidthsPassed(ev_passage_pts_, near_node->pos, new_node->pos);
+            // passed_width_vec = GetPassageWidthsPassed(ev_passage_pts_, near_node->pos, new_node->pos);
+            passed_width_vec = GetPassageWidthsPassedDG(near_node, new_node, cells_info_, psg_cell_idx_map_, false);
             if (passed_width_vec.size() > 0)
                 passed_psg_width = passed_width_vec[0];
                 for (int i = 1 ; i < passed_width_vec.size(); i++)
@@ -332,7 +346,8 @@ public:
         float passed_psg_width = -1.0;
         vector<float> passed_width_vec;
         if (use_ev_check_ == true) {
-            passed_width_vec = GetPassageWidthsPassed(ev_passage_pts_, new_parent->pos, child->pos);
+            // passed_width_vec = GetPassageWidthsPassed(ev_passage_pts_, new_parent->pos, child->pos);
+            passed_width_vec = GetPassageWidthsPassedDG(new_parent, child, cells_info_, psg_cell_idx_map_, true);
             if (passed_width_vec.size() > 0) {
                 passed_psg_width = passed_width_vec[0];
                 for (int i = 1; i < passed_width_vec.size(); i++)
