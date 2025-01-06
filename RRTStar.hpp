@@ -475,7 +475,6 @@ RRTStarPlanner& RRTStarPlanner::operator=(const RRTStarPlanner& rhs) {
         delete target_node_;
         target_node_ = new PathNode(target_pos_);
     }
-    
     obstacles_ = rhs.obstacles_;
     step_len_ = rhs.step_len_;
     config_size_ = rhs.config_size_;    
