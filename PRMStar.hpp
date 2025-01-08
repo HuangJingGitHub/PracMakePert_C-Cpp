@@ -36,7 +36,7 @@ public:
     PathNode* start_node_;
     PathNode* target_node_;
     kdTree kd_tree_;
-    int MAX_GRAPH_SIZE = 2000;
+    int MAX_GRAPH_SIZE = 100;
     std::vector<PathNode*> node_vec_ = vector<PathNode*>(MAX_GRAPH_SIZE);
     int GRAPH_SIZE = 0;
     bool plan_success_ = false;
@@ -161,8 +161,12 @@ void PRMStarPlanner::QueryPath(Mat source_img) {
         PathNode* node = node_vec_[min_cost_idx];
         if (node == target_graph_node)
             break;
+        while (min_cost_heap.empty() == false && visited[min_cost_heap.top()->id] == true)
+            min_cost_heap.pop();
+        PathNode* top_node = min_cost_heap.top();
+        min_cost_heap.pop();
         visited[node->id] = true;
-        cout << node->id << "-" << node->cost << "\n";
+        cout << node->id << "-" << top_node->id << "\n";
         for (auto adj_node : node->adjacency_list) {
             if (visited[adj_node->id] == true)
                 continue;
