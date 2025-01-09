@@ -98,337 +98,347 @@ public:
     ~RRTStarPlanner();
     RRTStarPlanner(const RRTStarPlanner&);
     RRTStarPlanner& operator=(const RRTStarPlanner&);
+    bool Plan(Mat source_img, float interior_delta = 0.5, bool plan_in_interior = false);
+    PathNode* GenerateNewNode(PathNode* nearest_node, Point2f& rand_pos);
+    bool EdgeObstacleFree(PathNode* near_node, PathNode* new_node);
+    void Rewire(PathNode* nearest_node, PathNode* new_node, Mat source_img);
+    float NewCost(PathNode* near_node, PathNode* new_node);
+    void UpdateNodeCost(PathNode* node);
+    void UpdateSubtree(PathNode* new_parent, PathNode* child);
+    Point2f SafeRandTarget();
+    vector<PathNode*> GetPath();
+    vector<Point2f> GetPathInPts();
+};
 
+bool RRTStarPlanner::Plan(Mat source_img, float interior_delta, bool plan_in_interior) {       
+    srand(time(NULL));
+    plan_success_ = false;
+    source_img_ = source_img;
+    float div_width = RAND_MAX / config_size_.width,
+            div_height = RAND_MAX / config_size_.height,
+            min_cost = FLT_MAX,
+            total_cost = FLT_MAX,
+            min_len = FLT_MAX;
 
-    bool Plan(Mat source_img, float interior_delta = 0.5, bool plan_in_interior = false) {       
-        srand(time(NULL));
-        plan_success_ = false;
-        source_img_ = source_img;
-        float div_width = RAND_MAX / config_size_.width,
-              div_height = RAND_MAX / config_size_.height,
-              min_cost = FLT_MAX,
-              total_cost = FLT_MAX,
-              min_len = FLT_MAX;
+    float dist_to_goal = 50;
+    Point2f rand_pos = Point2f(0, 0);
+    int sample_num = 0;
+    while (GRAPH_SIZE < MAX_GRAPH_SIZE) {
+        // Bias to target
+        sample_num++;
+        if (sample_num % (MAX_GRAPH_SIZE / 20) == 0) {
+            rand_pos = SafeRandTarget();                         
+        } 
+        else {
+            rand_pos.x = rand() / div_width;
+            rand_pos.y = rand() / div_height;
+        }
 
-        float dist_to_goal = 50;
-        Point2f rand_pos = Point2f(0, 0);
-        int sample_num = 0;
-        while (GRAPH_SIZE < MAX_GRAPH_SIZE) {
-            // Bias to target
-            sample_num++;
-            if (sample_num % (MAX_GRAPH_SIZE / 20) == 0) {
-                rand_pos = SafeRandTarget();                         
-            } 
-            else {
-                rand_pos.x = rand() / div_width;
-                rand_pos.y = rand() / div_height;
-            }
-
-            PathNode* nearest_node = kd_tree_.FindNearestNode(rand_pos);
-            PathNode* new_node = GenerateNewNode(nearest_node, rand_pos);
-            if (EdgeObstacleFree(nearest_node, new_node)) {
-                if (plan_in_interior && cost_function_type_ == 0)
-                    if (MinDistanceToObstaclesVec(obstacles_, new_node->pos) < interior_delta) {
-                        delete new_node;
-                        continue;
-                    }
-                Rewire(nearest_node, new_node, source_img);
-                kd_tree_.Add(new_node);
-                /* cout << new_node->id << " cost: " << new_node->cost << " len " << new_node->len << "\n";
-                for (auto it = new_node->sorted_passage_list.begin(); it != new_node->sorted_passage_list.end(); it++)
-                    cout << *it << ", ";
-                cout << "\n"; */
-
-                if (NormSqr(new_node->pos - target_pos_) <= dist_to_goal* dist_to_goal
-                    && EdgeObstacleFree(new_node, target_node_)) {
-                    total_cost = NewCost(new_node, target_node_);
-                    if (total_cost < min_cost 
-                        || (total_cost < min_cost + 1e-2 && new_node->len < min_len)) {
-                        target_node_->parent = new_node;
-                        target_node_->sorted_passage_list = new_node->sorted_passage_list;
-                        min_cost = total_cost;
-                        min_len = new_node->len;
-                    }      
-                    plan_success_ = true;
+        PathNode* nearest_node = kd_tree_.FindNearestNode(rand_pos);
+        PathNode* new_node = GenerateNewNode(nearest_node, rand_pos);
+        if (EdgeObstacleFree(nearest_node, new_node)) {
+            if (plan_in_interior && cost_function_type_ == 0)
+                if (MinDistanceToObstaclesVec(obstacles_, new_node->pos) < interior_delta) {
+                    delete new_node;
+                    continue;
                 }
-                GRAPH_SIZE++;
-                // cout << GRAPH_SIZE << "\n";
-                // circle(source_img, new_node->pos, 3, Scalar(0, 255, 0), -1);
-            }
-            else {
-                delete new_node;
-            }
+            Rewire(nearest_node, new_node, source_img);
+            kd_tree_.Add(new_node);
+            /* cout << new_node->id << " cost: " << new_node->cost << " len " << new_node->len << "\n";
+            for (auto it = new_node->sorted_passage_list.begin(); it != new_node->sorted_passage_list.end(); it++)
+                cout << *it << ", ";
+            cout << "\n"; */
 
-            /* circle(source_img, start_pos_, 10, Scalar(0, 0, 255), -1);
-            circle(source_img, target_pos_, 10, Scalar(0, 0, 255), -1);
-            imshow("RRT* for PTOPP", source_img);
-            waitKey(1); 
-            if (GRAPH_SIZE == MAX_GRAPH_SIZE)
-                destroyWindow("RRT* for PTOPP"); */
+            if (NormSqr(new_node->pos - target_pos_) <= dist_to_goal* dist_to_goal
+                && EdgeObstacleFree(new_node, target_node_)) {
+                total_cost = NewCost(new_node, target_node_);
+                if (total_cost < min_cost 
+                    || (total_cost < min_cost + 1e-2 && new_node->len < min_len)) {
+                    target_node_->parent = new_node;
+                    target_node_->sorted_passage_list = new_node->sorted_passage_list;
+                    min_cost = total_cost;
+                    min_len = new_node->len;
+                }      
+                plan_success_ = true;
+            }
+            GRAPH_SIZE++;
+            // cout << GRAPH_SIZE << "\n";
+            // circle(source_img, new_node->pos, 3, Scalar(0, 255, 0), -1);
+        }
+        else {
+            delete new_node;
         }
 
-        if (plan_success_ == false)
-            std::cout << "MAX_GRAPH_SIZE: " << MAX_GRAPH_SIZE << " is achieved with no path found.\n";
-        else
-            std::cout << "Path found with cost: " << min_cost
-                    << "\nTotal sample number: " << sample_num
-                    << "\n";   
-        return plan_success_;
+        /* circle(source_img, start_pos_, 10, Scalar(0, 0, 255), -1);
+        circle(source_img, target_pos_, 10, Scalar(0, 0, 255), -1);
+        imshow("RRT* for PTOPP", source_img);
+        waitKey(1); 
+        if (GRAPH_SIZE == MAX_GRAPH_SIZE)
+            destroyWindow("RRT* for PTOPP"); */
+    }
+
+    if (plan_success_ == false)
+        std::cout << "MAX_GRAPH_SIZE: " << MAX_GRAPH_SIZE << " is achieved with no path found.\n";
+    else
+        std::cout << "Path found with cost: " << min_cost
+                << "\nTotal sample number: " << sample_num
+                << "\n";   
+    return plan_success_;
+} 
+
+PathNode* RRTStarPlanner::GenerateNewNode(PathNode* nearest_node, Point2f& rand_pos) {
+    float dist = cv::norm(rand_pos - nearest_node->pos);
+    Point2f direction = (rand_pos - nearest_node->pos) / dist, new_pos;
+    if (dist > step_len_)
+        new_pos = nearest_node->pos + step_len_ * direction;
+    else
+        new_pos = rand_pos;
+    new_pos.x = std::max((float)0.5, new_pos.x);
+    new_pos.x = std::min(config_size_.width - (float)0.5, new_pos.x);
+    new_pos.y = std::max((float)0.5, new_pos.y);
+    new_pos.y = std::min(config_size_.height - (float)0.5, new_pos.y);
+    PathNode* new_node = new PathNode(new_pos);
+    new_node->id = GRAPH_SIZE;
+    return new_node;
+}
+
+bool RRTStarPlanner::EdgeObstacleFree(PathNode* near_node, PathNode* new_node) {
+    for (auto& obs : obstacles_)
+        if (ObstacleFree(obs, near_node->pos, new_node->pos) == false)
+            return false;
+    return true;
+}
+
+void RRTStarPlanner::Rewire(PathNode* nearest_node, PathNode* new_node, Mat source_img) {
+    float gamma = gamma_rrt_star_ * sqrt(log(GRAPH_SIZE) / GRAPH_SIZE),
+            radius_alg = std::min(gamma, step_len_);
+    float x_min = std::max((float)0.0, new_node->pos.x - radius_alg), 
+            x_max = std::min(new_node->pos.x + radius_alg, config_size_.width),
+            y_min = std::max((float)0.0, new_node->pos.y - radius_alg), 
+            y_max = std::min(new_node->pos.y + radius_alg, config_size_.height); 
+
+    std::vector<PathNode*> near_set = kd_tree_.RanageSearch(x_min, x_max, y_min, y_max);
+    int k = 0;
+    for (int i = 0; i < near_set.size(); i++)
+        if (EdgeObstacleFree(near_set[i], new_node) && cv::norm(near_set[i]->pos - new_node->pos) <= radius_alg) {
+            near_set[k++] = near_set[i];
+        }
+    near_set.resize(k);
+
+    // find minimum-cost path
+    PathNode* min_cost_node = nearest_node;
+    float min_cost = NewCost(nearest_node, new_node);
+    for (auto near_node : near_set) {
+        float cur_cost = NewCost(near_node, new_node);      
+        // cout << cur_cost << "\n";
+        if (cur_cost < min_cost) {
+            min_cost_node = near_node;
+            min_cost = cur_cost;
+        }            
+    }
+    UpdateSubtree(min_cost_node, new_node); 
+    // line(source_img, min_cost_node->pos, new_node->pos, Scalar(0, 0, 200), 1.5);
+
+    for (auto near_node : near_set) {
+        if (near_node == min_cost_node)
+            continue;
+        float new_near_node_cost = NewCost(new_node, near_node);
+        if (new_near_node_cost < near_node->cost
+            || (new_near_node_cost <= near_node->cost + 1
+                && new_node->len + cv::norm(near_node->pos - new_node->pos) < near_node->len)
+            ) {
+            UpdateSubtree(new_node, near_node);
+        }
+    }
+}
+
+float RRTStarPlanner::NewCost(PathNode* near_node, PathNode* new_node) {
+    std::list<float> new_psg_list = near_node->sorted_passage_list;
+    float new_len = near_node->len + cv::norm(new_node->pos - near_node->pos),
+            passed_psg_width = -1.0, 
+            new_min_psg_width = near_node->min_passage_width,
+            res = 0;
+    vector<float> passed_width_vec;
+    if (cost_function_type_ == 0)
+        return new_len;
+
+    if (use_ev_check_ == true) {
+        // passed_width_vec = GetPassageWidthsPassed(ev_passage_pts_, near_node->pos, new_node->pos);
+        passed_width_vec = GetPassageWidthsPassedDG(near_node, new_node, cells_info_, psg_cell_idx_map_, false);
+        if (passed_width_vec.size() > 0) {
+            passed_psg_width = passed_width_vec[0];
+            for (int i = 1 ; i < passed_width_vec.size(); i++)
+                passed_psg_width = min(passed_psg_width, passed_width_vec[i]);
+        }
+    }
+    else 
+        passed_psg_width = GetMinPassageWidthPassed(pv_passage_pts_, near_node->pos, new_node->pos);
+
+    if (passed_psg_width > 0) {
+        new_min_psg_width = std::min(new_min_psg_width, passed_psg_width);
+        InsertIntoSortedList(new_psg_list, passed_width_vec);
+    }
+    
+    if (cost_function_type_ == 1) {
+        res = new_len / new_min_psg_width;
     } 
-
-    PathNode* GenerateNewNode(PathNode* nearest_node, Point2f& rand_pos) {
-        float dist = cv::norm(rand_pos - nearest_node->pos);
-        Point2f direction = (rand_pos - nearest_node->pos) / dist, new_pos;
-        if (dist > step_len_)
-            new_pos = nearest_node->pos + step_len_ * direction;
-        else
-            new_pos = rand_pos;
-        new_pos.x = std::max((float)0.5, new_pos.x);
-        new_pos.x = std::min(config_size_.width - (float)0.5, new_pos.x);
-        new_pos.y = std::max((float)0.5, new_pos.y);
-        new_pos.y = std::min(config_size_.height - (float)0.5, new_pos.y);
-        PathNode* new_node = new PathNode(new_pos);
-        new_node->id = GRAPH_SIZE;
-        return new_node;
+    else if (cost_function_type_ == 2) {
+        res = -new_min_psg_width;
     }
-
-    bool EdgeObstacleFree(PathNode* near_node, PathNode* new_node) {
-        for (auto& obs : obstacles_)
-            if (ObstacleFree(obs, near_node->pos, new_node->pos) == false)
-                return false;
-        return true;
-    }
-
-    void Rewire(PathNode* nearest_node, PathNode* new_node, Mat source_img) {
-        float gamma = gamma_rrt_star_ * sqrt(log(GRAPH_SIZE) / GRAPH_SIZE),
-              radius_alg = std::min(gamma, step_len_);
-        float x_min = std::max((float)0.0, new_node->pos.x - radius_alg), 
-              x_max = std::min(new_node->pos.x + radius_alg, config_size_.width),
-              y_min = std::max((float)0.0, new_node->pos.y - radius_alg), 
-              y_max = std::min(new_node->pos.y + radius_alg, config_size_.height); 
-
-        std::vector<PathNode*> near_set = kd_tree_.RanageSearch(x_min, x_max, y_min, y_max);
-        int k = 0;
-        for (int i = 0; i < near_set.size(); i++)
-            if (EdgeObstacleFree(near_set[i], new_node) && cv::norm(near_set[i]->pos - new_node->pos) <= radius_alg) {
-                near_set[k++] = near_set[i];
+    else if (cost_function_type_ == 3) {
+        vector<float> base{1e4, 1e2, 1};
+        int list_size = new_psg_list.size();
+        auto it = new_psg_list.begin();
+        if (list_size < 3) {
+            int i = 0;
+            while (i < list_size) {
+                res -= base[i] * (*it);
+                i++; it++;
             }
-        near_set.resize(k);
-
-        // find minimum-cost path
-        PathNode* min_cost_node = nearest_node;
-        float min_cost = NewCost(nearest_node, new_node);
-        for (auto near_node : near_set) {
-            float cur_cost = NewCost(near_node, new_node);      
-            // cout << cur_cost << "\n";
-            if (cur_cost < min_cost) {
-                min_cost_node = near_node;
-                min_cost = cur_cost;
-            }            
-        }
-        UpdateSubtree(min_cost_node, new_node); 
-        // line(source_img, min_cost_node->pos, new_node->pos, Scalar(0, 0, 200), 1.5);
-
-        for (auto near_node : near_set) {
-            if (near_node == min_cost_node)
-                continue;
-            float new_near_node_cost = NewCost(new_node, near_node);
-            if (new_near_node_cost < near_node->cost
-                || (new_near_node_cost <= near_node->cost + 1
-                   && new_node->len + cv::norm(near_node->pos - new_node->pos) < near_node->len)
-                ) {
-                UpdateSubtree(new_node, near_node);
+            while (i < 3) {
+                res -= base[i] * 1000;
+                i++;
             }
         }
+        else {
+            for (int i = 0; i < 3; i++, it++) 
+                res -= base[i] * (*it);
+        } 
     }
+    return res;      
+}    
 
-    float NewCost(PathNode* near_node, PathNode* new_node) {
-        std::list<float> new_psg_list = near_node->sorted_passage_list;
-        float new_len = near_node->len + cv::norm(new_node->pos - near_node->pos),
-              passed_psg_width = -1.0, 
-              new_min_psg_width = near_node->min_passage_width,
-              res = 0;
-        vector<float> passed_width_vec;
-        if (cost_function_type_ == 0)
-            return new_len;
-
-        if (use_ev_check_ == true) {
-            // passed_width_vec = GetPassageWidthsPassed(ev_passage_pts_, near_node->pos, new_node->pos);
-            passed_width_vec = GetPassageWidthsPassedDG(near_node, new_node, cells_info_, psg_cell_idx_map_, false);
-            if (passed_width_vec.size() > 0)
-                passed_psg_width = passed_width_vec[0];
-                for (int i = 1 ; i < passed_width_vec.size(); i++)
-                    passed_psg_width = min(passed_psg_width, passed_width_vec[i]);
+void RRTStarPlanner::UpdateNodeCost(PathNode* node) {
+    if (cost_function_type_ == 0) {
+        node->cost = node->len;
+    }            
+    else if (cost_function_type_ == 1) {
+        node->cost = node->len / node->min_passage_width;
+    } 
+    else if (cost_function_type_ == 2) {
+        node->cost = -node->min_passage_width;
+    }   
+    else if (cost_function_type_ == 3) {
+        vector<float> base{1e4, 1e2, 1};
+        int list_size = node->sorted_passage_list.size();
+        auto it = node->sorted_passage_list.begin();
+        if (list_size < 3) {
+            int i = 0;
+            while (i < list_size) {
+                node->cost -= base[i] * (*it);
+                i++; it++;
+            }
+            while (i < 3) {
+                node->cost -= base[i] * 1000;
+                i++;
+            }
         }
-        else 
-            passed_psg_width = GetMinPassageWidthPassed(pv_passage_pts_, near_node->pos, new_node->pos);
+        else {
+            for (int i = 0; i < 3; i++, it++)
+                node->cost -= base[i] * (*it);
+        }         
+    }
+}
 
-        if (passed_psg_width > 0) {
-            new_min_psg_width = std::min(new_min_psg_width, passed_psg_width);
-            InsertIntoSortedList(new_psg_list, passed_width_vec);
+void RRTStarPlanner::UpdateSubtree(PathNode* new_parent, PathNode* child) {
+    PathNode* old_parent = child->parent;
+    if (old_parent != nullptr) 
+        old_parent->children.remove(child);
+    child->parent = new_parent;
+    new_parent->children.push_back(child);
+
+    float old_len = child->len, len_change = 0;
+    child->len = new_parent->len + cv::norm(new_parent->pos - child->pos);
+    len_change = child->len - old_len;
+
+    child->min_passage_width = new_parent->min_passage_width;
+    child->sorted_passage_list = new_parent->sorted_passage_list;
+
+    float passed_psg_width = -1.0;
+    vector<float> passed_width_vec;
+    if (use_ev_check_ == true) {
+        // passed_width_vec = GetPassageWidthsPassed(ev_passage_pts_, new_parent->pos, child->pos);
+        passed_width_vec = GetPassageWidthsPassedDG(new_parent, child, cells_info_, psg_cell_idx_map_, true);
+        if (passed_width_vec.size() > 0) {
+            passed_psg_width = passed_width_vec[0];
+            for (int i = 1; i < passed_width_vec.size(); i++)
+                passed_psg_width = min(passed_psg_width, passed_width_vec[i]);
+        }
+    }
+    else 
+        passed_psg_width = GetMinPassageWidthPassed(pv_passage_pts_, new_parent->pos, child->pos);
+
+    if (passed_psg_width > 0) {  
+        InsertIntoSortedList(child->sorted_passage_list, passed_width_vec); 
+        child->cur_passage_width = passed_psg_width;
+        child->cur_passage_widths = passed_width_vec;
+        child->min_passage_width = std::min(child->min_passage_width, passed_psg_width);          
+    }
+    UpdateNodeCost(child); 
+
+    std::queue<PathNode*> node_level;
+    node_level.push(child);
+    int loop_num = 0;
+    while (node_level.empty() == false) {
+        PathNode* cur_node = node_level.front();
+        node_level.pop();
+
+        loop_num++;
+        if (loop_num > 1 && cur_node->id == child->id) {
+            throw std::invalid_argument("Circle detected in the tree");
         }
         
-        if (cost_function_type_ == 1) {
-            res = new_len / new_min_psg_width;
-        } 
-        else if (cost_function_type_ == 2) {
-            res = -new_min_psg_width;
-        }
-        else if (cost_function_type_ == 3) {
-            vector<float> base{1e4, 1e2, 1};
-            int list_size = new_psg_list.size();
-            auto it = new_psg_list.begin();
-            if (list_size < 3) {
-                int i = 0;
-                while (i < list_size) {
-                    res -= base[i] * (*it);
-                    i++; it++;
-                }
-                while (i < 3) {
-                    res -= base[i] * 1000;
-                    i++;
-                }
+        for (auto& cur_child : cur_node->children) {
+            cur_child->len += len_change;
+            cur_child->min_passage_width = cur_node->min_passage_width;
+            cur_child->sorted_passage_list = cur_node->sorted_passage_list;
+            if (cur_child->cur_passage_width > 0) {
+                cur_child->min_passage_width = std::min(cur_node->min_passage_width, cur_child->cur_passage_width);
+                InsertIntoSortedList(cur_child->sorted_passage_list, cur_child->cur_passage_widths);
             }
-            else {
-                for (int i = 0; i < 3; i++, it++) 
-                    res -= base[i] * (*it);
-            } 
-        }
-        return res;      
-    }    
-
-    void UpdateNodeCost(PathNode* node) {
-        if (cost_function_type_ == 0) {
-            node->cost = node->len;
-        }            
-        else if (cost_function_type_ == 1) {
-            node->cost = node->len / node->min_passage_width;
-        } 
-        else if (cost_function_type_ == 2) {
-            node->cost = -node->min_passage_width;
-        }   
-        else if (cost_function_type_ == 3) {
-            vector<float> base{1e4, 1e2, 1};
-            int list_size = node->sorted_passage_list.size();
-            auto it = node->sorted_passage_list.begin();
-            if (list_size < 3) {
-                int i = 0;
-                while (i < list_size) {
-                    node->cost -= base[i] * (*it);
-                    i++; it++;
-                }
-                while (i < 3) {
-                    node->cost -= base[i] * 1000;
-                    i++;
-                }
-            }
-            else {
-                for (int i = 0; i < 3; i++, it++)
-                    node->cost -= base[i] * (*it);
-            }         
+            UpdateNodeCost(cur_child);
+            node_level.push(cur_child);
         }
     }
+}
 
-    void UpdateSubtree(PathNode* new_parent, PathNode* child) {
-        PathNode* old_parent = child->parent;
-        if (old_parent != nullptr) 
-            old_parent->children.remove(child);
-        child->parent = new_parent;
-        new_parent->children.push_back(child);
+/// Instead of directly using rand_pos = target_pos_, add a small random shift to avoid resulting in
+/// samples in the same position and potentially any further problematic circle connection in the graph.
+Point2f RRTStarPlanner::SafeRandTarget() {
+    float safe_dist_x = min(target_pos_.x, config_size_.width - target_pos_.x),
+            safe_dist_y = min(target_pos_.y, config_size_.height - target_pos_.y),
+            safe_dist = min(safe_dist_x, safe_dist_y) * 0.95;
+    float r = sqrt(rand() / (float)RAND_MAX) * safe_dist;
+    Point2f direction;
+    direction.x = rand() / (float)RAND_MAX; direction.y = rand() / (float)RAND_MAX;
+    direction = direction - Point2f(0.5, 0.5);
+    direction = direction / cv::norm(direction);
+    return target_pos_ + direction * r;
+}
 
-        float old_len = child->len, len_change = 0;
-        child->len = new_parent->len + cv::norm(new_parent->pos - child->pos);
-        len_change = child->len - old_len;
-
-        child->min_passage_width = new_parent->min_passage_width;
-        child->sorted_passage_list = new_parent->sorted_passage_list;
-
-        float passed_psg_width = -1.0;
-        vector<float> passed_width_vec;
-        if (use_ev_check_ == true) {
-            // passed_width_vec = GetPassageWidthsPassed(ev_passage_pts_, new_parent->pos, child->pos);
-            passed_width_vec = GetPassageWidthsPassedDG(new_parent, child, cells_info_, psg_cell_idx_map_, true);
-            if (passed_width_vec.size() > 0) {
-                passed_psg_width = passed_width_vec[0];
-                for (int i = 1; i < passed_width_vec.size(); i++)
-                    passed_psg_width = min(passed_psg_width, passed_width_vec[i]);
-            }
-        }
-        else 
-            passed_psg_width = GetMinPassageWidthPassed(pv_passage_pts_, new_parent->pos, child->pos);
-
-        if (passed_psg_width > 0) {  
-            InsertIntoSortedList(child->sorted_passage_list, passed_width_vec); 
-            child->cur_passage_width = passed_psg_width;
-            child->cur_passage_widths = passed_width_vec;
-            child->min_passage_width = std::min(child->min_passage_width, passed_psg_width);          
-        }
-        UpdateNodeCost(child); 
-
-        std::queue<PathNode*> node_level;
-        node_level.push(child);
-        int loop_num = 0;
-        while (node_level.empty() == false) {
-            PathNode* cur_node = node_level.front();
-            node_level.pop();
-
-            loop_num++;
-            if (loop_num > 1 && cur_node->id == child->id) {
-                throw std::invalid_argument("Circle detected in the tree");
-            }
-            
-            for (auto& cur_child : cur_node->children) {
-                cur_child->len += len_change;
-                cur_child->min_passage_width = cur_node->min_passage_width;
-                cur_child->sorted_passage_list = cur_node->sorted_passage_list;
-                if (cur_child->cur_passage_width > 0) {
-                    cur_child->min_passage_width = std::min(cur_node->min_passage_width, cur_child->cur_passage_width);
-                    InsertIntoSortedList(cur_child->sorted_passage_list, cur_child->cur_passage_widths);
-                }
-                UpdateNodeCost(cur_child);
-                node_level.push(cur_child);
-            }
-        }
-    }
-
-    /// Instead of directly using rand_pos = target_pos_, add a small random shift to avoid resulting in
-    /// samples in the same position and potentially any further problematic circle connection in the graph.
-    Point2f SafeRandTarget() {
-        float safe_dist_x = min(target_pos_.x, config_size_.width - target_pos_.x),
-              safe_dist_y = min(target_pos_.y, config_size_.height - target_pos_.y),
-              safe_dist = min(safe_dist_x, safe_dist_y) * 0.95;
-        float r = sqrt(rand() / (float)RAND_MAX) * safe_dist;
-        Point2f direction;
-        direction.x = rand() / (float)RAND_MAX; direction.y = rand() / (float)RAND_MAX;
-        direction = direction - Point2f(0.5, 0.5);
-        direction = direction / cv::norm(direction);
-        return target_pos_ + direction * r;
-    }
-
-    std::vector<PathNode*> GetPath() {
-        std::vector<PathNode*> res;
-        if (!plan_success_) {
-            std::cout << "No valid path is available.\n";
-            return res;
-        }
-        PathNode* reverse_node = target_node_;
-        while (reverse_node) {
-            res.push_back(reverse_node);
-            reverse_node = reverse_node->parent;
-        }
-        reverse(res.begin(), res.end());
-        return res;   
-    }  
-
-    std::vector<Point2f> GetPathInPts() {
-        std::vector<PathNode*> node_path = GetPath();
-        std::vector<Point2f> res(node_path.size());
-
-        for (int i = 0; i < node_path.size(); i++)
-            res[i] = node_path[i]->pos;
+vector<PathNode*> RRTStarPlanner::GetPath() {
+    vector<PathNode*> res;
+    if (!plan_success_) {
+        std::cout << "No valid path is available.\n";
         return res;
     }
-};
+    PathNode* reverse_node = target_node_;
+    while (reverse_node) {
+        res.push_back(reverse_node);
+        reverse_node = reverse_node->parent;
+    }
+    reverse(res.begin(), res.end());
+    return res;   
+}  
+
+vector<Point2f> RRTStarPlanner::GetPathInPts() {
+    vector<PathNode*> node_path = GetPath();
+    vector<Point2f> res(node_path.size());
+
+    for (int i = 0; i < node_path.size(); i++)
+        res[i] = node_path[i]->pos;
+    return res;
+}
 
 RRTStarPlanner::~RRTStarPlanner() {
     // delete start_node_;
@@ -475,6 +485,7 @@ RRTStarPlanner& RRTStarPlanner::operator=(const RRTStarPlanner& rhs) {
         delete target_node_;
         target_node_ = new PathNode(target_pos_);
     }
+    
     obstacles_ = rhs.obstacles_;
     step_len_ = rhs.step_len_;
     config_size_ = rhs.config_size_;    
