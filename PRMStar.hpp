@@ -15,8 +15,6 @@
 #include <opencv2/imgproc.hpp>
 #include "decomposition.hpp"
 
-using namespace cv;
-
 class PRMStarPlanner {
 public:
     Point2f start_pos_;
@@ -36,7 +34,7 @@ public:
     PathNode* start_node_;
     PathNode* target_node_;
     kdTree kd_tree_;
-    int MAX_GRAPH_SIZE = 100;
+    int MAX_GRAPH_SIZE = 1000;
     std::vector<PathNode*> node_vec_ = vector<PathNode*>(MAX_GRAPH_SIZE);
     int GRAPH_SIZE = 0;
     bool plan_success_ = false;
@@ -59,7 +57,6 @@ public:
         
         // kd_tree_.Add(start_node_);
         node_vec_[GRAPH_SIZE++] = start_node_;
-
         gamma_prm_star_ = sqrt(6 * FreespaceArea(obstacles_, config_size_) / M_PI);
 
         // Extended visibility as Gabriel condition in Delaunay graph
@@ -150,33 +147,47 @@ void PRMStarPlanner::QueryPath(Mat source_img) {
     min_cost_heap.push(start_node_);
 
     for (int i = 0; i < node_vec_.size(); i++) {
-        min_cost = FLT_MAX;
+        /* min_cost = FLT_MAX;
         for (int j = 0; j < node_vec_.size(); j++) {
             if (visited[j] == false && (node_vec_[j]->cost < min_cost
                 || (node_vec_[j]->cost < min_cost + 1e-2 && node_vec_[j]->len < node_vec_[min_cost_idx]->len))) {
                 min_cost = node_vec_[j]->cost;
                 min_cost_idx = j;
             }
-        }  
-        PathNode* node = node_vec_[min_cost_idx];
-        if (node == target_graph_node)
-            break;
+        }*/  
+        // PathNode* node = node_vec_[min_cost_idx];
         while (min_cost_heap.empty() == false && visited[min_cost_heap.top()->id] == true)
             min_cost_heap.pop();
-        PathNode* top_node = min_cost_heap.top();
+        PathNode* node = min_cost_heap.top();
         min_cost_heap.pop();
         visited[node->id] = true;
-        cout << node->id << "-" << top_node->id << "\n";
+        if (node == target_graph_node)
+            break;
+        cout << node->cost << "\n";
+        auto it = node->sorted_passage_list.begin();
+        while (it != node->sorted_passage_list.end()) {
+            cout << *it << "-";
+            it++;
+        }
+        cout << "\n";
+
         for (auto adj_node : node->adjacency_list) {
             if (visited[adj_node->id] == true)
                 continue;
 
             float temp_cost = NewCost(node, adj_node);
             if (temp_cost < adj_node->cost 
-                || (temp_cost < adj_node->cost + 1e-2 
-                    && node->len + cv::norm(adj_node->pos - node->pos) < adj_node->len)) {
+                || (temp_cost < adj_node->cost + 1e-1
+                && node->len + cv::norm(adj_node->pos - node->pos) < adj_node->len)) {
                 UpdateSubtree(node, adj_node);
                 min_cost_heap.push(adj_node);
+                cout << "-->" << temp_cost << " vs " << adj_node->cost << "\n";
+                auto it = adj_node->sorted_passage_list.begin();
+                while (it != adj_node->sorted_passage_list.end()) {
+                    cout << *it << "-";
+                    it++;
+                }
+                cout << "\n";                
             }
         }
     }
@@ -194,6 +205,7 @@ void PRMStarPlanner::UpdateNodeCost(PathNode* node) {
         node->cost = -node->min_passage_width;
     }   
     else if (cost_function_type_ == 3) {
+        node->cost = 0;
         vector<float> base{1e4, 1e2, 1};
         int list_size = node->sorted_passage_list.size();
         auto it = node->sorted_passage_list.begin();
@@ -225,8 +237,8 @@ float PRMStarPlanner::NewCost(PathNode* near_node, PathNode* new_node) {
     if (cost_function_type_ == 0)
         return new_len;
 
-    // passed_width_vec = GetPassageWidthsPassed(ev_passage_pts_, near_node->pos, new_node->pos);
-    passed_width_vec = GetPassageWidthsPassedDG(near_node, new_node, cells_info_, psg_cell_idx_map_, false);
+    passed_width_vec = GetPassageWidthsPassed(ev_passage_pts_, near_node->pos, new_node->pos);
+    // passed_width_vec = GetPassageWidthsPassedDG(near_node, new_node, cells_info_, psg_cell_idx_map_, false);
     if (passed_width_vec.size() > 0) {
         passed_psg_width = passed_width_vec[0];
         for (int i = 1 ; i < passed_width_vec.size(); i++)
@@ -282,8 +294,8 @@ void PRMStarPlanner::UpdateSubtree(PathNode* new_parent, PathNode* child) {
 
     float passed_psg_width = -1.0;
     vector<float> passed_width_vec;
-    // passed_width_vec = GetPassageWidthsPassed(ev_passage_pts_, new_parent->pos, child->pos);
-    passed_width_vec = GetPassageWidthsPassedDG(new_parent, child, cells_info_, psg_cell_idx_map_, true);
+    passed_width_vec = GetPassageWidthsPassed(ev_passage_pts_, new_parent->pos, child->pos);
+    // passed_width_vec = GetPassageWidthsPassedDG(new_parent, child, cells_info_, psg_cell_idx_map_, true);
     if (passed_width_vec.size() > 0) {
         passed_psg_width = passed_width_vec[0];
         for (int i = 1; i < passed_width_vec.size(); i++)

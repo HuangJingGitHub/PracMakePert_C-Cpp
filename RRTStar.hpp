@@ -15,8 +15,6 @@
 #include <opencv2/imgproc.hpp>
 #include "decomposition.hpp"
 
-using namespace cv;
-
 class RRTStarPlanner {
 public:
     Point2f start_pos_;
@@ -319,6 +317,7 @@ void RRTStarPlanner::UpdateNodeCost(PathNode* node) {
         node->cost = -node->min_passage_width;
     }   
     else if (cost_function_type_ == 3) {
+        node->cost = 0;
         vector<float> base{1e4, 1e2, 1};
         int list_size = node->sorted_passage_list.size();
         auto it = node->sorted_passage_list.begin();
