@@ -37,7 +37,7 @@ public:
     PathNode* start_node_;
     PathNode* target_node_;
     kdTree kd_tree_;
-    int MAX_GRAPH_SIZE = 4000;
+    int MAX_GRAPH_SIZE = 1000;
     int GRAPH_SIZE = 0;
     bool plan_success_ = false;
 
@@ -83,15 +83,18 @@ public:
         cells_info_ = GetGabrielCellsInfo(cells_, DG_check_res);
         psg_cell_idx_map_ = GetPassageCellMap(cells_info_);
         start_node_->cell_id = LocatePtInCells(start_node_->pos, cells_info_);
-
+        
+        if (cost_function_type_ < 0 || cost_function_type_ > 6) {
+            cost_function_type_ = 0;
+        }
         std::cout << "RRT* path planner instanced with cost function type: " << cost_function_type_ 
                 << "\n0: Any invalid type value: Default path length cost"
                 << "\n1: Ratio cost: len / passed_min_passage_width"
-                << "\n2: Compound cost: len - weight * min_passed_passage_width"
-                << "\n3: Compound cost: len - k_weight * k_min_passed_passage_widths"
-                << "\n4: Compound cost: len - weight * passed_passage_widths"
-                << "\n5: Minimum passage width cost: min_passed_passage_width"
-                << "\n6: Weighted passage width sum cost: sum of weight_i * i_th_min_passed_passage_width\n\n";      
+                << "\n2: Minimum passage width cost: -min_passed_passage_width"
+                << "\n3: Top-k minimum passage width cost: -k_weight * k_min_passed_passage_widths"
+                << "\n4: Compound cost: len - weight * min_passed_passage_width"
+                << "\n5: Compound cost: len - k_weigth * k_min_passed_passage_width"
+                << "\n6: Constrained passage width: passage width > thread for one of above type.\n\n";      
     }
     ~RRTStarPlanner();
     RRTStarPlanner(const RRTStarPlanner&);
@@ -211,9 +214,9 @@ void RRTStarPlanner::Rewire(PathNode* nearest_node, PathNode* new_node, Mat sour
     float gamma = gamma_rrt_star_ * sqrt(log(GRAPH_SIZE) / GRAPH_SIZE),
             radius_alg = std::min(gamma, step_len_);
     float x_min = std::max((float)0.0, new_node->pos.x - radius_alg), 
-            x_max = std::min(new_node->pos.x + radius_alg, config_size_.width),
-            y_min = std::max((float)0.0, new_node->pos.y - radius_alg), 
-            y_max = std::min(new_node->pos.y + radius_alg, config_size_.height); 
+          x_max = std::min(new_node->pos.x + radius_alg, config_size_.width),
+          y_min = std::max((float)0.0, new_node->pos.y - radius_alg), 
+          y_max = std::min(new_node->pos.y + radius_alg, config_size_.height); 
 
     std::vector<PathNode*> near_set = kd_tree_.RanageSearch(x_min, x_max, y_min, y_max);
     int k = 0;
@@ -252,8 +255,7 @@ void RRTStarPlanner::Rewire(PathNode* nearest_node, PathNode* new_node, Mat sour
 
 float RRTStarPlanner::NewCost(PathNode* near_node, PathNode* new_node) {
     std::list<float> new_psg_list = near_node->sorted_passage_list;
-    float new_len = near_node->len + cv::norm(new_node->pos - near_node->pos),
-            passed_psg_width = -1.0, 
+    float new_len = near_node->len + cv::norm(new_node->pos - near_node->pos), 
             new_min_psg_width = near_node->min_passage_width,
             res = 0;
     vector<float> passed_width_vec;
@@ -264,17 +266,10 @@ float RRTStarPlanner::NewCost(PathNode* near_node, PathNode* new_node) {
         // passed_width_vec = GetPassageWidthsPassed(ev_passage_pts_, near_node->pos, new_node->pos);
         passed_width_vec = GetPassageWidthsPassedDG(near_node, new_node, cells_info_, psg_cell_idx_map_, false);
         if (passed_width_vec.size() > 0) {
-            passed_psg_width = passed_width_vec[0];
-            for (int i = 1 ; i < passed_width_vec.size(); i++)
-                passed_psg_width = min(passed_psg_width, passed_width_vec[i]);
+            for (float& psg_width : passed_width_vec)
+                new_min_psg_width = std::min(new_min_psg_width, psg_width);
+            InsertIntoSortedList(new_psg_list, passed_width_vec);                
         }
-    }
-    else 
-        passed_psg_width = GetMinPassageWidthPassed(pv_passage_pts_, near_node->pos, new_node->pos);
-
-    if (passed_psg_width > 0) {
-        new_min_psg_width = std::min(new_min_psg_width, passed_psg_width);
-        InsertIntoSortedList(new_psg_list, passed_width_vec);
     }
     
     if (cost_function_type_ == 1) {
@@ -285,11 +280,10 @@ float RRTStarPlanner::NewCost(PathNode* near_node, PathNode* new_node) {
     }
     else if (cost_function_type_ == 3) {
         vector<float> base{1e4, 1e2, 1};
-        int list_size = new_psg_list.size();
         auto it = new_psg_list.begin();
-        if (list_size < 3) {
+        if (new_psg_list.size() < 3) {
             int i = 0;
-            while (i < list_size) {
+            while (i < new_psg_list.size()) {
                 res -= base[i] * (*it);
                 i++; it++;
             }
@@ -319,11 +313,10 @@ void RRTStarPlanner::UpdateNodeCost(PathNode* node) {
     else if (cost_function_type_ == 3) {
         node->cost = 0;
         vector<float> base{1e4, 1e2, 1};
-        int list_size = node->sorted_passage_list.size();
         auto it = node->sorted_passage_list.begin();
-        if (list_size < 3) {
+        if (node->sorted_passage_list.size() < 3) {
             int i = 0;
-            while (i < list_size) {
+            while (i < node->sorted_passage_list.size()) {
                 node->cost -= base[i] * (*it);
                 i++; it++;
             }
@@ -351,27 +344,19 @@ void RRTStarPlanner::UpdateSubtree(PathNode* new_parent, PathNode* child) {
     len_change = child->len - old_len;
 
     child->min_passage_width = new_parent->min_passage_width;
+    child->cur_passage_widths.clear();
     child->sorted_passage_list = new_parent->sorted_passage_list;
 
-    float passed_psg_width = -1.0;
     vector<float> passed_width_vec;
     if (use_ev_check_ == true) {
         // passed_width_vec = GetPassageWidthsPassed(ev_passage_pts_, new_parent->pos, child->pos);
         passed_width_vec = GetPassageWidthsPassedDG(new_parent, child, cells_info_, psg_cell_idx_map_, true);
         if (passed_width_vec.size() > 0) {
-            passed_psg_width = passed_width_vec[0];
-            for (int i = 1; i < passed_width_vec.size(); i++)
-                passed_psg_width = min(passed_psg_width, passed_width_vec[i]);
-        }
-    }
-    else 
-        passed_psg_width = GetMinPassageWidthPassed(pv_passage_pts_, new_parent->pos, child->pos);
-
-    if (passed_psg_width > 0) {  
-        InsertIntoSortedList(child->sorted_passage_list, passed_width_vec); 
-        child->cur_passage_width = passed_psg_width;
-        child->cur_passage_widths = passed_width_vec;
-        child->min_passage_width = std::min(child->min_passage_width, passed_psg_width);          
+            child->cur_passage_widths = passed_width_vec;
+            InsertIntoSortedList(child->sorted_passage_list, passed_width_vec); 
+            for (float& psg_width : passed_width_vec)
+                child->min_passage_width = std::min(child->min_passage_width, psg_width);
+        }      
     }
     UpdateNodeCost(child); 
 
@@ -391,8 +376,9 @@ void RRTStarPlanner::UpdateSubtree(PathNode* new_parent, PathNode* child) {
             cur_child->len += len_change;
             cur_child->min_passage_width = cur_node->min_passage_width;
             cur_child->sorted_passage_list = cur_node->sorted_passage_list;
-            if (cur_child->cur_passage_width > 0) {
-                cur_child->min_passage_width = std::min(cur_node->min_passage_width, cur_child->cur_passage_width);
+            if (cur_child->cur_passage_widths.size() > 0) {
+                for (float& psg_width : cur_child->cur_passage_widths)
+                    cur_child->min_passage_width = std::min(cur_node->min_passage_width, psg_width);
                 InsertIntoSortedList(cur_child->sorted_passage_list, cur_child->cur_passage_widths);
             }
             UpdateNodeCost(cur_child);
