@@ -37,7 +37,7 @@ public:
     PathNode* start_node_;
     PathNode* target_node_;
     kdTree kd_tree_;
-    int MAX_GRAPH_SIZE = 1000;
+    int MAX_GRAPH_SIZE = 2000;
     int GRAPH_SIZE = 0;
     bool plan_success_ = false;
 
@@ -119,7 +119,8 @@ bool RRTStarPlanner::Plan(Mat source_img, float interior_delta, bool plan_in_int
             div_height = RAND_MAX / config_size_.height,
             min_cost = FLT_MAX,
             total_cost = FLT_MAX,
-            min_len = FLT_MAX;
+            min_len = FLT_MAX,
+            total_len = FLT_MAX;
 
     float dist_to_goal = 50;
     Point2f rand_pos = Point2f(0, 0);
@@ -153,12 +154,13 @@ bool RRTStarPlanner::Plan(Mat source_img, float interior_delta, bool plan_in_int
             if (NormSqr(new_node->pos - target_pos_) <= dist_to_goal* dist_to_goal
                 && EdgeObstacleFree(new_node, target_node_)) {
                 total_cost = NewCost(new_node, target_node_);
+                total_len = new_node->len + cv::norm(new_node->pos - target_node_->pos);
                 if (total_cost < min_cost 
-                    || (total_cost < min_cost + 1e-2 && new_node->len < min_len)) {
+                    || (total_cost < min_cost + 1e-2 && total_len < min_len)) {
                     target_node_->parent = new_node;
                     target_node_->sorted_passage_list = new_node->sorted_passage_list;
                     min_cost = total_cost;
-                    min_len = new_node->len;
+                    min_len = total_len;
                 }      
                 plan_success_ = true;
             }
@@ -263,8 +265,8 @@ float RRTStarPlanner::NewCost(PathNode* near_node, PathNode* new_node) {
         return new_len;
 
     if (use_ev_check_ == true) {
-        // passed_width_vec = GetPassageWidthsPassed(ev_passage_pts_, near_node->pos, new_node->pos);
-        passed_width_vec = GetPassageWidthsPassedDG(near_node, new_node, cells_info_, psg_cell_idx_map_, false);
+        passed_width_vec = GetPassageWidthsPassed(ev_passage_pts_, near_node->pos, new_node->pos);
+        // passed_width_vec = GetPassageWidthsPassedDG(near_node, new_node, cells_info_, psg_cell_idx_map_, false);
         if (passed_width_vec.size() > 0) {
             for (float& psg_width : passed_width_vec)
                 new_min_psg_width = std::min(new_min_psg_width, psg_width);
@@ -349,8 +351,8 @@ void RRTStarPlanner::UpdateSubtree(PathNode* new_parent, PathNode* child) {
 
     vector<float> passed_width_vec;
     if (use_ev_check_ == true) {
-        // passed_width_vec = GetPassageWidthsPassed(ev_passage_pts_, new_parent->pos, child->pos);
-        passed_width_vec = GetPassageWidthsPassedDG(new_parent, child, cells_info_, psg_cell_idx_map_, true);
+        passed_width_vec = GetPassageWidthsPassed(ev_passage_pts_, new_parent->pos, child->pos);
+        // passed_width_vec = GetPassageWidthsPassedDG(new_parent, child, cells_info_, psg_cell_idx_map_, true);
         if (passed_width_vec.size() > 0) {
             child->cur_passage_widths = passed_width_vec;
             InsertIntoSortedList(child->sorted_passage_list, passed_width_vec); 
