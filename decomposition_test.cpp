@@ -5,8 +5,8 @@
 using namespace std::chrono;
 
 void SVITest(const int obs_num = 50, const int side_len = 30, 
-            Mat back_img = Mat(Size(1000, 600), CV_64FC3, Scalar(255, 255, 255))) {
-    vector<PolygonObstacle> obs_vec = GenerateRandomObstacles(obs_num, back_img.size(), side_len);
+            Mat back_img = Mat(Size(1000, 600), CV_64FC3, Scalar(255, 255, 255)), bool varying_side_len = false) {
+    vector<PolygonObstacle> obs_vec = GenerateRandomObstacles(obs_num, back_img.size(), side_len, varying_side_len);
     auto EV_check_res = ExtendedVisibilityPassageCheck(obs_vec);
     for (int i = 4; i < obs_num + 4; i++) {
         Point2f cur_centroid = GetObstaclesCentroids({obs_vec[i]}).front();
@@ -21,17 +21,29 @@ void SVITest(const int obs_num = 50, const int side_len = 30,
     for (int i = 0; i < EV_check_res.first.size(); i++) {
         vector<int> pair = EV_check_res.first[i];
         vector<vector<Point2f>> SVI_key_pts = SVIntersection(obs_vec[pair[0]], obs_vec[pair[1]]);
-        cout << SVI_key_pts[0][0] << " " << SVI_key_pts[0][1] << "\n";
+        /* cout << SVI_key_pts[0][0] << " " << SVI_key_pts[0][1] << "\n";
         cout << SVI_key_pts[1][0] << " " << SVI_key_pts[1][1] << "\n";
-        cout << SVI_key_pts[2][0] << " " << SVI_key_pts[2][1] << "\n";
+        cout << SVI_key_pts[2][0] << " " << SVI_key_pts[2][1] << "\n"; */
         DrawDshedLine(back_img, SVI_key_pts[0][0], SVI_key_pts[0][1], Scalar(0.2, 0.67, 1), 2);
         DrawDshedLine(back_img, SVI_key_pts[1][0], SVI_key_pts[1][1], Scalar(0.2, 0.67, 1), 2);
         DrawDshedLine(back_img, SVI_key_pts[2][0], SVI_key_pts[2][1], Scalar(0, 0, 0), 2);
     }
     
+    string save_directory = "./src/ptopp/src/img/";
+    string file_name_postfix, file_name_prefix, file_name;
+    file_name_prefix = "Obs_" + to_string(obs_num) + "_Side_" + to_string(side_len) + (varying_side_len ? "_varying_len_" : "_");
+    std::time_t cur_time = std::time(0);
+    std::tm* cur_tm = std::localtime(&cur_time);
+    file_name_postfix = to_string(cur_tm->tm_year + 1900) + "-"
+                        + to_string(cur_tm->tm_mon + 1) + "-"
+                        + to_string(cur_tm->tm_mday) + "_"
+                        + to_string(cur_tm->tm_hour) + "-"
+                        + to_string(cur_tm->tm_min) + ".png";
+    file_name = file_name_prefix + file_name_postfix;
+
     imshow("Shadow Volume for Passage Representation", back_img);
-    Mat new_img;
-    imwrite("./src/ptopp/src/img/Obs_" + to_string(obs_num) + "_Side_" + to_string(side_len) + ".png", 255 * back_img);
+    if (true)
+        imwrite(save_directory + file_name, 255 * back_img);
     waitKey(0); 
 }
 
@@ -156,7 +168,7 @@ void GabrielCellTest(const int test_num = 100, const int obs_num = 50, const int
 int main(int argc, char** argv) {
     Mat back_img(Size(1000, 600), CV_64FC3, Scalar(255, 255, 255));
     // EVDGConsistencyTest(10, 30, 30, back_img);
-    SVITest(20, 40, back_img);
+    SVITest(20, 80, back_img, true);
     // GabrielCellTest(10, 30, 30, back_img);
     return 0;
 }
