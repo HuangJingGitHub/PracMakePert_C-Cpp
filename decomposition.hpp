@@ -4,6 +4,14 @@
 #include <unordered_map>
 #include <opencv2/imgproc/imgproc.hpp>
 #include "obstacles.hpp"
+#include "kd_tree.hpp"
+
+struct PolygonCell {
+    vector<int> obs_indices;
+    vector<Point2f> vertices;
+    PolygonCell() {};
+    PolygonCell(vector<int> cell_obs_indices, vector<Point2f> cell_vertices): obs_indices(cell_obs_indices), vertices(cell_vertices) {}
+};
 
 int InNegativeHalfPlane(Point2f& pt) {
     return int(pt.y < 0 || (abs(pt.y) < 1e-6 && pt.x < 0));
@@ -14,10 +22,11 @@ float TriplePtCross(Point2f& origin_pt, Point2f& p1, Point2f& p2) {
 }
 
 string PointToString(Point2f& pt) {
+    string link_symbol = "-";
     string str_x = to_string(pt.x), str_y = to_string(pt.y);
     str_x = str_x.substr(0, str_x.find(".") + 3);
     str_y = str_y.substr(0, str_y.find(".") + 3);
-    return str_x + "+" + str_y;
+    return str_x + link_symbol + str_y;
 }
 
 string PassagePairToKeyString(const int obs_idx1, const int obs_idx2) {
@@ -29,12 +38,19 @@ string PassagePairToKeyString(const int obs_idx1, const int obs_idx2) {
 
 vector<vector<int>> DelaunayTriangulationObstables(const vector<PolygonObstacle>& obs_vec, 
                                                     bool contain_env_walls = false, 
-                                                    Size2f rect_size = Size2f(3000, 3000)) {
+                                                    Size2f rect_size = Size2f(10000, 10000)) {
     vector<vector<int>> adjacency_list(obs_vec.size());
     vector<set<int>> adjacency_set(obs_vec.size());
     vector<Point2f> obs_centroids_vec = GetObstaclesCentroids(obs_vec);
-    obs_centroids_vec[0].y = 0;
-    obs_centroids_vec[2].x = 0;
+    // Negative coordinates are not allowed.  Aassigning zero to these coordinates 
+    // may cause some Delaunay edges fail to find between walls and obstacles. The result 
+    // could be reslut in redundant passages whose circles intersect with walls.
+    // obs_centroids_vec[0].y = 0;
+    // obs_centroids_vec[2].x = 0;
+    // New solution is add shift to centroids so that there is larger distance between walls and obstacles.
+    Point2f shift(1000, 1000);
+    for (Point2f& centroid : obs_centroids_vec)
+        centroid += shift;
 
     unordered_map<string, int> centroid_obs_map;
     for (int i = 0; i < obs_centroids_vec.size(); i++)
@@ -94,7 +110,6 @@ pair<vector<vector<int>>, vector<vector<Point2f>>> PassageCheckInDelaunayGraph(c
                 neighbor_obs_gd_two.insert(neighbor_gd_2);
 
         for (int j : neighbor_obs_gd_two) {
-            // Do not check boundary pairs
             if (j <= i)
                 continue;
 
@@ -233,7 +248,7 @@ vector<vector<int>> FindPlannarFaces(const vector<PolygonObstacle>& obstacles, c
 }
 
 vector<vector<int>> ReportGabrielCells(const vector<PolygonObstacle>& obstacles, const vector<vector<int>>& passage_pairs) {
-    vector<vector<int>> augmented_psg_pairs = passage_pairs, res;
+    vector<vector<int>> augmented_psg_pairs = passage_pairs;
     // Add pseudo passage between four environment walls.
     augmented_psg_pairs.push_back({0, 2});
     augmented_psg_pairs.push_back({0, 3});
@@ -252,7 +267,7 @@ vector<PolygonCell> GetGabrielCellsInfo(const vector<vector<int>>& cells,
     augmented_psg_pairs.push_back({0, 3});
     augmented_psg_pairs.push_back({1, 2});
     augmented_psg_pairs.push_back({1, 3});
-    // Set invalid passage point positions such that no intersection with path segments is possible.
+    // Set invalid passage points such that no intersection with path segments is possible.
     vector<vector<Point2f>> augmented_psg_pts = psg_res.second;
     augmented_psg_pts.push_back({Point2f(0, -1), Point2f(-1, 0)});
     augmented_psg_pts.push_back({Point2f(10000, -1), Point2f(10001, 0)});
@@ -297,16 +312,16 @@ vector<PolygonCell> GetGabrielCellsInfo(const vector<vector<int>>& cells,
     return res;
 }
 
-unordered_map<string, vector<int>> GetPassageCellMap(const vector<vector<int>>& cells) {
-    unordered_map<string, vector<int>> psg_to_cell_idx_map; 
-    for (int i = 0; i < cells.size(); i++) {
-        int vertex_num = cells[i].size();
+unordered_map<string, vector<int>> GetPassageCellMap(const vector<PolygonCell>& cell_info) {
+    unordered_map<string, vector<int>> psg_cell_idx_map; 
+    for (int i = 0; i < cell_info.size(); i++) {
+        int vertex_num = cell_info[i].obs_indices.size();
         for (int j = 0; j < vertex_num; j++) {
-            string key_str = PassagePairToKeyString(cells[i][j], cells[i][(j + 1) % vertex_num]);
-            psg_to_cell_idx_map[key_str].push_back(i);
+            string key_str = PassagePairToKeyString(cell_info[i].obs_indices[j], cell_info[i].obs_indices[(j + 1) % vertex_num]);
+            psg_cell_idx_map[key_str].push_back(i);
         }
     }
-    return psg_to_cell_idx_map;
+    return psg_cell_idx_map;
 }
 
 int LocatePtInCells(const Point2f pt, const vector<PolygonCell> cell_info) {
@@ -315,6 +330,46 @@ int LocatePtInCells(const Point2f pt, const vector<PolygonCell> cell_info) {
             return i;
     }
     return -1;
+}
+
+vector<float> GetPassageWidthsPassedDG(PathNode* start_node, PathNode* end_node,
+                                       const vector<PolygonCell>& cells_info, 
+                                       unordered_map<string, vector<int>>& psg_cell_idx_map,
+                                       bool update_end_node_cell_idx = false) {
+    vector<float> res;
+    set<string> passed_psg_pairs;
+    int start_cell_idx = start_node->cell_id;
+    Point2f start_pt = start_node->pos, end_pt = end_node->pos;
+
+    bool end_pt_located = false;
+    while (end_pt_located == false) {
+        end_pt_located = true;
+        const PolygonCell* cell = &cells_info[start_cell_idx];
+        int side_num = cell->obs_indices.size();
+        for (int i = 0; i < side_num; i++) {
+            Point2f vertex_1 = cell->vertices[2 * i],
+                    vertex_2 = cell->vertices[2 * i + 1];
+            if (SegmentIntersection(vertex_1, vertex_2, start_pt, end_pt)) {
+                string key_str = PassagePairToKeyString(cell->obs_indices[i], cell->obs_indices[(i + 1) % side_num]);
+                if (passed_psg_pairs.count(key_str) > 0)
+                    continue;
+
+                res.push_back(cv::norm(vertex_1 - vertex_2));
+                passed_psg_pairs.insert(key_str);
+                for (int cell_idx : psg_cell_idx_map[key_str]) {
+                    if (cell_idx != start_cell_idx) {
+                        start_cell_idx = cell_idx;
+                        end_pt_located = false;
+                        break;
+                    }
+                }
+                break;
+            }
+        }
+    }
+    if (update_end_node_cell_idx)
+        end_node->cell_id = start_cell_idx;
+    return res;
 }
 
 #endif
