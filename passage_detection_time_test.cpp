@@ -6,16 +6,16 @@
 using namespace std::chrono;
 
 void PassageDetectionTest(const int test_num = 100, 
-                        const int obs_num = 50, 
-                        const int side_len = 30, 
-                        Mat back_img = Mat(Size(1000, 600), CV_64FC3, Scalar(255, 255, 255))) {
+                          const int obs_num = 50, 
+                          const int side_len = 30,
+                          Mat back_img = Mat(Size(1000, 600), CV_64FC3, Scalar(255, 255, 255))) {
     vector<float> EV_check_time(test_num, 0), DG_check_time(test_num, 0),
                   EV_cell_check_time(test_num, 0);
     vector<int> EV_psg_num(test_num, 0), DG_psg_num(test_num, 0), 
                 EV_cell_num(test_num, 0),
                 EV_psg_segment_num(test_num, 0), 
                 EV_cell_via_segment_num(test_num, 0);
-    bool varying_side_len = false;
+    bool varying_side_len = true;
     for (int test_idx = 0; test_idx < test_num; test_idx++) {
         vector<PolygonObstacle> obs_vec = GenerateRandomObstacles(obs_num, back_img.size(), side_len, varying_side_len);
 
@@ -65,7 +65,7 @@ void PassageDetectionTest(const int test_num = 100,
                 + "Obstacle main/max dimension: " + to_string(side_len) + "\n"
                 + "Total test number: " + to_string(test_num) + "\n" 
                 + "Varying side length: " + (varying_side_len ? "true" : "false") + "\n"
-                + "No environment boundaries are considered\n";    
+                + "No environment boundaries are considered\n\n";    
 
     ofstream  data_save_os;
     data_save_os.open(save_directory + file_name, std::ios::trunc);
@@ -74,36 +74,22 @@ void PassageDetectionTest(const int test_num = 100,
     }
     else {
         data_save_os << test_info;
-        data_save_os << "Valid passage number using Gabriel condition: \n";
-        for (int num : EV_psg_num)
-            data_save_os << num << "\n";
-        data_save_os << "Corresponding detection time (ms) via brute-force traversal: \n";        
-        for (float time : EV_check_time)
-            data_save_os << time << "\n";
-        data_save_os << "Valid passage segment number using extended visibility condition: \n";        
-        for (int num : EV_psg_segment_num)
-            data_save_os << num << "\n";
-        data_save_os << "Gabriel cell number from Gabriel condition: \n";        
-        for (int num : EV_cell_num)
-            data_save_os << num << "\n";            
-        data_save_os << "Corresponding cell detection time (ms): \n";        
-        for (float time : EV_cell_check_time)
-            data_save_os << time << "\n";     
-        data_save_os << "Cell number from passage segments using extended visibility condition: \n";        
-        for (int num : EV_cell_via_segment_num)
-            data_save_os << num << "\n";          
-        data_save_os << "Valid assage number using Gabriel condition, detected in Delaunay garph: \n";
-        for (int num : DG_psg_num)
-            data_save_os << num << "\n";
-        data_save_os << "Corresponding detection time in Delaunay graph (ms): \n";        
-        for (float time : DG_check_time)
-            data_save_os << time << "\n";                                 
+        data_save_os << "1-Passage number using Gabriel condition in brute-force traversal - 2 -Passage number using Delaunay graph\n" 
+                        "- 3 -Valid passage segments using extended visibility condition"
+                        "- 4 -Cell number using Gabriel condition- 5 -Cell number using passage segments\n";
+        for (int i = 0; i < test_num; i++)
+            data_save_os << EV_psg_num[i] << ", " << DG_psg_num[i] << ", " << EV_psg_segment_num[i] << ", " << EV_cell_num[i] << ", " << EV_cell_via_segment_num[i] << "\n";
+        data_save_os << "1-Passage detection time via brete-force traversal (ms)- 2 -Passage detection time in Delaunay graph (ms)"
+                        "- 3 -Cell detection time for valid passages (ms)\n";  
+        for (int i = 0; i < test_num; i++)
+            data_save_os << EV_check_time[i] << ", " << DG_check_time[i] << ", " << EV_cell_check_time[i] << "\n";                              
     }           
 }
 
 
 int main(int argc, char** argv) {
     Mat back_img(Size(1000, 600), CV_64FC3, Scalar(255, 255, 255));
-    PassageDetectionTest(50, 100, 30, back_img);
+    for (int obs_num = 200; obs_num <= 200; obs_num += 10)
+        PassageDetectionTest(50, obs_num, 60, back_img);
     return 0;
 }
