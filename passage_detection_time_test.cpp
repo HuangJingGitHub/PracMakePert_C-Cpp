@@ -58,7 +58,7 @@ void PassageDetectionTest(const int test_num = 100,
                         + to_string(cur_tm->tm_mon + 1) + "-"
                         + to_string(cur_tm->tm_mday) + "_"
                         + to_string(cur_tm->tm_hour) + "-"
-                        + to_string(cur_tm->tm_min) + ".tex";
+                        + to_string(cur_tm->tm_min) + ".txt";
     file_name = file_name + file_name_postfix;
     test_info = "Environment dimension: " + to_string(back_img.size().width) + " x " + to_string(back_img.size().height) + "\n"  
                 + "Obstacle num: " + to_string(obs_num) + "\n"
@@ -79,7 +79,7 @@ void PassageDetectionTest(const int test_num = 100,
                         "- 4 -Cell number using Gabriel condition- 5 -Cell number using passage segments\n";
         for (int i = 0; i < test_num; i++)
             data_save_os << EV_psg_num[i] << ", " << DG_psg_num[i] << ", " << EV_psg_segment_num[i] << ", " << EV_cell_num[i] << ", " << EV_cell_via_segment_num[i] << "\n";
-        data_save_os << "1-Passage detection time via brete-force traversal (ms)- 2 -Passage detection time in Delaunay graph (ms)"
+        data_save_os << "1-Passage detection time via brute-force traversal (ms)- 2 -Passage detection time in Delaunay graph (ms)"
                         "- 3 -Cell detection time for valid passages (ms)\n";  
         for (int i = 0; i < test_num; i++)
             data_save_os << EV_check_time[i] << ", " << DG_check_time[i] << ", " << EV_cell_check_time[i] << "\n";                              
