@@ -16,16 +16,13 @@ public:
                 feasibleCourse.push(i);
         
         while (!feasibleCourse.empty()){
-            int feasibleCourseNum = feasibleCourse.size();
-            for (int i = 0; i < feasibleCourseNum; i++){
-                int curCourse = feasibleCourse.front();
-                feasibleCourse.pop();
-                courseTaken++;
-                for (int course : outAdjacency[curCourse]){
-                    indegree[course]--;
-                    if (indegree[course] == 0)
-                        feasibleCourse.push(course);
-                }
+            int curCourse = feasibleCourse.front();
+            feasibleCourse.pop();
+            courseTaken++;
+            for (int course : outAdjacency[curCourse]){
+                indegree[course]--;
+                if (indegree[course] == 0)
+                    feasibleCourse.push(course);
             }
         }
         return courseTaken == numCourses;
