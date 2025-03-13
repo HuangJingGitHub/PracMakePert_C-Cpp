@@ -30,6 +30,7 @@ public:
                 groups.unionSet(min_v, max_v);
             }
         }
+        
         for (auto& eqn: equations) {
             if (eqn[1] == '!') {
                 int x = eqn[0] - 'a', y = eqn[3] - 'a';
