@@ -50,15 +50,16 @@ Passages3d PassageCheckInDelaunayGraph3d(const vector<PolygonObstacle3d>& obstac
     Rect2f bounding_box(0, 0, 10000, 10000);
     Subdiv2D subdiv(bounding_box);
     int highest_idx = sort_obs_indices[4],
-        sub_highest_idx = sort_obs_indices[5];
+        next_highest_idx = sort_obs_indices[5];
     subdiv.insert(obs_centroids[highest_idx]);
-    subdiv.insert(obs_centroids[sub_highest_idx]);
-    res_psg_pairs.push_back({min(highest_idx, sub_highest_idx), max(highest_idx, sub_highest_idx)});
+    subdiv.insert(obs_centroids[next_highest_idx]);
+    res_psg_pairs.push_back({min(highest_idx, next_highest_idx), max(highest_idx, next_highest_idx)});
     res_psg_pts.push_back(SVIntersection(obstacles[highest_idx].Get2dObstacle(), 
-                                        obstacles[sub_highest_idx].Get2dObstacle()).back());
-    res_psg_heights.push_back({0, obstacles[sub_highest_idx].height});
+                                        obstacles[next_highest_idx].Get2dObstacle()).back());
+    res_psg_heights.push_back({0, obstacles[next_highest_idx].height});
     res_psg_processed.push_back(false);
 
+    vector<set<int>> pre_adjacency_set(obstacles.size());
     for (int sort_idx = 6; sort_idx < sort_obs_indices.size(); sort_idx++) {
         int obs_idx = sort_obs_indices[sort_idx];
         
@@ -95,6 +96,16 @@ Passages3d PassageCheckInDelaunayGraph3d(const vector<PolygonObstacle3d>& obstac
                 continue;
 
             int idx_1 = res_psg_pairs[psg_idx][0], idx_2 = res_psg_pairs[psg_idx][1];
+            // NO NEED to check if previous passages still remain as edges, a passage is knocked out 
+            // only if it fails the detection condition. In the dynamic Delaunay graph building process, 
+            // it is possible that an edge is first established, eliminated, and possibly rebuilt again, 
+            // so on and so furth. Edge existance is not a criterion of passage validity.
+            /*if (adjacency_set[idx_1].count(idx_2) == 0) {
+                res_psg_heights[psg_idx][0] = obstacles[obs_idx].height;
+                res_psg_processed[psg_idx] = true;
+                continue;
+            }*/
+
             if (obs_gd_two.count(idx_1) || obs_gd_two.count(idx_2)) {
                 vector<vector<Point2f>> psg_key_pts = SVIntersection(obstacles[idx_1].Get2dObstacle(), 
                                                                     obstacles[idx_2].Get2dObstacle());
@@ -157,6 +168,7 @@ Passages3d PassageCheckInDelaunayGraph3d(const vector<PolygonObstacle3d>& obstac
                 res_psg_processed.push_back(false);
             }
         }      
+        pre_adjacency_set = adjacency_set;
     }
 
     return Passages3d(res_psg_pairs, res_psg_pts, res_psg_heights);
