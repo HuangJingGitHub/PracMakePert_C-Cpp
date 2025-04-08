@@ -2,14 +2,14 @@
 #define DECOMPOSITION_INCLUDED
 
 #include <unordered_map>
-#include <opencv2/imgproc/imgproc.hpp>
+// #include <opencv2/imgproc/imgproc.hpp>
 #include "obstacles.hpp"
 #include "kd_tree.hpp"
 
 struct PolygonCell {
     vector<int> obs_indices;
     vector<Point2f> vertices;
-    PolygonCell() {};
+    PolygonCell() {}
     PolygonCell(vector<int> cell_obs_indices, vector<Point2f> cell_vertices): obs_indices(cell_obs_indices), vertices(cell_vertices) {}
 };
 
@@ -39,15 +39,24 @@ string PassagePairToKeyString(const int obs_idx1, const int obs_idx2) {
 vector<vector<int>> DelaunayTriangulationObstables(const vector<PolygonObstacle>& obs_vec, 
                                                     bool contain_env_walls = false, 
                                                     Size2f rect_size = Size2f(10000, 10000)) {
+    if (obs_vec.size() < 2) {
+        string msg = "Obstacle number is less than two in " + string(__func__);
+        throw std::invalid_argument(msg);        
+    }   
+    else if (obs_vec.size() == 2) {
+        vector<vector<int>> res(2);
+        res[0] = {1}; res[1] = {0};
+        return res;
+    }                                                     
     vector<vector<int>> adjacency_list(obs_vec.size());
     vector<set<int>> adjacency_set(obs_vec.size());
     vector<Point2f> obs_centroids_vec = GetObstaclesCentroids(obs_vec);
     // Negative coordinates are not allowed.  Aassigning zero to these coordinates 
-    // may cause some Delaunay edges fail to find between walls and obstacles. The result 
-    // could be reslut in redundant passages whose circles intersect with walls.
+    // may cause some Delaunay edges to fail to find passages between walls and obstacles. The result 
+    // could cause redundant passages whose circles intersect with walls.
     // obs_centroids_vec[0].y = 0;
     // obs_centroids_vec[2].x = 0;
-    // New solution is add shift to centroids so that there is larger distance between walls and obstacles.
+    // New solution is add shift to centroids so that there are larger distances between walls and obstacles.
     Point2f shift(1000, 1000);
     for (Point2f& centroid : obs_centroids_vec)
         centroid += shift;
@@ -59,8 +68,7 @@ vector<vector<int>> DelaunayTriangulationObstables(const vector<PolygonObstacle>
     Rect2f bounding_box(0, 0, rect_size.width, rect_size.height);
     Subdiv2D subdiv(bounding_box);
     
-    // Environment boundaries, if any, are not included in trigulation.
-    if (contain_env_walls == false) {
+    if (!contain_env_walls) {
         for (int i = 4; i < obs_centroids_vec.size(); i++)
             subdiv.insert(obs_centroids_vec[i]);
     }
@@ -95,10 +103,10 @@ vector<vector<int>> DelaunayTriangulationObstables(const vector<PolygonObstacle>
     return adjacency_list;
 }
 
-pair<vector<vector<int>>, vector<vector<Point2f>>> PassageCheckInDelaunayGraph(const vector<PolygonObstacle>& obstacles) {
+Passages PassageCheckInDelaunayGraph(const vector<PolygonObstacle>& obstacles, bool contain_env_walls = true) {
     vector<vector<int>> res_psg_pair;
     vector<vector<Point2f>> res_psg_pts;
-    vector<vector<int>> adjacency_list = DelaunayTriangulationObstables(obstacles, true);
+    vector<vector<int>> adjacency_list = DelaunayTriangulationObstables(obstacles, contain_env_walls);
 
     // Explicitly do not process environment walls here.
     int start_idx = 4; 
@@ -119,22 +127,21 @@ pair<vector<vector<int>>, vector<vector<Point2f>>> PassageCheckInDelaunayGraph(c
             float psg_length = cv::norm(psg_segment_pts[0] - psg_segment_pts[1]);
             // obstacle within geodesic distance (gd) two of two obstacles
             set<int> obs_gd_two = neighbor_obs_gd_two;
-            for (int k : adjacency_list[j])
+            for (int k : adjacency_list[j]) {
                 obs_gd_two.insert(k);
-            for (int k : adjacency_list[j])
                 for (int l : adjacency_list[k])
                     obs_gd_two.insert(l);
+            }
 
             bool is_psg_valid = true;
-            for (auto it = obs_gd_two.begin(); it != obs_gd_two.end(); it++) {
-                int k = *it;
+            for (int k : obs_gd_two) {
                 if (k == i || k == j)
                     continue;
                 
                 // Assumption: if an obstacle collides with the passage region,   
                 // it must collide with  one of the passage region boundaries.
-                if (ObstacleFree(obstacles[k], psg_key_pts[0][0], psg_key_pts[0][1]) == false
-                    || ObstacleFree(obstacles[k], psg_key_pts[1][0], psg_key_pts[1][1]) == false) {
+                if (!ObstacleFree(obstacles[k], psg_key_pts[0][0], psg_key_pts[0][1])
+                    || !ObstacleFree(obstacles[k], psg_key_pts[1][0], psg_key_pts[1][1])) {
                     is_psg_valid = false;
                     break;
                 }
@@ -145,20 +152,20 @@ pair<vector<vector<int>>, vector<vector<Point2f>>> PassageCheckInDelaunayGraph(c
                     break;
                 }
             }
-            if (is_psg_valid == true) {
+            if (is_psg_valid) {
                 res_psg_pair.push_back({i, j});
                 res_psg_pts.push_back(psg_segment_pts);
             }
         }
     }
-    return make_pair(res_psg_pair, res_psg_pts);
+    return Passages(res_psg_pair, res_psg_pts);
 }
 
-pair<vector<vector<int>>, vector<vector<Point2f>>> PassageCheckDelaunayGraphWithWalls(const vector<PolygonObstacle>& obstacles) {
-    pair<vector<vector<int>>, vector<vector<Point2f>>> res_env_walls = ExtendedVisibilityCheckForWalls(obstacles);
-    pair<vector<vector<int>>, vector<vector<Point2f>>> res_obs = PassageCheckInDelaunayGraph(obstacles);
-    res_env_walls.first.insert(res_env_walls.first.end(), res_obs.first.begin(), res_obs.first.end());
-    res_env_walls.second.insert(res_env_walls.second.end(), res_obs.second.begin(), res_obs.second.end());
+Passages PassageCheckDelaunayGraphWithWalls(const vector<PolygonObstacle>& obstacles) {
+    Passages res_env_walls = ExtendedVisibilityCheckForWalls(obstacles);
+    Passages res_obs = PassageCheckInDelaunayGraph(obstacles, true);
+    res_env_walls.pairs.insert(res_env_walls.pairs.end(), res_obs.pairs.begin(), res_obs.pairs.end());
+    res_env_walls.pts.insert(res_env_walls.pts.end(), res_obs.pts.begin(), res_obs.pts.end());
     return res_env_walls;
 }
 
@@ -178,7 +185,7 @@ vector<vector<int>> FindPlannarFaces(const vector<PolygonObstacle>& obstacles, c
         adjacency_list[passage_pair[1]].push_back(passage_pair[0]);
     }
     
-    std::vector<std::vector<char>> used(obs_num);
+    vector<vector<char>> used(obs_num);
     for (int i = 0; i < obs_num; i++) {
         used[i].resize(adjacency_list[i].size());
         used[i].assign(adjacency_list[i].size(), 0);
@@ -197,13 +204,13 @@ vector<vector<int>> FindPlannarFaces(const vector<PolygonObstacle>& obstacles, c
     vector<vector<int>> faces;
     for (int i = 0; i < obs_num; i++) {
         for (int edge_id = 0; edge_id < adjacency_list[i].size(); edge_id++) {
-            if (used[i][edge_id] == true) {
+            if (used[i][edge_id]) {
                 continue;
             }
             vector<int> face;
             int v = i;
             int e = edge_id;
-            while (used[v][e] == false) {
+            while (!used[v][e]) {
                 used[v][e] = true;
                 face.push_back(v);
                 int u = adjacency_list[v][e];
@@ -247,28 +254,29 @@ vector<vector<int>> FindPlannarFaces(const vector<PolygonObstacle>& obstacles, c
     return faces;
 }
 
-vector<vector<int>> ReportGabrielCells(const vector<PolygonObstacle>& obstacles, const vector<vector<int>>& passage_pairs) {
+vector<vector<int>> ReportGabrielCells(const vector<PolygonObstacle>& obstacles, const vector<vector<int>>& passage_pairs, bool contain_env_walls) {
     vector<vector<int>> augmented_psg_pairs = passage_pairs;
     // Add pseudo passage between four environment walls.
-    augmented_psg_pairs.push_back({0, 2});
-    augmented_psg_pairs.push_back({0, 3});
-    augmented_psg_pairs.push_back({1, 2});
-    augmented_psg_pairs.push_back({1, 3});
-
+    if(contain_env_walls) {
+        augmented_psg_pairs.push_back({0, 2});
+        augmented_psg_pairs.push_back({0, 3});
+        augmented_psg_pairs.push_back({1, 2});
+        augmented_psg_pairs.push_back({1, 3});
+    }
     return FindPlannarFaces(obstacles, augmented_psg_pairs);
 }
 
 vector<PolygonCell> GetGabrielCellsInfo(const vector<vector<int>>& cells, 
-                                        const pair<vector<vector<int>>, vector<vector<Point2f>>>& psg_res) {
+                                        const Passages& psg_res) {
     vector<PolygonCell> res;
-    // Add pseudo passage between four environment walls.
-    vector<vector<int>> augmented_psg_pairs = psg_res.first;
+    // Add virtual passage between four environment walls.
+    vector<vector<int>> augmented_psg_pairs = psg_res.pairs;
     augmented_psg_pairs.push_back({0, 2});
     augmented_psg_pairs.push_back({0, 3});
     augmented_psg_pairs.push_back({1, 2});
     augmented_psg_pairs.push_back({1, 3});
     // Set invalid passage points such that no intersection with path segments is possible.
-    vector<vector<Point2f>> augmented_psg_pts = psg_res.second;
+    vector<vector<Point2f>> augmented_psg_pts = psg_res.pts;
     augmented_psg_pts.push_back({Point2f(0, -1), Point2f(-1, 0)});
     augmented_psg_pts.push_back({Point2f(10000, -1), Point2f(10001, 0)});
     augmented_psg_pts.push_back({Point2f(0, 10001), Point2f(-1, 10000)});
@@ -296,7 +304,7 @@ vector<PolygonCell> GetGabrielCellsInfo(const vector<vector<int>>& cells,
             if (psg_to_pt_map.count(key_str) == 0) 
                 throw std::runtime_error("Error: Passage as a cell side does not exist in detection results in " + string(__func__));
 
-            // Passage points are stored with obstacle indices ascending in 
+            // Passage segment points are stored with obstacle indices ascending in 
             // passage detection results. In cells, however, obstacles are not ordered. 
             if (start_idx < end_idx) {
                 cell_side_pts.push_back(psg_to_pt_map[key_str][0]);
@@ -342,7 +350,7 @@ vector<float> GetPassageWidthsPassedDG(PathNode* start_node, PathNode* end_node,
     Point2f start_pt = start_node->pos, end_pt = end_node->pos;
 
     bool end_pt_located = false;
-    while (end_pt_located == false) {
+    while (!end_pt_located) {
         end_pt_located = true;
         const PolygonCell* cell = &cells_info[start_cell_idx];
         int side_num = cell->obs_indices.size();
