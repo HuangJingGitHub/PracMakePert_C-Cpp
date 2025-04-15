@@ -17,6 +17,8 @@ void PassageDetectionTest(const int test_num = 50,
                 EV_cell_via_segment_num(test_num, 0);
     bool varying_side_len = true;
     // bool varying_side_len_test = false; // For fixed obstacle nubmer, varying side lengths.
+
+    vector<float> psg_lengths;
     for (int test_idx = 0; test_idx < test_num; test_idx++) {
         vector<PolygonObstacle> obs_vec = GenerateRandomObstacles(obs_num, back_img.size(), side_len, varying_side_len);
 
@@ -48,7 +50,16 @@ void PassageDetectionTest(const int test_num = 50,
         duration_time = duration_cast<milliseconds>(end_time - start_time);
         DG_check_time[test_idx] = (float) duration_time.count();
         DG_psg_num[test_idx] = DG_check_res.pairs.size();
+
+        psg_lengths = vector<float>(DG_check_res.pts.size(), 0);
+        for (int i = 0; i < psg_lengths.size(); i++)
+            psg_lengths[i] = cv::norm(DG_check_res.pts[i][0] - DG_check_res.pts[i][1]);
+        std::sort(psg_lengths.begin(), psg_lengths.end());
+        for (float& len : psg_lengths)
+            cout << len << ", ";
+        cout << "\n";
     }
+    return;
 
     string save_directory = "./src/ptopp/src/data/passage_detection_2d/";
     string file_name_postfix, file_name, test_info;
@@ -90,8 +101,8 @@ void PassageDetectionTest(const int test_num = 50,
 
 int main(int argc, char** argv) {
     Mat back_img(Size(1000, 600), CV_64FC3, Scalar(255, 255, 255));
-    for (int obs_num = 20; obs_num <= 200; obs_num += 20)
-       PassageDetectionTest(50, obs_num, 60, back_img);
+    for (int obs_num = 20; obs_num <= 20; obs_num += 20)
+       PassageDetectionTest(1, obs_num, 40, back_img);
     // for (int side_len = 10; side_len <= 100; side_len += 10)
     //    PassageDetectionTest(50, 40, side_len, back_img);
     return 0;
