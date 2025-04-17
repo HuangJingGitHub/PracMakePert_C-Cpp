@@ -1,18 +1,7 @@
 #ifndef RRTSTAR_HEADER_INCLUDED
 #define RRTSTAR_HEADER_INCLUDED
 
-#include <math.h>
-#include <stdlib.h>
-#include <time.h>
-#include <iostream>
-#include <vector>
 #include <queue>
-#include <unordered_set>
-#include <algorithm>
-#include <string>
-#include <opencv2/core.hpp>
-#include <opencv2/highgui.hpp>
-#include <opencv2/imgproc.hpp>
 #include "decomposition.hpp"
 
 class RRTStarPlanner {
@@ -37,7 +26,7 @@ public:
     PathNode* start_node_;
     PathNode* target_node_;
     kdTree kd_tree_;
-    int MAX_GRAPH_SIZE = 2000;
+    int MAX_GRAPH_SIZE = 3000;
     int GRAPH_SIZE = 0;
     bool plan_success_ = false;
 
@@ -58,16 +47,12 @@ public:
         use_ev_check_(use_ev_check) {
         start_node_ = new PathNode(start);
         target_node_ = new PathNode(target);
-        
-        UpdateNodeCost(start_node_);
-        kd_tree_.Add(start_node_);
-        GRAPH_SIZE++;
+        gamma_rrt_star_ = 4 * sqrt(FreespaceArea(obstacles_, config_size_) / M_PI);   
 
-        gamma_rrt_star_ = sqrt(6 * FreespaceArea(obstacles_, config_size_) / M_PI);     
         // pv: pure visibility
-        auto pv_check_res = PureVisibilityPassageCheck(obstacles_);
-        pv_passage_pairs_ = pv_check_res.first;
-        pv_passage_pts_ = pv_check_res.second;
+        Passages pv_check_res = PureVisibilityPassageCheck(obstacles_);
+        pv_passage_pairs_ = pv_check_res.pairs;
+        pv_passage_pts_ = pv_check_res.pts;
 
         // ev: extended visibility
         // auto ev_check_res = ExtendedVisibilityPassageCheck(obstacles_);
@@ -75,11 +60,11 @@ public:
         // ev_passage_pts_ = ev_check_res.second; 
 
         // Extended visibility as Gabriel condition in Delaunay graph
-        auto DG_check_res = PassageCheckDelaunayGraphWithWalls(obstacles_);
-        ev_passage_pairs_ = DG_check_res.first;
-        ev_passage_pts_ = DG_check_res.second; 
+        Passages DG_check_res = PassageCheckDelaunayGraphWithWalls(obstacles_);
+        ev_passage_pairs_ = DG_check_res.pairs;
+        ev_passage_pts_ = DG_check_res.pts; 
 
-        cells_ = ReportGabrielCells(obstacles_, ev_passage_pairs_);
+        cells_ = ReportGabrielCells(obstacles_, ev_passage_pairs_, true);
         cells_info_ = GetGabrielCellsInfo(cells_, DG_check_res);
         psg_cell_idx_map_ = GetPassageCellMap(cells_info_);
         start_node_->cell_id = LocatePtInCells(start_node_->pos, cells_info_);
@@ -87,6 +72,10 @@ public:
         if (cost_function_type_ < 0 || cost_function_type_ > 6) {
             cost_function_type_ = 0;
         }
+        UpdateNodeCost(start_node_);
+        kd_tree_.Add(start_node_);
+        GRAPH_SIZE++;
+                
         std::cout << "RRT* path planner instanced with cost function type: " << cost_function_type_ 
                 << "\n0: Any invalid type value: Default path length cost"
                 << "\n1: Ratio cost: len / passed_min_passage_width"
@@ -111,13 +100,15 @@ public:
     vector<Point2f> GetPathInPts();
 };
 
-bool RRTStarPlanner::Plan(Mat source_img, float interior_delta, bool plan_in_interior) {       
-    srand(time(NULL));
+bool RRTStarPlanner::Plan(Mat source_img, float interior_delta, bool plan_in_interior) {   
+    random_device rd_x, rd_y;
+    mt19937 rd_engine_x(rd_x()), rd_engine_y(rd_y());
+    uniform_real_distribution<> distribution_x(0, config_size_.width), distribution_y(0, config_size_.height);
+    
+    srand(time(NULL));  // for SafeRandTarget().
     plan_success_ = false;
     source_img_ = source_img;
-    float div_width = RAND_MAX / config_size_.width,
-            div_height = RAND_MAX / config_size_.height,
-            min_cost = FLT_MAX,
+    float   min_cost = FLT_MAX,
             total_cost = FLT_MAX,
             min_len = FLT_MAX,
             total_len = FLT_MAX;
@@ -132,8 +123,8 @@ bool RRTStarPlanner::Plan(Mat source_img, float interior_delta, bool plan_in_int
             rand_pos = SafeRandTarget();                         
         } 
         else {
-            rand_pos.x = rand() / div_width;
-            rand_pos.y = rand() / div_height;
+            rand_pos.x = distribution_x(rd_x);
+            rand_pos.y = distribution_y(rd_y);
         }
 
         PathNode* nearest_node = kd_tree_.FindNearestNode(rand_pos);
@@ -247,7 +238,7 @@ void RRTStarPlanner::Rewire(PathNode* nearest_node, PathNode* new_node, Mat sour
             continue;
         float new_near_node_cost = NewCost(new_node, near_node);
         if (new_near_node_cost < near_node->cost
-            || (new_near_node_cost <= near_node->cost + 1
+            || (new_near_node_cost <= near_node->cost + 1e-2
                 && new_node->len + cv::norm(near_node->pos - new_node->pos) < near_node->len)
             ) {
             UpdateSubtree(new_node, near_node);
@@ -265,8 +256,8 @@ float RRTStarPlanner::NewCost(PathNode* near_node, PathNode* new_node) {
         return new_len;
 
     if (use_ev_check_ == true) {
-        passed_width_vec = GetPassageWidthsPassed(ev_passage_pts_, near_node->pos, new_node->pos);
-        // passed_width_vec = GetPassageWidthsPassedDG(near_node, new_node, cells_info_, psg_cell_idx_map_, false);
+        // passed_width_vec = GetPassageWidthsPassed(ev_passage_pts_, near_node->pos, new_node->pos);
+        passed_width_vec = GetPassageWidthsPassedDG(near_node, new_node, cells_info_, psg_cell_idx_map_, false);
         if (passed_width_vec.size() > 0) {
             for (float& psg_width : passed_width_vec)
                 new_min_psg_width = std::min(new_min_psg_width, psg_width);
@@ -299,10 +290,34 @@ float RRTStarPlanner::NewCost(PathNode* near_node, PathNode* new_node) {
                 res -= base[i] * (*it);
         } 
     }
+    else if (cost_function_type_ == 4) {
+        res = new_len - 100 * new_min_psg_width;
+    }
+    else if (cost_function_type_ == 5) {
+        auto it = new_psg_list.begin();
+        if  (new_psg_list.size() < 3) {
+            while (it != new_psg_list.end()) {
+                res += *it;
+                it++;
+            }
+            for (int i = new_psg_list.size(); i < 3; i++) {
+                res += 1000;
+            }
+        }
+        else {
+            for (int i = 0; i < 3; i++) {
+                res += *it;
+                it++;
+            }
+        }
+        res = new_len - 100 * res;
+    }
     return res;      
 }    
 
 void RRTStarPlanner::UpdateNodeCost(PathNode* node) {
+    // Clear previous value
+    node->cost = 0;
     if (cost_function_type_ == 0) {
         node->cost = node->len;
     }            
@@ -313,7 +328,6 @@ void RRTStarPlanner::UpdateNodeCost(PathNode* node) {
         node->cost = -node->min_passage_width;
     }   
     else if (cost_function_type_ == 3) {
-        node->cost = 0;
         vector<float> base{1e4, 1e2, 1};
         auto it = node->sorted_passage_list.begin();
         if (node->sorted_passage_list.size() < 3) {
@@ -331,6 +345,28 @@ void RRTStarPlanner::UpdateNodeCost(PathNode* node) {
             for (int i = 0; i < 3; i++, it++)
                 node->cost -= base[i] * (*it);
         }         
+    }
+    else if (cost_function_type_ == 4) {
+        node->cost = node->len - 100 * node->min_passage_width;
+    }
+    else if (cost_function_type_ == 5) {
+        auto it = node->sorted_passage_list.begin();
+        if  (node->sorted_passage_list.size() < 3) {
+            while (it != node->sorted_passage_list.end()) {
+                node->cost += *it;
+                it++;
+            }
+            for (int i = node->sorted_passage_list.size(); i < 3; i++) {
+                node->cost += 1000;
+            }
+        }
+        else {
+            for (int i = 0; i < 3; i++) {
+                node->cost += *it;
+                it++;
+            }
+        }
+        node->cost = node->len - 100 * node->cost;
     }
 }
 
@@ -351,8 +387,8 @@ void RRTStarPlanner::UpdateSubtree(PathNode* new_parent, PathNode* child) {
 
     vector<float> passed_width_vec;
     if (use_ev_check_ == true) {
-        passed_width_vec = GetPassageWidthsPassed(ev_passage_pts_, new_parent->pos, child->pos);
-        // passed_width_vec = GetPassageWidthsPassedDG(new_parent, child, cells_info_, psg_cell_idx_map_, true);
+        // passed_width_vec = GetPassageWidthsPassed(ev_passage_pts_, new_parent->pos, child->pos);
+        passed_width_vec = GetPassageWidthsPassedDG(new_parent, child, cells_info_, psg_cell_idx_map_, true);
         if (passed_width_vec.size() > 0) {
             child->cur_passage_widths = passed_width_vec;
             InsertIntoSortedList(child->sorted_passage_list, passed_width_vec); 
@@ -365,7 +401,7 @@ void RRTStarPlanner::UpdateSubtree(PathNode* new_parent, PathNode* child) {
     std::queue<PathNode*> node_level;
     node_level.push(child);
     int loop_num = 0;
-    while (node_level.empty() == false) {
+    while (!node_level.empty()) {
         PathNode* cur_node = node_level.front();
         node_level.pop();
 
