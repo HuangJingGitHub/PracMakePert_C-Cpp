@@ -11,6 +11,7 @@
 #include <ctime>
 #include <opencv2/core.hpp>
 #include <opencv2/highgui.hpp>
+#include <opencv2/imgproc.hpp>
 #include <eigen3/Eigen/Dense>
 
 using namespace cv;
@@ -18,9 +19,9 @@ using namespace std;
 
 struct PolygonObstacle {
     vector<Point2f> vertices;
-    PolygonObstacle() {};
-    PolygonObstacle(vector<Point2f> polygon_vertices): vertices(polygon_vertices) {}
-    PolygonObstacle(vector<Point> polygon_vertices) {
+    PolygonObstacle() {}
+    PolygonObstacle(const vector<Point2f>& polygon_vertices): vertices(polygon_vertices) {}
+    PolygonObstacle(const vector<Point>& polygon_vertices) {
         vertices = vector<Point2f>(polygon_vertices.size(), Point2f(0, 0));
         for (int i = 0; i < polygon_vertices.size(); i++) {
             vertices[i].x = (float) polygon_vertices[i].x;
@@ -29,11 +30,18 @@ struct PolygonObstacle {
     }                                                              
 };
 
-struct PolygonCell {
-    vector<int> obs_indices;
-    vector<Point2f> vertices;
-    PolygonCell() {};
-    PolygonCell(vector<int> cell_obs_indices, vector<Point2f> cell_vertices): obs_indices(cell_obs_indices), vertices(cell_vertices) {}
+struct Passage {
+    vector<int> pair;
+    vector<Point2f> pts;
+    Passage() {}
+    Passage(const vector<int>& input_pair, const vector<Point2f>& input_pts): pair(input_pair), pts(input_pts) {}
+};
+
+struct Passages {
+    vector<vector<int>> pairs;
+    vector<vector<Point2f>> pts;
+    Passages() {}
+    Passages(const vector<vector<int>>& input_pairs, const vector<vector<Point2f>>& input_pts): pairs(input_pairs), pts(input_pts) {}
 };
 
 float NormSqr(const Point2f& pt) {
@@ -53,9 +61,9 @@ void InsertIntoSortedList(list<float>& input_list, const float val) {
     list<float>::iterator it = input_list.begin();
     while (it != input_list.end() && *it < val)
         it++;
-    if (abs(*it - val) < 1e-3)
-       return;
-    else
+    // if (abs(*it - val) < 1e-3)
+    //    return;
+    // else
         input_list.insert(it, val);
 }
 
@@ -79,7 +87,9 @@ void DrawDshedLine(Mat img, const Point2f& initial_pt, const Point2f& end_pt, Sc
     float line_len = cv::norm(end_pt - initial_pt);
     Point2f line_direction = (end_pt -initial_pt) / line_len;
     int dash_num = line_len / dash_len;
-    if (line_len < 2 * dash_len) 
+    if (line_len < dash_len)
+        line(img, initial_pt, end_pt, color, thickness);
+    else if (line_len < 2 * dash_len) 
         line(img, initial_pt, initial_pt + dash_len * line_direction, color, thickness);
     for (int i = 0; i <= dash_num; i += 2) 
         if (i == dash_num)
@@ -104,7 +114,7 @@ void DrawObstacles(Mat back_img, const vector<PolygonObstacle>& obs_vec, bool pu
 }
 
 int Orientation(const Point2f& p1, const Point2f& p2, const Point2f& p3) {
-    float threshold = 1e-3;
+    float threshold = 1e-6;
     // Normalization is important to mitigate the threshold error brought by value magnitude.
     Point2f vec1 = (p2 - p1) / cv::norm(p2 - p1), vec2 = (p3 - p1) / cv::norm(p3 - p1);
     float cross_product = CrossProductVal(vec1, vec2);
@@ -131,8 +141,9 @@ bool SegmentIntersection(const Point2f& p1, const Point2f& p2, const Point2f& q1
         ori2 = Orientation(p1, p2, q2),
         ori3 = Orientation(q1, q2, p1),
         ori4 = Orientation(q1, q2, p2);
+    // cout << ori1 << "-" << ori2 << "-" << ori3 << "-" << ori4 << "\n";
     
-    if (ori1 != ori2 && ori3 != ori4)
+    if (ori1 != ori2 && ori3 != ori4 && ori1 * ori2 != 0 && ori3 * ori4 != 0)
         return true;
     else if (ori1 == 0 && OnSegment(p1, p2, q1))
         return true;
@@ -147,7 +158,7 @@ bool SegmentIntersection(const Point2f& p1, const Point2f& p2, const Point2f& q1
 
 bool InsidePolygon(const Point2f& pt, const vector<Point2f>& vertices) {
     if (vertices.size() < 3)
-        throw std::invalid_argument("A polygon with a vertex number less than three in " + string(__func__));
+        throw std::invalid_argument("Error: A polygon with a vertex number less than three in " + string(__func__));
 
     float range_x_min = FLT_MAX, range_x_max = -FLT_MAX,
           range_y_min = FLT_MAX, range_y_max = -FLT_MAX;
@@ -167,6 +178,14 @@ bool InsidePolygon(const Point2f& pt, const vector<Point2f>& vertices) {
             intersection_cnt++;
     }
     return intersection_cnt % 2 == 1;
+}
+
+bool PointObstacleFree(const Point2f& pt, const vector<PolygonObstacle>& obs_vec) {
+    for (const PolygonObstacle& obs : obs_vec) {
+        if (InsidePolygon(pt, obs.vertices))
+            return false;
+    }
+    return true;
 }
 
 /// Return the point on segment p1-p2 closest to test_pt.
@@ -222,21 +241,21 @@ Point2f GetSegmentsIntersectionPt(const Point2f& p1, const Point2f& p2, const Po
         float inner_product = p_vec.x * pq_vec.x + p_vec.y * pq_vec.y,
               line_dist = cv::norm(pq_vec - inner_product * p_vec);
 
-        if (OnSegment(p1, p2, q1) == true && OnSegment(p1, p2, q2) == false)
+        if (OnSegment(p1, p2, q1) && !OnSegment(p1, p2, q2))
             return q1;
-        else if (OnSegment(p1, p2, q1) == false && OnSegment(p1, p2, q2) == true)
+        else if (!OnSegment(p1, p2, q1) && OnSegment(p1, p2, q2))
             return q2;
-        else if (OnSegment(p1, p2, q1) == true && OnSegment(p1, p2, q2) == true) {
+        else if (OnSegment(p1, p2, q1) && OnSegment(p1, p2, q2)) {
             // Return the point closer to midpoint of p1, p2 so that invoking 
             // in the shadow volume intersection procedure can work well.
             Point2f ref_pt = (p1 + p2) / 2;
             return NormSqr(ref_pt - q1) < NormSqr(ref_pt - q2) ? q1 : q2;
         }  
-        else if (OnSegment(q1, q2, p1) == true && OnSegment(q1, q2, p2) == false)
+        else if (OnSegment(q1, q2, p1) && !OnSegment(q1, q2, p2))
             return p1;
-        else if (OnSegment(q1, q2, p1) == false && OnSegment(q1, q2, p2) == true)
+        else if (!OnSegment(q1, q2, p1) && OnSegment(q1, q2, p2))
             return p2;
-        else if (OnSegment(q1, q2, p1) == true && OnSegment(q1, q2, p2) == true) {
+        else if (OnSegment(q1, q2, p1) && OnSegment(q1, q2, p2)) {
             Point2f ref_pt = (p1 + p2) / 2;
             return NormSqr(ref_pt - p1) < NormSqr(ref_pt - p2) ? p1 : p2;
         }     
@@ -297,8 +316,11 @@ bool obstacleFreeVec(vector<PolygonObstacle>& obs, Point2f p1, Point2f p2) {
 bool ObstaclesIntersect(const PolygonObstacle& obs1, const PolygonObstacle& obs2) {
     int vertex_num_1 = obs1.vertices.size();
     for (int i = 0; i < vertex_num_1; i++) 
-        if (ObstacleFree(obs2, obs1.vertices[i], obs1.vertices[(i + 1) % vertex_num_1]) == false)
+        if (!ObstacleFree(obs2, obs1.vertices[i], obs1.vertices[(i + 1) % vertex_num_1]))
             return true;    
+    // If obstacle sides do not intersect, check if one is inside the other one.
+    if (InsidePolygon(obs1.vertices[0], obs2.vertices) || InsidePolygon(obs2.vertices[0], obs1.vertices))
+        return true;
     return false;
 }
 
@@ -428,7 +450,6 @@ float GetMinPassageWidthPassed(const vector<vector<Point2f>>& passage_pts, Point
 
 vector<float> GetPassageWidthsPassed(const vector<vector<Point2f>>& passage_pts, Point2f pt1, Point2f pt2) {
     vector<float> res;
-
     for (int i = 0; i < passage_pts.size(); i++) {
         if (SegmentIntersection(passage_pts[i][0], passage_pts[i][1], pt1, pt2))
             res.push_back(cv::norm(passage_pts[i][0] - passage_pts[i][1]));
@@ -453,7 +474,7 @@ int GetMinPassageIdxPassed(const vector<vector<Point2f>>& passage_pts, Point2f p
 }
 
 vector<PolygonObstacle> GenerateRandomObstacles(int obstacle_num, Size2f config_size = Size2f(640, 480), 
-                                                float size_len = 30) {
+                                                float side_len = 30, bool varying_side_len = false) {
     if (obstacle_num <= 0) {
         cout << "The number of obstacles to be geenrated should be positive.\n";
         return {};
@@ -481,35 +502,43 @@ vector<PolygonObstacle> GenerateRandomObstacles(int obstacle_num, Size2f config_
     
     // Ensure vertices are placed in order.
     Eigen::Matrix<float, 2, 4> vertices_square, vertices_rectangle; 
-                               vertices_square << -size_len / 2, size_len / 2, size_len / 2, -size_len / 2,
-                                                 -size_len / 2, -size_len / 2, size_len / 2, size_len / 2;
-                               vertices_rectangle << -size_len / 2, size_len / 2, size_len / 2, -size_len / 2,
-                                                     -size_len / 4, -size_len / 4, size_len / 4, size_len / 4;
+                               vertices_square << -1.0 / 2, 1.0 / 2, 1.0 / 2, -1.0 / 2,
+                                                  -1.0 / 2, -1.0 / 2, 1.0 / 2, 1.0 / 2;
+                               vertices_rectangle << -1.0 / 2, 1.0 / 2, 1.0 / 2, -1.0 / 2,
+                                                     -1.0 / 4, -1.0 / 4, 1.0 / 4, 1.0 / 4;
     Eigen::Matrix<float, 2, 3> vertices_triangle;                                                     
-                               vertices_triangle << -size_len / 2, size_len / 2, 0,
-                                                    -size_len * sqrt(3) / 6, -size_len * sqrt(3) / 6, size_len * sqrt(3) / 3;                                                
-    
+                               vertices_triangle << -1.0 / 2, 1.0 / 2, 0,
+                                                    -1.0 * sqrt(3) / 6, -1.0 * sqrt(3) / 6, 1.0 * sqrt(3) / 3;
+
     vector<Eigen::MatrixXf> vertices_vec(3);
     vertices_vec[0] = vertices_square;
     vertices_vec[1] = vertices_rectangle;
     vertices_vec[2] = vertices_triangle;
 
     vector<Point2f> obs_center(obstacle_num);
-    random_device rd_x, rd_y, rd_rotate_angle, rd_shape;
+    random_device rd_x, rd_y, rd_rotate_angle, rd_shape, rd_len;
     mt19937 rd_engine_x(rd_x()), rd_engine_y(rd_y()), rd_engine_rotate_angle(rd_rotate_angle()), rd_engine_shape(rd_shape());
     uniform_real_distribution<> distribution_x(0, config_size.width),
                                 distribution_y(0, config_size.height),
                                 distribution_rotate_angle(0, 2 * M_PI);
-    uniform_int_distribution<> distribution_shape(0, 2);
+    uniform_int_distribution<> distribution_shape(0, 2), distribution_len(side_len / 3, side_len);
+
+    normal_distribution<float> normal_distribution_x(config_size.width / 2, config_size.width / 4),
+                               normal_distribution_y(config_size.height / 2, config_size.height / 4);
 
     for (int i = 4; i < obstacle_num + 4; i++) {
-        float x = distribution_x(rd_x), y = distribution_y(rd_y), angle = distribution_rotate_angle(rd_rotate_angle);
+        float x = normal_distribution_x(rd_x), y = normal_distribution_y(rd_y), angle = distribution_rotate_angle(rd_rotate_angle);
         int shape_type = distribution_shape(rd_shape);
+        int len_type = distribution_len(rd_len);
         Point2f obs_center(x, y);
         Eigen::Matrix2f rotation;
                         rotation << cos(angle), -sin(angle), 
                                     sin(angle), cos(angle);
-        Eigen::MatrixXf rotated_vertices = rotation * vertices_vec[shape_type];
+        Eigen::MatrixXf rotated_vertices;
+        if  (!varying_side_len)
+            rotated_vertices = rotation * vertices_vec[shape_type] * side_len;
+        else
+            rotated_vertices = rotation * vertices_vec[shape_type] * len_type;
         PolygonObstacle obs;
         for (int j = 0; j < rotated_vertices.cols(); j++) {
             Point2f cur_vertex(rotated_vertices(0, j) + obs_center.x,
@@ -519,12 +548,12 @@ vector<PolygonObstacle> GenerateRandomObstacles(int obstacle_num, Size2f config_
 
         bool is_obs_valid = true;
         for (int j = 0; j < i; j++) {
-            if (ObstaclesIntersect(obs, res_obs_vec[j]) == true) {
+            if (ObstaclesIntersect(obs, res_obs_vec[j])) {
                 is_obs_valid = false;
                 break;
             }
         }
-        if (is_obs_valid == false)
+        if (!is_obs_valid)
             i--;
         else
             res_obs_vec[i] = obs;
@@ -550,7 +579,7 @@ float FreespaceArea(const vector<PolygonObstacle>& obstacles, const Size2f confi
     return total_area - total_obs_area;
 } 
 
-pair<vector<vector<int>>, vector<vector<Point2f>>> PureVisibilityPassageCheck(const vector<PolygonObstacle>& obstacles) {
+Passages PureVisibilityPassageCheck(const vector<PolygonObstacle>& obstacles) {
     vector<vector<int>> res_psg_pair;
     vector<vector<Point2f>> res_psg_pts;
     
@@ -565,21 +594,23 @@ pair<vector<vector<int>>, vector<vector<Point2f>>> PureVisibilityPassageCheck(co
             for (int k = start_idx; k < obstacles.size(); k++) {
                 if (k == i || k == j)
                     continue;
-                if (ObstacleFree(obstacles[k], psg_segment_pts[0], psg_segment_pts[1]) == false) {
+                if (!ObstacleFree(obstacles[k], psg_segment_pts[0], psg_segment_pts[1])) {
                     is_psg_valid = false;
                     break;
                 }
             }
-            if (is_psg_valid == true) {
+            if (is_psg_valid) {
                 res_psg_pair.push_back({i, j});
                 res_psg_pts.push_back(psg_segment_pts);
             }
         }
     }
-    return make_pair(res_psg_pair, res_psg_pts);
+    return Passages(res_psg_pair, res_psg_pts);
 }
 
-pair<vector<vector<int>>, vector<vector<Point2f>>> ExtendedVisibilityPassageCheck(const vector<PolygonObstacle>& obstacles, bool contain_env_walls = true) {
+Passages ExtendedVisibilityPassageCheck(const vector<PolygonObstacle>& obstacles, 
+                                        bool contain_env_walls = true,
+                                        bool only_use_psg_segment = false) {
     vector<vector<int>> res_psg_pair;
     vector<vector<Point2f>> res_psg_pts;
     
@@ -594,14 +625,24 @@ pair<vector<vector<int>>, vector<vector<Point2f>>> ExtendedVisibilityPassageChec
             float psg_length = cv::norm(psg_segment_pts[0] - psg_segment_pts[1]);
 
             bool is_psg_valid = true;
-            int k = 0;
+            // k = 4 if walls are not considered at all, even in checking if it intersects with other passages.
+            int k = 4;
             for (; k < obstacles.size(); k++) {
                 if (k == i || k == j)
                     continue;
-                if (ObstacleFree(obstacles[k], psg_key_pts[0][0], psg_key_pts[0][1]) == false
-                    || ObstacleFree(obstacles[k], psg_key_pts[1][0], psg_key_pts[1][1]) == false) {
-                    is_psg_valid = false;
-                    break;
+                
+                if (only_use_psg_segment) {
+                    if (!ObstacleFree(obstacles[k], psg_segment_pts[0], psg_segment_pts[1])) {
+                        is_psg_valid = false;
+                        break;
+                    }
+                }
+                else {
+                    if (!ObstacleFree(obstacles[k], psg_key_pts[0][0], psg_key_pts[0][1])
+                        || !ObstacleFree(obstacles[k], psg_key_pts[1][0], psg_key_pts[1][1])) {
+                        is_psg_valid = false;
+                        break;
+                    }
                 }
                 Point2f psg_center = (psg_segment_pts[0] + psg_segment_pts[1]) / 2;
                 float obs_psg_center_dist = MinDistanceToObstacle(obstacles[k], psg_center);
@@ -610,24 +651,23 @@ pair<vector<vector<int>>, vector<vector<Point2f>>> ExtendedVisibilityPassageChec
                     break;
                 }
             }
-            if (is_psg_valid == true) {
+            if (is_psg_valid) {
                 res_psg_pair.push_back({i, j});
                 res_psg_pts.push_back(psg_segment_pts);
             }
         }
     }
-    return make_pair(res_psg_pair, res_psg_pts);
+    return Passages(res_psg_pair, res_psg_pts);
 }
 
 /// Only explicitly find passages linked to environment walls. Used for seperately processing environment walls.
-pair<vector<vector<int>>, vector<vector<Point2f>>> ExtendedVisibilityCheckForWalls(const vector<PolygonObstacle>& obstacles) {
+Passages ExtendedVisibilityCheckForWalls(const vector<PolygonObstacle>& obstacles) {
     vector<vector<int>> res_psg_pair;
     vector<vector<Point2f>> res_psg_pts;
     
-    // Find passage between walls and obstacles. Passage between walls are not detected.
+    // Find passage between walls and obstacles. Passage between walls are NOT detected.
     for (int i = 0; i < 4; i++) {
-        int j = i < 4 ? 4 : i + 1;
-        for (; j < obstacles.size(); j++) {
+        for (int j = 4; j < obstacles.size(); j++) {
             vector<vector<Point2f>> psg_key_pts = SVIntersection(obstacles[i], obstacles[j]);
             vector<Point2f> psg_segment_pts = psg_key_pts.back();
             float psg_length = cv::norm(psg_segment_pts[0] - psg_segment_pts[1]);
@@ -637,8 +677,8 @@ pair<vector<vector<int>>, vector<vector<Point2f>>> ExtendedVisibilityCheckForWal
             for (; k < obstacles.size(); k++) {
                 if (k == i || k == j)
                     continue;
-                if (ObstacleFree(obstacles[k], psg_key_pts[0][0], psg_key_pts[0][1]) == false
-                    || ObstacleFree(obstacles[k], psg_key_pts[1][0], psg_key_pts[1][1]) == false) {
+                if (!ObstacleFree(obstacles[k], psg_key_pts[0][0], psg_key_pts[0][1])
+                    || !ObstacleFree(obstacles[k], psg_key_pts[1][0], psg_key_pts[1][1])) {
                     is_psg_valid = false;
                     break;
                 }
@@ -649,13 +689,13 @@ pair<vector<vector<int>>, vector<vector<Point2f>>> ExtendedVisibilityCheckForWal
                     break;
                 }
             }
-            if (is_psg_valid == true) {
+            if (is_psg_valid) {
                 res_psg_pair.push_back({i, j});
                 res_psg_pts.push_back(psg_segment_pts);
             }
         }
     }
-    return make_pair(res_psg_pair, res_psg_pts);
+    return Passages(res_psg_pair, res_psg_pts);
 }
 
 #endif
