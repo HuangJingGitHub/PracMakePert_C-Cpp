@@ -697,5 +697,4 @@ Passages ExtendedVisibilityCheckForWalls(const vector<PolygonObstacle>& obstacle
     }
     return Passages(res_psg_pair, res_psg_pts);
 }
-
 #endif
