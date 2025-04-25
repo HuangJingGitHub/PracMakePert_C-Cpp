@@ -9,8 +9,8 @@ public:
     Point2f start_pos_;
     Point2f target_pos_;
     std::vector<PolygonObstacle> obstacles_;
-    std::vector<std::vector<int>> pv_passage_pairs_;
-    std::vector<std::vector<Point2f>> pv_passage_pts_;
+    // std::vector<std::vector<int>> pv_passage_pairs_;
+    // std::vector<std::vector<Point2f>> pv_passage_pts_;
     std::vector<std::vector<int>> ev_passage_pairs_;
     std::vector<std::vector<Point2f>> ev_passage_pts_;
     std::vector<std::vector<int>> cells_;
@@ -19,6 +19,8 @@ public:
     float gamma_rrt_star_;
     float step_len_;
     int cost_function_type_;
+    bool is_passage_width_constrained_;
+    float passage_width_threshold_;
     bool use_ev_check_;
     float passage_width_weight_;
     Mat source_img_;
@@ -26,7 +28,7 @@ public:
     PathNode* start_node_;
     PathNode* target_node_;
     kdTree kd_tree_;
-    int MAX_GRAPH_SIZE = 3000;
+    int MAX_GRAPH_SIZE = 5000;
     int GRAPH_SIZE = 0;
     bool plan_success_ = false;
 
@@ -35,6 +37,8 @@ public:
                    float step_len = 20, 
                    Size2f config_size = Size2f(640, 480), 
                    int cost_function_type = 0,
+                   bool is_passage_width_constrained = false,
+                   float passage_width_threshold = 50,
                    float passage_width_weight = 100,
                    bool use_ev_check = true): 
         start_pos_(start), 
@@ -43,6 +47,8 @@ public:
         step_len_(step_len),
         config_size_(config_size),
         cost_function_type_(cost_function_type),
+        is_passage_width_constrained_(is_passage_width_constrained),
+        passage_width_threshold_(passage_width_threshold),
         passage_width_weight_(passage_width_weight),
         use_ev_check_(use_ev_check) {
         start_node_ = new PathNode(start);
@@ -50,9 +56,9 @@ public:
         gamma_rrt_star_ = 4 * sqrt(FreespaceArea(obstacles_, config_size_) / M_PI);   
 
         // pv: pure visibility
-        Passages pv_check_res = PureVisibilityPassageCheck(obstacles_);
-        pv_passage_pairs_ = pv_check_res.pairs;
-        pv_passage_pts_ = pv_check_res.pts;
+        // Passages pv_check_res = PureVisibilityPassageCheck(obstacles_);
+        // pv_passage_pairs_ = pv_check_res.pairs;
+        // pv_passage_pts_ = pv_check_res.pts;
 
         // ev: extended visibility
         // auto ev_check_res = ExtendedVisibilityPassageCheck(obstacles_);
@@ -83,7 +89,7 @@ public:
                 << "\n3: Top-k minimum passage width cost: -k_weight * k_min_passed_passage_widths"
                 << "\n4: Compound cost: len - weight * min_passed_passage_width"
                 << "\n5: Compound cost: len - k_weigth * k_min_passed_passage_width"
-                << "\n6: Constrained passage width: passage width > thread for one of above type.\n\n";      
+                << "\n6: Constrained passage width: passage width > thread for one of above types.\n\n";      
     }
     ~RRTStarPlanner();
     RRTStarPlanner(const RRTStarPlanner&);
@@ -252,17 +258,28 @@ float RRTStarPlanner::NewCost(PathNode* near_node, PathNode* new_node) {
             new_min_psg_width = near_node->min_passage_width,
             res = 0;
     vector<float> passed_width_vec;
-    if (cost_function_type_ == 0)
+    if (cost_function_type_ == 0 && !is_passage_width_constrained_)
         return new_len;
 
+    float cur_min_width = 1000;
     if (use_ev_check_ == true) {
         // passed_width_vec = GetPassageWidthsPassed(ev_passage_pts_, near_node->pos, new_node->pos);
         passed_width_vec = GetPassageWidthsPassedDG(near_node, new_node, cells_info_, psg_cell_idx_map_, false);
         if (passed_width_vec.size() > 0) {
-            for (float& psg_width : passed_width_vec)
+            for (float& psg_width : passed_width_vec) {
+                if (is_passage_width_constrained_ && psg_width <= passage_width_threshold_)
+                    psg_width = -1;
                 new_min_psg_width = std::min(new_min_psg_width, psg_width);
+                cur_min_width = std::min(cur_min_width, psg_width);
+            }
             InsertIntoSortedList(new_psg_list, passed_width_vec);                
         }
+    }
+
+    if (cost_function_type_ == 0) {
+        if (cur_min_width < passage_width_threshold_)
+            return near_node->cost + cv::norm(new_node->pos - near_node->pos) + 1000; 
+        return near_node->cost + cv::norm(new_node->pos - near_node->pos);
     }
     
     if (cost_function_type_ == 1) {
@@ -318,9 +335,23 @@ float RRTStarPlanner::NewCost(PathNode* near_node, PathNode* new_node) {
 void RRTStarPlanner::UpdateNodeCost(PathNode* node) {
     // Clear previous value
     node->cost = 0;
-    if (cost_function_type_ == 0) {
+    if (cost_function_type_ == 0 && !is_passage_width_constrained_) {
         node->cost = node->len;
     }            
+    else if (cost_function_type_ == 0 && is_passage_width_constrained_) {
+        if (node->parent == nullptr) {
+            node->cost = node->len;
+            return;
+        }
+        node->cost = node->parent->cost + (node->len - node->parent->len);
+        if (node->cur_passage_widths.size() > 0) {
+            for (float width : node->cur_passage_widths)
+                if (width <= passage_width_threshold_) {
+                    node->cost += 1000;
+                    break;
+                }
+        }
+    }
     else if (cost_function_type_ == 1) {
         node->cost = node->len / node->min_passage_width;
     } 
@@ -390,6 +421,10 @@ void RRTStarPlanner::UpdateSubtree(PathNode* new_parent, PathNode* child) {
         // passed_width_vec = GetPassageWidthsPassed(ev_passage_pts_, new_parent->pos, child->pos);
         passed_width_vec = GetPassageWidthsPassedDG(new_parent, child, cells_info_, psg_cell_idx_map_, true);
         if (passed_width_vec.size() > 0) {
+            for (float& psg_width : passed_width_vec) {
+                if (is_passage_width_constrained_ && psg_width <= passage_width_threshold_)
+                    psg_width = -1;
+            }            
             child->cur_passage_widths = passed_width_vec;
             InsertIntoSortedList(child->sorted_passage_list, passed_width_vec); 
             for (float& psg_width : passed_width_vec)
