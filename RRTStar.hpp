@@ -268,7 +268,7 @@ float RRTStarPlanner::NewCost(PathNode* near_node, PathNode* new_node) {
         if (passed_width_vec.size() > 0) {
             for (float& psg_width : passed_width_vec) {
                 if (is_passage_width_constrained_ && psg_width <= passage_width_threshold_)
-                    psg_width = -1;
+                    psg_width = -10000 / psg_width;
                 new_min_psg_width = std::min(new_min_psg_width, psg_width);
                 cur_min_width = std::min(cur_min_width, psg_width);
             }
@@ -423,7 +423,7 @@ void RRTStarPlanner::UpdateSubtree(PathNode* new_parent, PathNode* child) {
         if (passed_width_vec.size() > 0) {
             for (float& psg_width : passed_width_vec) {
                 if (is_passage_width_constrained_ && psg_width <= passage_width_threshold_)
-                    psg_width = -1;
+                    psg_width = -10000 / psg_width;
             }            
             child->cur_passage_widths = passed_width_vec;
             InsertIntoSortedList(child->sorted_passage_list, passed_width_vec); 
