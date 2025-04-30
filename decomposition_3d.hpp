@@ -12,7 +12,7 @@ struct PolygonCell3d {
     vector<Point2f> vertices;
     vector<vector<int>> intersect_psg_pairs;
     vector<vector<Point2f>> intersect_psg_pts;
-    bool is_obstacle_region = false;
+    bool is_an_obstacle = false;
     PolygonCell3d() {}
     PolygonCell3d(vector<int> cell_obs_indices, vector<Point2f> cell_vertices): obs_indices(cell_obs_indices), vertices(cell_vertices) {}
 };
@@ -112,11 +112,6 @@ Passages3d PassageCheckInDelaunayGraph3d(const vector<PolygonObstacle3d>& obstac
             // only if it fails the detection condition. In the dynamic Delaunay graph building process, 
             // it is possible that an edge is first established, eliminated, and rebuilt again, 
             // so on and so furth. Edge existance is not a criterion of passage validity.
-            /*if (adjacency_set[idx_1].count(idx_2) == 0) {
-                res_psg_heights[psg_idx][0] = obstacles[obs_idx].height;
-                res_psg_processed[psg_idx] = true;
-                continue;
-            }*/
 
             if (obs_gd_two.count(idx_1) || obs_gd_two.count(idx_2)) {
                 vector<vector<Point2f>> psg_key_pts = SVIntersection(obstacles[idx_1].Get2dObstacle(), 
@@ -260,20 +255,30 @@ Passages3d PassageCheckForWalls3d(const vector<PolygonObstacle3d>& obstacles) {
     return Passages3d(res_psg_pairs, res_psg_pts, res_psg_heights);
 }
 
-/* vector<PolygonCell3d> GetCompoundGabrielCells3d(const vector<PolygonObstacle3d>& obstacles) {
-    vector<PolygonObstacle> obs_vec_2d = ConvertTo2dObstacles(obstacles);
-
+Passages3d PassageCheckDelaunayGraphWithWalls3d(const vector<PolygonObstacle3d>& obstacles) {
     Passages3d passages = PassageCheckInDelaunayGraph3d(obstacles);
     FilterPassagesWithWalls3d(passages);
-    Passages3d passages_wall = PassageCheckForWalls3d(obstacles);
-    Passages passages_2d = PassageCheckDelaunayGraphWithWalls(obs_vec_2d);
+    Passages3d passages_wall = PassageCheckForWalls3d(obstacles);   
+    
+    passages_wall.pairs.insert(passages_wall.pairs.end(), passages.pairs.begin(), passages.pairs.end());
+    passages_wall.pts.insert(passages_wall.pts.end(), passages.pts.begin(), passages.pts.end());
+    passages_wall.heights.insert(passages_wall.heights.end(), passages.heights.begin(), passages.heights.end());
+    return passages_wall;
+}
 
-    vector<vector<int>> cells = ReportGabrielCells(obs_vec_2d, passages_2d.pairs, true);
+
+vector<PolygonCell3d> GetCompoundGabrielCells3d(const vector<PolygonObstacle3d>& obstacles) {
+    Passages3d passages_3d = PassageCheckDelaunayGraphWithWalls3d(obstacles);
+
+    vector<PolygonObstacle> obstacles_2d = ConvertTo2dObstacles(obstacles);
+    Passages passages_2d = PassageCheckDelaunayGraphWithWalls(obstacles_2d);
+
+    vector<vector<int>> cells = ReportGabrielCells(obstacles_2d, passages_2d.pairs, true);
     vector<PolygonCell> cells_2d = GetGabrielCellsInfo(cells, passages_2d);
+    return {};
+}
 
-}*/
-
-vector<vector<int>> GetPassedCellAndObstacles(const Point2f& start_pt, const Point2f& end_pt,
+vector<vector<int>> GetPassedCellsAndObstacles(const Point2f& start_pt, const Point2f& end_pt,
                                               const vector<PolygonCell>& cells, const vector<PolygonObstacle>& obstacles) {
     vector<int> res_cells, res_obstacles;
     unordered_map<string, vector<int>> psg_cell_idx_map = GetPassageCellMap(cells);
@@ -289,7 +294,6 @@ vector<vector<int>> GetPassedCellAndObstacles(const Point2f& start_pt, const Poi
     while (start_cell_idx != end_cell_idx) {
         const PolygonCell* cell = &cells[start_cell_idx];
         int obs_num = cell->obs_indices.size();
-
         for (int i = 0; i < obs_num; i++) {
             Point2f vertex_1 = cell->vertices[2 * i],
                     vertex_2 = cell->vertices[2 * i + 1];
@@ -328,8 +332,9 @@ vector<vector<int>> GetPassedCellAndObstacles(const Point2f& start_pt, const Poi
                     }
                 }
                 new_start_pt += 0.5 * direction;
-                start_cell_idx = LocatePtInCells(new_start_pt, cells);
-                res_cells.push_back(start_cell_idx);
+                start_cell_idx = LocatePtInCells(new_start_pt, cells);\
+                if (res_cells.back() != start_cell_idx)
+                    res_cells.push_back(start_cell_idx);
             }
         }
         
