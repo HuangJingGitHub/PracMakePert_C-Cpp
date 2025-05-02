@@ -283,7 +283,7 @@ vector<vector<int>> GetPassedCellsAndObstacles(const Point2f& start_pt, const Po
     set<string> passed_psg_pairs;
 
     while (start_cell_idx != end_cell_idx) {
-        /* circle(back_img, start_pt, 10, Scalar(0, 0, 0));
+        circle(back_img, start_pt, 10, Scalar(0, 0, 0));
         circle(back_img, end_pt, 10, Scalar(0, 0, 0));
         imshow("Obstacles on Base Ground", back_img);
 
@@ -293,7 +293,7 @@ vector<vector<int>> GetPassedCellsAndObstacles(const Point2f& start_pt, const Po
         if (start_cell_idx == -1 || end_cell_idx == -1)
             waitKey(0);
         else 
-            waitKey(50); */
+            waitKey(50); 
 
         const PolygonCell* cell = &cells[start_cell_idx];
         int obs_num = cell->obs_indices.size();
@@ -323,21 +323,22 @@ vector<vector<int>> GetPassedCellsAndObstacles(const Point2f& start_pt, const Po
                 res_obstacles.push_back(obs_idx);
 
                 float dist_to_end_pt = FLT_MAX;
+                Point2f nearest_intersetction_pt;
                 int obs_vertex_num = obstacles[obs_idx].vertices.size();
                 for (int j = 0; j < obs_vertex_num; j++) {
                     if (SegmentIntersection(obstacles[obs_idx].vertices[j], obstacles[obs_idx].vertices[(j + 1) % obs_vertex_num],
                                             new_start_pt, new_end_pt)) {
                         Point2f intersetction_pt = GetSegmentsIntersectionPt(obstacles[obs_idx].vertices[j], 
-                                                                            obstacles[obs_idx].vertices[(j + 1) % obs_vertex_num],
-                                                                            new_start_pt, new_end_pt);
+                                                                    obstacles[obs_idx].vertices[(j + 1) % obs_vertex_num],
+                                                                    new_start_pt, new_end_pt);
                         if (cv::norm(intersetction_pt - end_pt) < dist_to_end_pt) {
                             dist_to_end_pt = cv::norm(intersetction_pt - end_pt);
-                            new_start_pt = intersetction_pt;
+                            nearest_intersetction_pt = intersetction_pt;
                         }
                     }
                 }
-                new_start_pt += 0.1 * direction;
-                int current_cell_idx = LocatePtInCells(new_start_pt, cells);
+                // new_start_pt += 0.1 * direction;
+                int current_cell_idx = LocatePtInCells(nearest_intersetction_pt + 0.1 * direction, cells);
 
                 // current_cell_idx is not necessiarly a new cell not passed. 
                 // If it is passed and assigned to start_cell_idx, infinite loop will happen.
@@ -407,7 +408,7 @@ vector<float> GetPassageWidthsPassedDG3d(PathNode* start_node, PathNode* end_nod
     bool end_pt_located = false;
     while (!end_pt_located) {
         end_pt_located = true;
-        const PolygonCell* cell = &cells_info[start_cell_idx];
+        const PolygonCell3d* cell = &cells_info[start_cell_idx];
         int side_num = cell->obs_indices.size();
         for (int i = 0; i < side_num; i++) {
             Point2f vertex_1 = cell->vertices[2 * i],
