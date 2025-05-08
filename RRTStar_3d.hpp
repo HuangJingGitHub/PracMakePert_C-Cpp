@@ -51,7 +51,8 @@ public:
         
         passages_ = PassageCheckDelaunayGraphWithWalls3d(obstacles_);
         cells_ = GetCompoundGabrielCells3d(obstacles_, passages_);
-        
+        start_node_->cell_id = LocatePtInCells(start_node_->pos, cells_);
+
         if (cost_function_type_ < 0 || cost_function_type_ > 6) {
             cost_function_type_ = 0;
         }
@@ -213,7 +214,9 @@ void RRTStarPlanner3d::Rewire(PathNode3d* nearest_node, PathNode3d* new_node, Ma
         if (near_node == min_cost_node)
             continue;
         float new_near_node_cost = NewCost(new_node, near_node);
-        if (new_near_node_cost < near_node->cost) {
+        if (new_near_node_cost < near_node->cost 
+            || (new_near_node_cost <= near_node->cost + 1e-2
+                && new_node->len + cv::norm(near_node->pos - new_node->pos) < near_node->len)) {
             UpdateSubtree(new_node, near_node);
         }
     }
@@ -224,22 +227,27 @@ float RRTStarPlanner3d::NewCost(PathNode3d* near_node, PathNode3d* new_node) {
     float   new_len = near_node->len + cv::norm(new_node->pos - near_node->pos), 
             new_min_psg_width = near_node->min_passage_width,
             res = 0;
-    vector<float> passed_width_vec = GetPassedPassageWidthsDG3d(near_node, new_node, obstacles_, passages_, cells_);
-    cout << "Widths passed by edge: \n";
-    for (float width : passed_width_vec)
-        cout << width << ", ";
-    cout << "\n";
+    vector<float> passed_width_vec = GetPassedPassageWidthsDG3d(near_node, new_node, obstacles_, passages_, cells_, false);
+    if (passed_width_vec.size()) {
+        cout << "Widths passed by edge: \n";
+        for (float width : passed_width_vec) {
+            cout << width << ", ";
+            new_min_psg_width = min(new_min_psg_width, width);
+        }
+        cout << "\n";
+    }
     if (cost_function_type_ == 0)
-        return new_len;
+        return -new_min_psg_width;
     return new_len;
 }    
 
 void RRTStarPlanner3d::UpdateNodeCost(PathNode3d* node) {
     node->cost = 0;
     if (cost_function_type_ == 0) {
-        node->cost = node->len;
+        node->cost = -node->min_passage_width;
     }            
-    node->cost = node->len;
+    else 
+        node->cost = node->len;
 }
 
 void RRTStarPlanner3d::UpdateSubtree(PathNode3d* new_parent, PathNode3d* child) {
@@ -252,7 +260,18 @@ void RRTStarPlanner3d::UpdateSubtree(PathNode3d* new_parent, PathNode3d* child) 
     float old_len = child->len, len_change = 0;
     child->len = new_parent->len + cv::norm(new_parent->pos - child->pos);
     len_change = child->len - old_len;
-    
+
+    child->min_passage_width = new_parent->min_passage_width;
+    child->cur_passage_widths.clear();
+    child->sorted_passage_list = new_parent->sorted_passage_list;
+
+    vector<float> passed_width_vec = GetPassedPassageWidthsDG3d(new_parent, child, obstacles_, passages_, cells_, true);
+    if (passed_width_vec.size() > 0) {    
+        child->cur_passage_widths = passed_width_vec;
+        InsertIntoSortedList(child->sorted_passage_list, passed_width_vec); 
+        for (float& psg_width : passed_width_vec)
+            child->min_passage_width = std::min(child->min_passage_width, psg_width);
+    }   
     UpdateNodeCost(child); 
 
     std::queue<PathNode3d*> node_level;
@@ -269,6 +288,13 @@ void RRTStarPlanner3d::UpdateSubtree(PathNode3d* new_parent, PathNode3d* child) 
         
         for (auto& cur_child : cur_node->children) {
             cur_child->len += len_change;
+            cur_child->min_passage_width = cur_node->min_passage_width;
+            cur_child->sorted_passage_list = cur_node->sorted_passage_list;
+            if (cur_child->cur_passage_widths.size() > 0) {
+                for (float& psg_width : cur_child->cur_passage_widths)
+                    cur_child->min_passage_width = std::min(cur_node->min_passage_width, psg_width);
+                InsertIntoSortedList(cur_child->sorted_passage_list, cur_child->cur_passage_widths);
+            }            
             UpdateNodeCost(cur_child);
             node_level.push(cur_child);
         }
