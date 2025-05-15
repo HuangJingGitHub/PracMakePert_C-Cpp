@@ -16,9 +16,9 @@ public:
     float gamma_rrt_star_;
     float step_len_;
     int cost_function_type_;
-    bool use_position_in_cell_;
-    float passage_width_weight_;
     Mat source_img_;
+    bool is_passage_width_constrained_;
+    float passage_width_threshold_;    
     Size2f config_size_;
     float config_height_;
     PathNode3d* start_node_;
@@ -34,8 +34,8 @@ public:
                    Size2f config_size = Size2f(640, 480), 
                    float config_height = 100,
                    int cost_function_type = 0,
-                   float passage_width_weight = 100,
-                   bool use_position_in_cell = true): 
+                   bool is_passage_width_constrained = false,
+                   float passage_width_threshold = 100): 
         start_pos_(start), 
         target_pos_(target), 
         obstacles_(obs),
@@ -43,28 +43,28 @@ public:
         config_size_(config_size),
         config_height_(config_height),
         cost_function_type_(cost_function_type),
-        passage_width_weight_(passage_width_weight),
-        use_position_in_cell_(use_position_in_cell) {
-        start_node_ = new PathNode3d(start);
-        target_node_ = new PathNode3d(target);
-        gamma_rrt_star_ = 4 * cbrt(FreespaceVolume(obstacles_, config_size_, config_height_) * 3 / 4 / M_PI);  
-        
-        passages_ = PassageCheckDelaunayGraphWithWalls3d(obstacles_);
-        cells_ = GetCompoundGabrielCells3d(obstacles_, passages_);
-        start_node_->cell_id = LocatePtInCells(start_node_->pos, cells_);
+        is_passage_width_constrained_(is_passage_width_constrained),
+        passage_width_threshold_(passage_width_threshold) {
+            start_node_ = new PathNode3d(start);
+            target_node_ = new PathNode3d(target);
+            gamma_rrt_star_ = 4 * cbrt(FreespaceVolume(obstacles_, config_size_, config_height_) * 3 / 4 / M_PI);  
+            
+            passages_ = PassageCheckDelaunayGraphWithWalls3d(obstacles_);
+            cells_ = GetCompoundGabrielCells3d(obstacles_, passages_);
+            start_node_->cell_id = LocatePtInCells(start_node_->pos, cells_);
 
-        if (cost_function_type_ < 0 || cost_function_type_ > 6) {
-            cost_function_type_ = 0;
-        }
-        UpdateNodeCost(start_node_);
-        kd_tree_.Add(start_node_);
-        GRAPH_SIZE++;
+            if (cost_function_type_ < 0 || cost_function_type_ > 6) {
+                cost_function_type_ = 0;
+            }
+            UpdateNodeCost(start_node_);
+            kd_tree_.Add(start_node_);
+            GRAPH_SIZE++;
 
-        std::cout << "RRT* path planner instanced with cost function type: " << cost_function_type_ 
-                << "\n0: Any invalid type value: Default path length cost"
-                << "\n1: Minimum passage width cost: -min_passed_passage_width"
-                << "\n2: Top-k minimum passage width cost: -k_weight * k_min_passed_passage_widths"
-                << "\n3: Constrained passage width: passage width > thread for one of above type.\n\n";      
+            std::cout << "RRT* path planner instanced with cost function type: " << cost_function_type_ 
+                    << "\n0: Any invalid type value: Default path length cost"
+                    << "\n1: Minimum passage width cost: -min_passed_passage_width"
+                    << "\n2: Top-k minimum passage width cost: -k_weight * k_min_passed_passage_widths"
+                    << "\n3: Constrained passage width: passage width > thread for one of above type.\n\n";      
     }
     ~RRTStarPlanner3d();
     RRTStarPlanner3d(const RRTStarPlanner3d&);
@@ -100,7 +100,6 @@ bool RRTStarPlanner3d::Plan(Mat source_img, float interior_delta, bool plan_in_i
     while (GRAPH_SIZE < MAX_GRAPH_SIZE) {
         // Bias to target
         sample_num++;
-        cout << sample_num << "\n";
         if (sample_num % (MAX_GRAPH_SIZE / 20) == 0) {
             rand_pos = SafeRandTarget();                         
         } 
@@ -115,7 +114,6 @@ bool RRTStarPlanner3d::Plan(Mat source_img, float interior_delta, bool plan_in_i
         if (EdgeObstacleFree(nearest_node, new_node)) {
             Rewire(nearest_node, new_node, source_img);
             kd_tree_.Add(new_node);
-            // cout << new_node->pos << "\n";
             if (SquaredNorm(new_node->pos - target_pos_) <= dist_to_goal* dist_to_goal
                 && EdgeObstacleFree(new_node, target_node_)) {
                 total_cost = NewCost(new_node, target_node_);
@@ -206,7 +204,6 @@ void RRTStarPlanner3d::Rewire(PathNode3d* nearest_node, PathNode3d* new_node, Ma
         }            
     }
     UpdateSubtree(min_cost_node, new_node); 
-    // line(source_img, min_cost_node->pos, new_node->pos, Scalar(0, 0, 200), 1.5);
 
     for (auto near_node : near_set) {
         if (near_node == min_cost_node)
@@ -222,22 +219,32 @@ void RRTStarPlanner3d::Rewire(PathNode3d* nearest_node, PathNode3d* new_node, Ma
 
 float RRTStarPlanner3d::NewCost(PathNode3d* near_node, PathNode3d* new_node) {
     std::list<float> new_psg_list = near_node->sorted_passage_list;
-    float   new_len = near_node->len + cv::norm(new_node->pos - near_node->pos), 
-            new_min_psg_width = near_node->min_passage_width,
-            res = 0;
-    if (cost_function_type_ == 0)
+    float new_len = near_node->len + cv::norm(new_node->pos - near_node->pos), 
+          new_min_psg_width = near_node->min_passage_width,
+          res = 0;
+    if (cost_function_type_ == 0 && !is_passage_width_constrained_)
         return new_len;            
 
+    int cnt = 0;
     vector<float> passed_width_vec = GetPassedPassageWidthsDG3d(near_node, new_node, obstacles_, passages_, cells_, false);
     if (passed_width_vec.size()) {
-        InsertIntoSortedList(new_psg_list, passed_width_vec);
-        for (float width : passed_width_vec) {
+        for (float& width : passed_width_vec) {
+            if (is_passage_width_constrained_ && width <= passage_width_threshold_) {
+                width = -10000 / width;
+                cnt++;
+            }
             new_min_psg_width = min(new_min_psg_width, width);
         }
+        InsertIntoSortedList(new_psg_list, passed_width_vec);
     }
-    else if (cost_function_type_ == 1)
+
+    if (cost_function_type_ == 0) {
+            return new_len + cnt * 1000;
+    }
+    if (cost_function_type_ == 1) {
         return -new_min_psg_width;
-    else if (cost_function_type_ == 2) {
+    }
+    if (cost_function_type_ == 2) {
         vector<float> base{1e4, 1e2, 1};
         auto it = new_psg_list.begin();
         if (new_psg_list.size() < 3) {
@@ -262,8 +269,23 @@ float RRTStarPlanner3d::NewCost(PathNode3d* near_node, PathNode3d* new_node) {
 
 void RRTStarPlanner3d::UpdateNodeCost(PathNode3d* node) {
     node->cost = 0;
-    if (cost_function_type_ == 0) {
+    if (cost_function_type_ == 0 && !is_passage_width_constrained_) {
         node->cost = node->len;
+    }            
+    else if (cost_function_type_ == 0 && is_passage_width_constrained_) {
+        if (node->parent == nullptr) {
+            node->cost = node->len;
+            return;
+        }
+        node->cost = node->parent->cost + (node->len - node->parent->len);
+        if (node->cur_passage_widths.size() > 0) {
+            for (float width : node->cur_passage_widths) {
+                if (width <= passage_width_threshold_) {
+                    node->cost += 1000;
+                }
+            }
+        }
+        cout << node->cost << "\n";
     }
     else if (cost_function_type_ == 1) {
         node->cost = -node->min_passage_width;
@@ -307,6 +329,10 @@ void RRTStarPlanner3d::UpdateSubtree(PathNode3d* new_parent, PathNode3d* child) 
 
     vector<float> passed_width_vec = GetPassedPassageWidthsDG3d(new_parent, child, obstacles_, passages_, cells_, true);
     if (passed_width_vec.size() > 0) {    
+        for (float& psg_width : passed_width_vec) {
+            if (is_passage_width_constrained_ && psg_width <= passage_width_threshold_)
+                psg_width = -10000 / psg_width;
+        }            
         child->cur_passage_widths = passed_width_vec;
         InsertIntoSortedList(child->sorted_passage_list, passed_width_vec); 
         for (float& psg_width : passed_width_vec)
