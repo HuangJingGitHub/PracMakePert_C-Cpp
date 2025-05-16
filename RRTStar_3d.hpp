@@ -16,7 +16,6 @@ public:
     float gamma_rrt_star_;
     float step_len_;
     int cost_function_type_;
-    Mat source_img_;
     bool is_passage_width_constrained_;
     float passage_width_threshold_;    
     Size2f config_size_;
@@ -69,10 +68,10 @@ public:
     ~RRTStarPlanner3d();
     RRTStarPlanner3d(const RRTStarPlanner3d&);
     RRTStarPlanner3d& operator=(const RRTStarPlanner3d&);
-    bool Plan(Mat source_img, float interior_delta = 0.5, bool plan_in_interior = false);
+    bool Plan(float interior_delta = 0.5, bool plan_in_interior = false);
     PathNode3d* GenerateNewNode(PathNode3d* nearest_node, Point3f& rand_pos);
     bool EdgeObstacleFree(PathNode3d* near_node, PathNode3d* new_node);
-    void Rewire(PathNode3d* nearest_node, PathNode3d* new_node, Mat source_img);
+    void Rewire(PathNode3d* nearest_node, PathNode3d* new_node);
     float NewCost(PathNode3d* near_node, PathNode3d* new_node);
     void UpdateNodeCost(PathNode3d* node);
     void UpdateSubtree(PathNode3d* new_parent, PathNode3d* child);
@@ -81,9 +80,8 @@ public:
     vector<Point3f> GetPathInPts();
 };
 
-bool RRTStarPlanner3d::Plan(Mat source_img, float interior_delta, bool plan_in_interior) {       
+bool RRTStarPlanner3d::Plan(float interior_delta, bool plan_in_interior) {       
     plan_success_ = false;
-    source_img_ = source_img;
     float   min_cost = FLT_MAX,
             total_cost = FLT_MAX,
             min_len = FLT_MAX,
@@ -112,7 +110,7 @@ bool RRTStarPlanner3d::Plan(Mat source_img, float interior_delta, bool plan_in_i
         PathNode3d* nearest_node = kd_tree_.FindNearestNode(rand_pos);
         PathNode3d* new_node = GenerateNewNode(nearest_node, rand_pos);
         if (EdgeObstacleFree(nearest_node, new_node)) {
-            Rewire(nearest_node, new_node, source_img);
+            Rewire(nearest_node, new_node);
             kd_tree_.Add(new_node);
             if (SquaredNorm(new_node->pos - target_pos_) <= dist_to_goal* dist_to_goal
                 && EdgeObstacleFree(new_node, target_node_)) {
@@ -127,18 +125,10 @@ bool RRTStarPlanner3d::Plan(Mat source_img, float interior_delta, bool plan_in_i
             }
             GRAPH_SIZE++;
             // cout << GRAPH_SIZE << "\n";
-            // circle(source_img, new_node->pos, 3, Scalar(0, 255, 0), -1);
         }
         else {
             delete new_node;
         }
-
-        /* circle(source_img, start_pos_, 10, Scalar(0, 0, 255), -1);
-        circle(source_img, target_pos_, 10, Scalar(0, 0, 255), -1);
-        imshow("RRT* for PTOPP", source_img);
-        waitKey(1); 
-        if (GRAPH_SIZE == MAX_GRAPH_SIZE)
-            destroyWindow("RRT* for PTOPP"); */
     }
 
     if (plan_success_ == false)
@@ -175,7 +165,7 @@ bool RRTStarPlanner3d::EdgeObstacleFree(PathNode3d* near_node, PathNode3d* new_n
     return true;
 }
 
-void RRTStarPlanner3d::Rewire(PathNode3d* nearest_node, PathNode3d* new_node, Mat source_img) {
+void RRTStarPlanner3d::Rewire(PathNode3d* nearest_node, PathNode3d* new_node) {
     float gamma = gamma_rrt_star_ * cbrt(log(GRAPH_SIZE) / GRAPH_SIZE),
           radius_alg = std::min(gamma, step_len_);
     float x_min = std::max((float)0.0, new_node->pos.x - radius_alg), 
@@ -239,7 +229,7 @@ float RRTStarPlanner3d::NewCost(PathNode3d* near_node, PathNode3d* new_node) {
     }
 
     if (cost_function_type_ == 0) {
-            return new_len + cnt * 1000;
+            return near_node->cost + cv::norm(new_node->pos - near_node->pos) + cnt * 1000;
     }
     if (cost_function_type_ == 1) {
         return -new_min_psg_width;
@@ -285,7 +275,6 @@ void RRTStarPlanner3d::UpdateNodeCost(PathNode3d* node) {
                 }
             }
         }
-        cout << node->cost << "\n";
     }
     else if (cost_function_type_ == 1) {
         node->cost = -node->min_passage_width;
@@ -357,8 +346,9 @@ void RRTStarPlanner3d::UpdateSubtree(PathNode3d* new_parent, PathNode3d* child) 
             cur_child->min_passage_width = cur_node->min_passage_width;
             cur_child->sorted_passage_list = cur_node->sorted_passage_list;
             if (cur_child->cur_passage_widths.size() > 0) {
-                for (float& psg_width : cur_child->cur_passage_widths)
+                for (float& psg_width : cur_child->cur_passage_widths) {
                     cur_child->min_passage_width = std::min(cur_node->min_passage_width, psg_width);
+                }
                 InsertIntoSortedList(cur_child->sorted_passage_list, cur_child->cur_passage_widths);
             }            
             UpdateNodeCost(cur_child);
