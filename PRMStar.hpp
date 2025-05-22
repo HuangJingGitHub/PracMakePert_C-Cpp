@@ -28,14 +28,14 @@ public:
     float gamma_prm_star_;
     int cost_function_type_;
     bool plan_in_interior_ = false;
-    float interior_delta_ = 1;
-    bool use_ev_check_;
+    float interior_diameter_ = 1;
+    bool check_all_passages_;
     Mat source_img_;
     Size2f config_size_;
     PathNode* start_node_;
     PathNode* target_node_;
     kdTree kd_tree_;
-    int MAX_GRAPH_SIZE = 5000;
+    int MAX_GRAPH_SIZE = 2000;
     std::vector<PathNode*> node_vec_ = vector<PathNode*>(MAX_GRAPH_SIZE);
     int GRAPH_SIZE = 0;
     bool plan_success_ = false;
@@ -44,17 +44,17 @@ public:
     PRMStarPlanner(Point2f start, Point2f target, vector<PolygonObstacle> obs,
                    Size2f config_size = Size2f(640, 480), 
                    int cost_function_type = 0,
+                   bool check_all_passages = false,
                    bool plan_in_interior = false,
-                   float interior_delta = 1,
-                   bool use_ev_check = true): 
+                   float interior_diameter = 1): 
         start_pos_(start), 
         target_pos_(target), 
         obstacles_(obs),
         config_size_(config_size),
         cost_function_type_(cost_function_type),
         plan_in_interior_(plan_in_interior),
-        interior_delta_(interior_delta),
-        use_ev_check_(use_ev_check) {
+        interior_diameter_(interior_diameter),
+        check_all_passages_(check_all_passages) {
             start_node_ = new PathNode(start);
             target_node_ = new PathNode(target);
             
@@ -74,14 +74,14 @@ public:
             if (cost_function_type_ < 0 || cost_function_type_ > 6) {
                 cost_function_type_ = 0;
             }
-            std::cout << "PRM* path planner instanced with cost function type: " << cost_function_type_ 
+            /* std::cout << "PRM* path planner instanced with cost function type: " << cost_function_type_ 
                     << "\n0: Any invalid type value: Default path length cost"
                     << "\n1: Clearance cost: -path clearance"
                     << "\n2: Minimum passage width cost: -min_passed_passage_width"
                     << "\n3: Top-k minimum passage width cost: -k_weight * k_min_passed_passage_widths"
                     << "\n5: Compound cost: len - weight * min_passed_passage_width"
                     << "\n6: Compound cost: len - k_weigth * k_min_passed_passage_width"
-                    << "\n7: Ratio cost: len / passed_min_passage_width\n\n";     
+                    << "\n7: Ratio cost: len / passed_min_passage_width\n\n"; */ 
     }
     ~PRMStarPlanner();
     PRMStarPlanner(const PRMStarPlanner&);
@@ -110,7 +110,7 @@ void PRMStarPlanner::ConstructRoadmap(Mat source_img) {
             continue;
         if ((cost_function_type_ == 0 && plan_in_interior_) || cost_function_type_ == 1) {
             node_clearance = MinDistanceToObstaclesVec(obstacles_, rand_pos);
-            if (cost_function_type_ == 0 && plan_in_interior_ && node_clearance < interior_delta_) 
+            if (cost_function_type_ == 0 && plan_in_interior_ && node_clearance < interior_diameter_) 
                 continue; 
         }
         
@@ -143,7 +143,7 @@ void PRMStarPlanner::ConstructRoadmap(Mat source_img) {
             // line(source_img, node->pos, near_node->pos, Scalar(0, 0, 255), 1);
             // imshow("PRM* for PTOPP samples", source_img);
             // waitKey(1);                
-        }                             
+        }                    
     }
 }
 
@@ -160,6 +160,7 @@ void PRMStarPlanner::QueryPath(Mat source_img) {
     priority_queue<PathNode*, vector<PathNode*>, PathNodeComparator> min_cost_heap;
     min_cost_heap.push(start_node_);
 
+    plan_success_ = true;
     for (int i = 0; i < node_vec_.size(); i++) {
         /* min_cost = FLT_MAX;
         for (int j = 0; j < node_vec_.size(); j++) {
@@ -168,30 +169,40 @@ void PRMStarPlanner::QueryPath(Mat source_img) {
                 min_cost = node_vec_[j]->cost;
                 min_cost_idx = j;
             }
-        }*/  
-        // PathNode* node = node_vec_[min_cost_idx];
-        while (!min_cost_heap.empty() && visited[min_cost_heap.top()->id])
+        }  
+        PathNode* node = node_vec_[min_cost_idx]; */
+        while (!min_cost_heap.empty() && visited[min_cost_heap.top()->id]) {
             min_cost_heap.pop();
+        }
+        if (min_cost_heap.empty())
+            break;
+
         PathNode* node = min_cost_heap.top();
         min_cost_heap.pop();
         visited[node->id] = true;
         if (node == target_graph_node)
             break;
-
+        
         for (auto adj_node : node->adjacency_list) {
             if (visited[adj_node->id])
                 continue;
 
             float temp_cost = NewCost(node, adj_node);
             if (temp_cost < adj_node->cost 
-                || (temp_cost < adj_node->cost + 1e-2
-                && node->len + cv::norm(adj_node->pos - node->pos) < adj_node->len)) {
+                || ((cost_function_type_ == 2 || cost_function_type_ == 3) 
+                    && temp_cost < adj_node->cost + 1e-2
+                    && node->len + cv::norm(adj_node->pos - node->pos) < adj_node->len)) {
                 UpdateSubtree(node, adj_node);
                 min_cost_heap.push(adj_node);             
             }
         }
+
+        if (min_cost_heap.empty()) {
+            // A unconnected graph is construct;
+            plan_success_ = false;
+            return;
+        }
     }
-    plan_success_ = true;
 }
 
 void PRMStarPlanner::UpdateNodeCost(PathNode* node) {
@@ -240,14 +251,16 @@ float PRMStarPlanner::NewCost(PathNode* near_node, PathNode* new_node) {
     if (cost_function_type_ == 1)
         return -min(-near_node->cost, new_node->clearance);
 
-    if (use_ev_check_ == true) {
+    if (check_all_passages_) {
         passed_width_vec = GetPassageWidthsPassed(ev_passage_pts_, near_node->pos, new_node->pos);
-        // passed_width_vec = GetPassageWidthsPassedDG(near_node, new_node, cells_info_, psg_cell_idx_map_, false);
-        if (passed_width_vec.size() > 0) {
-            for (float& psg_width : passed_width_vec)
-                new_min_psg_width = std::min(new_min_psg_width, psg_width);
-            InsertIntoSortedList(new_psg_list, passed_width_vec);                
-        }
+    }
+    else { 
+        passed_width_vec = GetPassedPassageWidthsDG(near_node, new_node, cells_info_, psg_cell_idx_map_, false);
+    }
+    if (passed_width_vec.size() > 0) {
+        for (float& psg_width : passed_width_vec)
+            new_min_psg_width = std::min(new_min_psg_width, psg_width);
+        InsertIntoSortedList(new_psg_list, passed_width_vec);                
     }
     
     else if (cost_function_type_ == 2) {
@@ -292,8 +305,12 @@ void PRMStarPlanner::UpdateSubtree(PathNode* new_parent, PathNode* child) {
 
     vector<float> passed_width_vec;
     if (cost_function_type_ > 1) {
-        passed_width_vec = GetPassageWidthsPassed(ev_passage_pts_, new_parent->pos, child->pos);
-        // passed_width_vec = GetPassageWidthsPassedDG(new_parent, child, cells_info_, psg_cell_idx_map_, true);
+        if (check_all_passages_) {
+            passed_width_vec = GetPassageWidthsPassed(ev_passage_pts_, new_parent->pos, child->pos);
+        }
+        else {
+            passed_width_vec = GetPassedPassageWidthsDG(new_parent, child, cells_info_, psg_cell_idx_map_, true);
+        }
         if (passed_width_vec.size() > 0) {
             child->cur_passage_widths = passed_width_vec;
             InsertIntoSortedList(child->sorted_passage_list, passed_width_vec); 
@@ -353,11 +370,11 @@ vector<PathNode*> PRMStarPlanner::GetPath() {
 } 
 
 PRMStarPlanner::~PRMStarPlanner() {
-    if (start_node_) {
-        kd_tree_.deleteTree(start_node_);
-    }
-    if (target_node_)
-        delete target_node_;
+    // if (start_node_) {
+    //    kd_tree_.deleteTree(start_node_);
+    //}
+    //if (target_node_)
+    //    delete target_node_;
 }
 
 PRMStarPlanner::PRMStarPlanner(const PRMStarPlanner& planner) {
