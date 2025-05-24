@@ -11,6 +11,9 @@ public:
     std::vector<PolygonObstacle3d> obstacles_;
     Passages3d passages_;
     vector<PolygonCell3d> cells_;
+    unordered_map<string, vector<int>> psg_cell_idx_map_;
+    unordered_map<int, vector<int>> obs_cell_idx_map_;    
+    int planar_cell_num_ = 0;    
     float gamma_prm_star_;
     int cost_function_type_;
     bool plan_in_interior_ = false;
@@ -54,17 +57,31 @@ public:
             cells_ = GetCompoundGabrielCells3d(obstacles_, passages_);
             start_node_->cell_id = LocatePtInCells(start_node_->pos, cells_);
 
+            for (const PolygonCell3d& cell : cells_) {
+                if (!cell.is_an_obstacle)
+                    planar_cell_num_++;
+            }
+        
+            for (int i = 0; i < cells_.size(); i++) {
+                if (cells_[i].is_an_obstacle)
+                    continue;
+        
+                int vertex_num = cells_[i].obs_indices.size();
+                for (int j = 0; j < vertex_num; j++) {
+                    string key_str = PassagePairToKeyString(cells_[i].obs_indices[j], cells_[i].obs_indices[(j + 1) % vertex_num]);
+                    psg_cell_idx_map_[key_str].push_back(i);
+                    obs_cell_idx_map_[cells_[i].obs_indices[j]].push_back(i);
+                }
+            }                        
+
             if (cost_function_type_ < 0 || cost_function_type_ > 7) {
                 cost_function_type_ = 0;
             }
-            /* std::cout << "PRM* path planner instanced with cost function type: " << cost_function_type_ 
+            std::cout << "PRM* path planner instanced with cost function type: " << cost_function_type_ 
                     << "\n0: Any invalid type value: Default path length cost"
-                    << "\n1: Clearance cost: -path clearance"
-                    << "\n2: Minimum passage width cost: -min_passed_passage_width"
-                    << "\n3: Top-k minimum passage width cost: -k_weight * k_min_passed_passage_widths"
-                    << "\n5: Compound cost: len - weight * min_passed_passage_width"
-                    << "\n6: Compound cost: len - k_weigth * k_min_passed_passage_width"
-                    << "\n7: Ratio cost: len / passed_min_passage_width\n\n"; */ 
+                    << "\n1: Minimum passage width cost: -min_passed_passage_width"
+                    << "\n2: Top-k minimum passage width cost: -k_weight * k_min_passed_passage_widths"
+                    << "\n3: Constrained passage width: passage width > thread for one of above type.\n\n"; 
     }
     ~PRMStarPlanner3d();
     PRMStarPlanner3d(const PRMStarPlanner3d&);
@@ -132,7 +149,8 @@ void PRMStarPlanner3d::ConstructRoadmap() {
 void PRMStarPlanner3d::QueryPath() {
     if (GRAPH_SIZE < MAX_GRAPH_SIZE)
         ConstructRoadmap();
-    
+        
+    cout << "Query path in PRM*. Cost type: " << cost_function_type_ << "\n";
     vector<bool> visited(node_vec_.size(), false);
     UpdateNodeCost(start_node_);
     float min_cost = FLT_MAX;
@@ -153,8 +171,9 @@ void PRMStarPlanner3d::QueryPath() {
         PathNode3d* node = min_cost_heap.top();
         min_cost_heap.pop();
         visited[node->id] = true;
-        if (node == target_graph_node)
+        if (node == target_graph_node) {
             break;
+        }
         
         for (auto adj_node : node->adjacency_list) {
             if (visited[adj_node->id])
@@ -218,17 +237,18 @@ float PRMStarPlanner3d::NewCost(PathNode3d* near_node, PathNode3d* new_node) {
     float new_len = near_node->len + cv::norm(new_node->pos - near_node->pos), 
             new_min_psg_width = near_node->min_passage_width,
             res = 0;
-    vector<float> passed_width_vec;
     if (cost_function_type_ == 0)
         return new_len;
     if (cost_function_type_ == 1)
         return -min(-near_node->cost, new_node->clearance);
 
+    vector<float> passed_width_vec;
     if (check_all_passages_) {
         passed_width_vec = GetPassedPassageWidths3d(near_node, new_node, passages_);
     }
     else { 
-        passed_width_vec = GetPassedPassageWidthsDG3d(near_node, new_node, obstacles_, passages_, cells_, false);
+        passed_width_vec = GetPassedPassageWidthsDG3d(near_node, new_node, obstacles_, passages_, cells_, 
+                                                    psg_cell_idx_map_, obs_cell_idx_map_, planar_cell_num_, false);
     }
     if (passed_width_vec.size() > 0) {
         for (float& psg_width : passed_width_vec)
@@ -282,7 +302,8 @@ void PRMStarPlanner3d::UpdateSubtree(PathNode3d* new_parent, PathNode3d* child) 
             passed_width_vec = GetPassedPassageWidths3d(new_parent, child, passages_);
         }
         else {
-            passed_width_vec = GetPassedPassageWidthsDG3d(new_parent, child, obstacles_, passages_, cells_, true);
+            passed_width_vec = GetPassedPassageWidthsDG3d(new_parent, child, obstacles_, passages_, cells_, 
+                                psg_cell_idx_map_, obs_cell_idx_map_, planar_cell_num_, true);
         }
         if (passed_width_vec.size() > 0) {
             child->cur_passage_widths = passed_width_vec;
