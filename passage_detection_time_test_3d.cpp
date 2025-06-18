@@ -11,20 +11,32 @@ void PassageDetectionTest3d(const int test_num = 50,
                           const int side_len = 30,
                           Mat back_img = Mat(Size(1000, 600), CV_64FC3, Scalar(255, 255, 255))) {
     vector<int> psg_num(test_num, 0), psg_num_2d(test_num, 0), cell_num_2d(test_num, 0);
-    vector<float> check_time(test_num, 0), check_time_2d(test_num, 0), cell_check_time_2d(test_num, 0);
+    vector<float> check_time(test_num, 0), check_time_2d(test_num, 0), cell_check_time(test_num, 0), cell_check_time_2d(test_num, 0);
+    int psg_num_total = 0, psg_num_2d_total = 0, cell_num_2d_total = 0;
+    float check_time_total = 0, check_time_2d_total = 0, cell_check_time_total = 0, cell_check_time_2d_total = 0;
     float config_height = 400;
-    bool varying_side_len = true;
+    bool varying_side_len = false;
 
     for (int test_idx = 0; test_idx < test_num; test_idx++) {
         vector<PolygonObstacle3d> obs_vec = GenerateRandomObstacles3d(obs_num, back_img.size(), config_height, side_len, varying_side_len);
         vector<PolygonObstacle> obs_vec_2d = ConvertTo2dObstacles(obs_vec);
 
         auto start_time = high_resolution_clock::now();
-        Passages3d passages = PassageCheckInDelaunayGraph3d(obs_vec, false);
+        Passages3d passages = PassageCheckInDelaunayGraph3d(obs_vec);
         auto end_time = high_resolution_clock::now();
         auto duration_time = duration_cast<milliseconds>(end_time - start_time);
         check_time[test_idx] = (float)duration_time.count();
         psg_num[test_idx] = passages.pairs.size();
+        check_time_total += check_time[test_idx];
+        psg_num_total += psg_num[test_idx];
+
+
+        start_time = high_resolution_clock::now();
+        vector<PolygonCell3d> cells_3d = GetCompoundGabrielCells3d(obs_vec, passages, back_img);
+        end_time = high_resolution_clock::now();
+        duration_time = duration_cast<milliseconds>(end_time - start_time);
+        cell_check_time[test_idx] = (float)duration_time.count();  
+        cell_check_time_total += cell_check_time[test_idx];
         
         start_time = high_resolution_clock::now();
         Passages passages_2d = PassageCheckInDelaunayGraph(obs_vec_2d, false);
@@ -32,18 +44,22 @@ void PassageDetectionTest3d(const int test_num = 50,
         duration_time = duration_cast<milliseconds>(end_time - start_time);
         check_time_2d[test_idx] = (float)duration_time.count();
         psg_num_2d[test_idx] = passages_2d.pairs.size();
+        check_time_2d_total += check_time_2d[test_idx];
+        psg_num_2d_total += psg_num_2d[test_idx];
 
         start_time = high_resolution_clock::now();
-        vector<vector<int>> cells = ReportGabrielCells(obs_vec_2d, passages_2d.pairs);
+        vector<vector<int>> cells = ReportGabrielCells(obs_vec_2d, passages_2d.pairs, false);
         end_time = high_resolution_clock::now();
         duration_time = duration_cast<milliseconds>(end_time - start_time);
         cell_check_time_2d[test_idx] = (float)duration_time.count();
         cell_num_2d[test_idx] = cells.size();
+        cell_check_time_2d_total += cell_check_time_2d[test_idx];
+        cell_num_2d_total += cell_num_2d[test_idx];
     }
 
     string save_directory = "./src/ptopp/src/data/passage_detection_3d/";
     string file_name_postfix, file_name, test_info;
-    file_name = "detection_data_obs_" + to_string(obs_num) + "_side_" + to_string(side_len) + "_";
+    file_name = "detection_data_3d_obs_" + to_string(obs_num) + "_side_" + to_string(side_len) + "_";
     std::time_t cur_time = std::time(0);
     std::tm* cur_tm = std::localtime(&cur_time);
     file_name_postfix = to_string(cur_tm->tm_year + 1900) + "-"
@@ -58,7 +74,8 @@ void PassageDetectionTest3d(const int test_num = 50,
                 + "Obstacle main/max side length: " + to_string(side_len) + "\n"
                 + "Total test number: " + to_string(test_num) + "\n" 
                 + "Continuous varying side length: " + (varying_side_len ? "true" : "false") + "\n"
-                + "Detection is built on Delaunay graphs. No environment boundaries are considered\n\n";    
+                + "Detection is built on Delaunay graphs. No environment boundaries are considered\n"
+                + "Update: Compound cell detection is tested\n\n";    
 
     ofstream  data_save_os;
     data_save_os.open(save_directory + file_name, std::ios::trunc);
@@ -67,22 +84,29 @@ void PassageDetectionTest3d(const int test_num = 50,
     }
     else {
         data_save_os << test_info;
-        data_save_os << "1 -3D passage number - 2 -Base passage number - 3 -Base cell number\n";
+        data_save_os << "1 - 3D passage number - 2 -Base passage number - 3 -Base cell number\n";
         for (int i = 0; i < test_num; i++)
             data_save_os << psg_num[i] << ", " << psg_num_2d[i] << ", " << cell_num_2d[i] << "\n";
-        data_save_os << "1 -3D passage detection time - 2 -Base passage detection time - 3 -Base cell detection time (ms)\n";;  
+        data_save_os << "Average: \n";
+        data_save_os << (float)psg_num_total / test_num << ", " << (float)psg_num_2d_total / test_num << ", " << (float)cell_num_2d_total / test_num << "\n"; 
+
+        data_save_os << "1 - 3D passage detection time - 2 -Base passage detection time - 3 - Compound cell check time - 4 -Base cell detection time (ms)\n";;  
         for (int i = 0; i < test_num; i++)
-            data_save_os << check_time[i] << ", " << check_time_2d[i] << ", " << cell_check_time_2d[i] << "\n";    
+            data_save_os << check_time[i] << ", " << check_time_2d[i] << ", " << cell_check_time[i] << ", " << cell_check_time_2d[i] << "\n";    
+        data_save_os << "Average: \n";
+        data_save_os << check_time_total / test_num << ", " << check_time_2d_total / test_num << ", " 
+                     << cell_check_time_total / test_num << ", " << cell_check_time_2d_total / test_num << "\n";
         data_save_os.close();                          
     }  
           
 }
 
 int main(int argc, char** argv) {
-    int obs_num = 200;
-    float side_len = 60;
+    int test_num = 50;
+    float side_len = 40;
     Mat back_img(Size(1000, 600), CV_64FC3, Scalar(255, 255, 255));
-    PassageDetectionTest3d(10, obs_num, side_len, back_img);
+    for (int obs_num = 140; obs_num <= 200; obs_num += 20)
+        PassageDetectionTest3d(test_num, obs_num, side_len, back_img);
     return 0;
 
     /* Mat back_img(Size(1000, 600), CV_64FC3, Scalar(255, 255, 255));
