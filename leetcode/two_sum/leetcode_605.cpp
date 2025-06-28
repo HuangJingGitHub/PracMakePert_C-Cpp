@@ -19,3 +19,4 @@ public:
         return place_num >= n;
     }
 };
+
