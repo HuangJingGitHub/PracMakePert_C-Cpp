@@ -19,3 +19,28 @@ public:
         return res;
     }
 };
+
+// Two pointers
+class Solution {
+public:
+    int triangleNumber(vector<int>& nums) {
+        int res = 0, n = nums.size();
+        if (n < 3)
+            return 0;
+
+        sort(nums.begin(), nums.end());
+        for (int max_idx = n - 1; max_idx >= 2; max_idx--) {
+            int left = 0, right = max_idx - 1;
+            while (left < right) {
+                if (nums[left] + nums[right] > nums[max_idx]) {
+                    res += right - left;
+                    right--;
+                }
+                else {
+                    left++;
+                }
+            }
+        }
+        return res;
+    }
+};
