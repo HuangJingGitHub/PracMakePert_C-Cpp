@@ -166,3 +166,139 @@ int main() {
   cout << solution(m, n) << endl;
   return 0;
 }
+
+
+#include <iostream>
+#include <vector>
+
+using namespace std;
+
+class gomoku {
+public:
+    const int player_0 = 0;
+    const int player_1 = 1;
+    const int board_size = 15;
+    vector<vector<int>> board;
+    bool play_turn_0 = true;
+    bool game_end = false;
+    
+    gomoku() {
+        board = vector<vector<int>>(board_size, vector<int>(board_size, -1));
+    }
+    
+    bool checkBoard(int row, int col) {
+        if (row < 0 || row >= board_size 
+            || col < 0 || col >= board_size) {
+            cout << "Wrong arguments in checkBoard()";
+            return false;
+        }
+        
+        bool valid_layout = true;
+        // check row
+        if (col <= board_size - 5) {
+            for (int i = 1; i < 5; i++) {
+                if (board[row][col + i] != board[row][col]) {
+                    valid_layout = false;
+                    break;
+                }
+            }
+        }
+        if (valid_layout)
+            return valid_layout;
+        
+        // check col
+        if (row <= board_size - 5) {
+            for (int i = 1; i < 5; i++) {
+                if (board[row + i][col] != board[row][col]) {
+                    valid_layout = false;
+                    break;
+                }
+            }
+        }        
+        if (valid_layout)
+            return valid_layout;
+        
+        // check left down diagonal 
+        for (int i = 0; i < 5; i++) {
+            int left_down_row = row + i, left_down_col = col - i;
+            if (left_down_row >= board_size || left_down_row < 0
+                || board[left_down_row][left_down_col] != board[row][col]) {
+                valid_layout = false;
+                break;
+            }
+        }
+        if (valid_layout)
+            return valid_layout;     
+
+        // check right down diagonal 
+        for (int i = 0; i < 5; i++) {
+            int left_down_row = row + i, left_down_col = col + i;
+            if (left_down_row >= board_size || left_down_row >= board_size
+                || board[left_down_row][left_down_col] != board[row][col]) {
+                valid_layout = false;
+                break;
+            }
+        }
+        return valid_layout;             
+    }
+    
+    int checkWinner() {
+        for (int row = 0; row < board_size; row++) {
+            for (int col = 0; col < board_size; col++) {
+                if (board[row][col] == -1)
+                    continue;
+                if (checkBoard(row, col))
+                   return board[row][col]; 
+            }
+        }
+        return -1;
+    }
+    
+    void play() {
+        cout << "Please input the position to place:\n";
+        int place_row = -1, place_col = -1;
+        cin >> place_row;
+        cin >> place_col;
+        // TODO: argument chcek- 1-arguments, 2-board position should be empty.
+        
+        // player 0 starts by default
+        if (play_turn_0) {
+            board[place_row][place_col] = player_0;
+        }
+        else {
+            board[place_row][place_col] = player_1;
+        }
+        play_turn_0 = !play_turn_0;
+        
+        int winner = checkWinner();
+        if (winner == -1)
+            cout << "No winner appears.\n";
+        else {
+            game_end = true;
+            cout << "The winner is " << winner << "\n";
+        }
+    }
+    
+    void printBoard() {
+        for (auto& row : board) {
+            for (auto& val : row)
+                cout << val << ", ";
+            cout << "\n";
+        }
+    }
+};
+
+int main() {
+    gomoku test_gomoku;
+    // cout << "Winner is player " << test_gomoku.checkWinner() << "\n";
+    /*test_gomoku.printBoard();
+    test_gomoku.play();
+    test_gomoku.play();
+    test_gomoku.printBoard(); */
+    
+    while (!test_gomoku.game_end) {
+        test_gomoku.play();
+    }
+    
+    return 0;
+}
