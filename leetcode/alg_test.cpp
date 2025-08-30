@@ -302,3 +302,178 @@ int main() {
     
     return 0;
 }
+
+/******************************************************************************
+
+                              Online C++ Compiler.
+               Code, Compile, Run and Debug C++ program online.
+Write your code in this editor and press "Run" button to compile and execute it.
+
+*******************************************************************************/
+
+#include <iostream>
+#include <string>
+#include <vector>
+
+using namespace std;
+
+class gomoku {
+public:
+    const int player_0 = 0;
+    const int player_1 = 1;
+    const int board_size = 15;
+    vector<vector<int>> board;
+    bool play_turn_0 = true; // player 0 starts by default
+    bool game_end = false;
+    
+    gomoku() {
+        board = vector<vector<int>>(board_size, vector<int>(board_size, -1));
+    }
+    
+    bool checkBoard(int row, int col) {
+        if (row < 0 || row >= board_size 
+            || col < 0 || col >= board_size) {
+            cout << "Wrong arguments in checkBoard()";
+            return false;
+        }
+        
+        // check row
+        int count = 0;
+        for (int i = 1; i < 5; i++) {
+            int new_col = col + i;
+            if (new_col >= board_size || board[row][new_col] != board[row][col])
+                break;
+            count++;
+        }
+        for (int i = 1; i < 5; i++) {
+            int new_col = col - i;
+            if (new_col < 0 || board[row][new_col] != board[row][col])
+                break;
+            count++;
+        }
+        if (count >= 4)
+            return true;
+        
+        // check col
+        count = 0;
+        for (int i = 1; i < 5; i++) {
+            int new_row = row + i;
+            if (new_row >= board_size || board[new_row][col] != board[row][col])
+                break;
+            count++;
+        }
+        for (int i = 1; i < 5; i++) {
+            int new_row = row - i;
+            if (new_row < 0 || board[new_row][col] != board[row][col])
+                break;
+            count++;
+        }
+        if (count >= 4)
+            return true;            
+
+        // check top-left to bottom-right diagonal
+        count = 0;
+        for (int i = 1; i < 5; i++) {
+            int new_row = row - i,
+                new_col = col - i;
+            if (new_row < 0 || new_col < 0
+                || board[new_row][new_col] != board[row][col])
+                break;
+            count++;
+        }
+        for (int i = 1; i < 5; i++) {
+            int new_row = row + i,
+                new_col = col + i;
+            if (new_row >= board_size || new_col >= board_size
+                || board[new_row][new_col] != board[row][col])
+                break;
+            count++;
+        }
+        if (count >= 4)
+            return true;
+            
+        // check top-right to bottom-left diagonal
+        count = 0;
+        for (int i = 1; i < 5; i++) {
+            int new_row = row - i,
+                new_col = col + i;
+            if (new_row < 0 || new_col >= board_size
+                || board[new_row][new_col] != board[row][col])
+                break;
+            count++;
+        }
+        for (int i = 1; i < 5; i++) {
+            int new_row = row + i,
+                new_col = col - i;
+            if (new_row >= board_size || new_col < 0
+                || board[new_row][new_col] != board[row][col])
+                break;
+            count++;
+        }
+        if (count >= 4)
+            return true;     
+        return false;
+    }
+    
+    bool isValidMove(const int row, const int col) {
+        if (row < 0 || row >= board_size 
+            || col < 0 || col >= board_size
+            || board[row][col] != -1)
+            return false;
+        return true;
+    }
+    
+    void play() {
+        int current_player = play_turn_0 ? player_0 : player_1;
+        if (play_turn_0) {
+            cout << "Player 0's turn. ";
+        }
+        else {
+            cout << "Player 1's turn. ";
+        }
+        cout << "Please input the position to place chess:\n";
+        
+        int place_row = -1, place_col = -1;
+        cin >> place_row >> place_col;
+        // TODO: argument chcek- 1-arguments, 2-board position should be empty.
+        while (!isValidMove(place_row, place_col)) {
+            cout << "Invalid place position. Please input again\n";
+            cin >> place_row >> place_col;
+        }
+        
+        if (play_turn_0) {
+            board[place_row][place_col] = player_0;
+        }
+        else {
+            board[place_row][place_col] = player_1;
+        }
+        play_turn_0 = !play_turn_0;
+        
+        bool valid_layout = checkBoard(place_row, place_col);
+        if (!valid_layout)
+            cout << "No winner appears.\n";
+        else {
+            game_end = true;
+            cout << "The winner is " << current_player << "\n";
+        }
+    }
+    
+    void printBoard() {
+        for (auto& row : board) {
+            for (auto& val : row)
+                cout << (val >= 0 ? to_string(val) : "*") << " ";
+            cout << "\n";
+        }
+    }
+};
+
+int main() {
+    gomoku test_gomoku;
+    
+    while (!test_gomoku.game_end) {
+        test_gomoku.printBoard();
+        test_gomoku.play();
+    }
+    
+    return 0;
+}
