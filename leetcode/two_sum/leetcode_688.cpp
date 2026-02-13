@@ -10,8 +10,8 @@ public:
             if (k == 0) {
                 return 1;
             }
-            double& res = memo[k][i][j]; // 注意这里是引用
-            if (res) { // 之前计算过
+            double& res = memo[k][i][j]; 
+            if (res) { 
                 return res;
             }
             for (auto& [dx, dy] : DIRS) {
