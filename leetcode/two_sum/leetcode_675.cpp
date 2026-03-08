@@ -15,6 +15,7 @@ public:
     int visited[55][55];
     int dir_x[4] = {0, 0, -1, 1};
     int dir_y[4] = {1, -1, 0, 0};
+
     int bfs(vector<vector<int>>& forest, int start_x, int start_y, int target_x, int target_y){
         int step = 0;
         queue<pair<int, int>> q;
@@ -40,6 +41,7 @@ public:
         }   
         return -1;
     }
+
     int cutOffTree(vector<vector<int>>& forest) {
         m = forest.size();
         n = forest[0].size();
