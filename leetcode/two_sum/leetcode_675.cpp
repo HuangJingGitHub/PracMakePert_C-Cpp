@@ -7,9 +7,7 @@ public:
             this->x = x;
             this->y = y;
         }
-        data(){
-
-        }
+        data(){}
     };
     int n, m;
     int visited[55][55];
